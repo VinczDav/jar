@@ -1,0 +1,28 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}EKHO bejelentés - JAR{% endblock %}
+
+{% block header_title %}Várakozó EKHO bejelentés{% endblock %}
+
+{% block content %}
+<p style="font-size: 16px; color: #1e293b;">Kedves {{ accountant_name|default:"Könyvelő" }}!</p>
+
+<p>Az előző hónapban bejelentésre váró EKHO-s mérkőzések összefoglalója:</p>
+
+<table class="data-table">
+    <tr style="background: #1a365d; color: white;">
+        <th style="color: white;">Név</th>
+        <th style="color: white; text-align: center;">Mérkőzésszám</th>
+        <th style="color: white; text-align: right;">Teljes díjazás (bruttó)</th>
+    </tr>
+    {% for item in summary %}
+    <tr>
+        <td>{{ item.name }}</td>
+        <td style="text-align: center;">{{ item.match_count }}</td>
+        <td style="text-align: right;"><strong>{{ item.total_gross|floatformat:0 }} Ft</strong></td>
+    </tr>
+    {% endfor %}
+</table>
+
+<p style="margin-top: 24px;">Üdvözlettel,<br>JAR rendszer</p>
+{% endblock %}

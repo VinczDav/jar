@@ -1,0 +1,782 @@
+{% extends 'base.html' %}
+
+{% block title %}Útiköltség elszámolás{% endblock %}
+{% block page_title %}Útiköltség elszámolás{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Havi elszámolás</h3>
+        <div class="dropdown" style="position: relative;">
+            <button class="btn btn-primary" onclick="toggleDropdown()" id="upload-btn">
+                <span class="material-icons">upload_file</span>
+                Új feltöltés
+            </button>
+            <div class="dropdown-menu" id="upload-dropdown" style="display: none;">
+                <button type="button" class="dropdown-item" onclick="openUploadModal('public_transport')">
+                    <span class="material-icons">directions_bus</span>
+                    Tömegközlekedés számla
+                </button>
+                <button type="button" class="dropdown-item {% if not can_submit_car_expense %}disabled{% endif %}"
+                        onclick="{% if can_submit_car_expense %}openUploadModal('car'){% endif %}"
+                        {% if not can_submit_car_expense %}disabled{% endif %}>
+                    <span class="material-icons">directions_car</span>
+                    Autós kiküldetési rendelvény
+                    {% if not can_submit_car_expense %}
+                    <small style="display: block; font-size: 0.7rem; color: var(--text-secondary);">
+                        {% if not vehicle_reimbursement_enabled %}
+                        (Nincs elszámolási jogosultság)
+                        {% elif not has_car_data %}
+                        (Nincs regisztrált autó)
+                        {% endif %}
+                    </small>
+                    {% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Month/Year Selector -->
+    <div class="filter-container">
+        <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+            <!-- Year selector -->
+            <div class="year-selector" style="display: flex; align-items: center; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="changeYear(-1)">
+                    <span class="material-icons">chevron_left</span>
+                </button>
+                <span id="current-year" style="font-weight: 600; min-width: 50px; text-align: center;">{{ selected_year }}</span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="changeYear(1)">
+                    <span class="material-icons">chevron_right</span>
+                </button>
+            </div>
+
+            <!-- Month grid -->
+            <div class="month-grid" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem;">
+                {% for month_name in month_names %}
+                <button type="button"
+                        class="month-btn {% if forloop.counter == selected_month %}active{% endif %}"
+                        data-month="{{ forloop.counter }}"
+                        onclick="selectMonth({{ forloop.counter }})">
+                    {{ month_name|slice:":3" }}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Dátum</th>
+                    <th>Időpont</th>
+                    <th>Bajnokság</th>
+                    <th>Helyszín</th>
+                    <th>Hazai csapat</th>
+                    <th>Vendég csapat</th>
+                    <th>Típus</th>
+                    <th>Státusz</th>
+                    <th style="text-align: right;">Útiköltség</th>
+                    <th style="text-align: center;">Művelet</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if travel_costs %}
+                {% for tc in travel_costs %}
+                <tr id="travel-cost-row-{{ tc.id }}">
+                    <td>{{ tc.assignment.match.date|date:"Y.m.d" }}</td>
+                    <td>{% if tc.assignment.match.time %}{{ tc.assignment.match.time|time:"H:i" }}{% else %}-{% endif %}</td>
+                    <td>
+                        {% if tc.assignment.match.phase %}
+                        <span class="badge" style="background-color: {{ tc.assignment.match.phase.competition.color }}; color: white;">
+                            {{ tc.assignment.match.phase.competition.short_name }}
+                        </span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{{ tc.assignment.match.venue.name|default:"-" }}</td>
+                    <td>{{ tc.assignment.match.home_team.name|default:"TBD" }}</td>
+                    <td>{{ tc.assignment.match.away_team.name|default:"TBD" }}</td>
+                    <td>
+                        {% if tc.expense_type == 'car' %}
+                        <span class="expense-badge car">
+                            <span class="material-icons">directions_car</span>
+                            Autó
+                        </span>
+                        {% elif tc.expense_type == 'public' %}
+                        <span class="expense-badge public">
+                            <span class="material-icons">directions_bus</span>
+                            Tömegközlekedés
+                        </span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if tc.status == 'pending' %}
+                        <span class="status-badge pending">Függőben</span>
+                        {% elif tc.status == 'approved' %}
+                        <span class="status-badge approved">Jóváhagyva</span>
+                        {% elif tc.status == 'rejected' %}
+                        <span class="status-badge rejected">Elutasítva</span>
+                        {% elif tc.status == 'returned' %}
+                        <span class="status-badge returned" title="{{ tc.comment }}">Visszaküldve</span>
+                        {% elif tc.status == 'declined' %}
+                        <span class="status-badge declined">Nem igényelt</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        {% if tc.status == 'approved' and tc.amount %}
+                        <span style="font-weight: 600; color: #16a34a;">{{ tc.amount|floatformat:0 }} Ft</span>
+                        {% elif tc.receipt_amount %}
+                        <span style="color: var(--text-secondary);">{{ tc.receipt_amount|floatformat:0 }} Ft</span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if tc.receipt_file %}
+                        <a href="{{ tc.receipt_file.url }}" target="_blank" class="btn-icon" title="Megtekintés">
+                            <span class="material-icons">visibility</span>
+                        </a>
+                        {% endif %}
+                        {% if tc.status == 'returned' %}
+                        <button type="button" class="btn-icon" title="Újra feltöltés" onclick="openReuploadModal({{ tc.id }}, '{{ tc.expense_type }}', '{{ tc.comment|escapejs }}')">
+                            <span class="material-icons">upload</span>
+                        </button>
+                        <button type="button" class="btn-icon decline" title="Nem igénylem" onclick="declineTravelCost({{ tc.id }})">
+                            <span class="material-icons">block</span>
+                        </button>
+                        {% endif %}
+                        {% if tc.status == 'pending' or tc.status == 'returned' %}
+                        <button type="button" class="btn-icon danger" title="Törlés" onclick="deleteTravelCost({{ tc.id }})">
+                            <span class="material-icons">delete</span>
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="10" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">directions_car</span>
+                        <p>Nincs útiköltség elszámolás ebben a hónapban</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+            <tfoot>
+                <tr style="font-weight: 600; background: var(--bg-color);">
+                    <td colspan="8">Összesen (jóváhagyott)</td>
+                    <td style="text-align: right;">{{ total_amount_display }} Ft</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-color); border-radius: 8px;">
+        <p style="font-size: 0.875rem; color: var(--text-secondary);">
+            <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">info</span>
+            Elfogadott formátumok: PDF, PNG, JPG, JPEG (max 10MB). Az útiköltség csak jóváhagyás után lesz kifizetve.
+        </p>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="upload-modal" class="modal" style="display: none;">
+    <div class="modal-backdrop" onclick="closeUploadModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-title">Új feltöltés</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeUploadModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form id="upload-form" onsubmit="submitUpload(event)">
+            {% csrf_token %}
+            <input type="hidden" id="upload-type" name="type" value="">
+
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label>Mérkőzés kiválasztása</label>
+                <div class="match-selection" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+                    {% if past_assignments %}
+                    {% for assignment in past_assignments %}
+                    <label class="match-option">
+                        <input type="radio" name="assignment_id" value="{{ assignment.id }}">
+                        <span class="match-info">
+                            <strong>{{ assignment.match.date|date:"Y.m.d" }}</strong>
+                            {% if assignment.match.phase %}
+                            <span class="badge" style="background-color: {{ assignment.match.phase.competition.color }}; color: white; font-size: 0.7rem;">
+                                {{ assignment.match.phase.competition.short_name }}
+                            </span>
+                            {% endif %}
+                            <br>
+                            <span style="color: var(--text-secondary);">
+                                {{ assignment.match.home_team.name|default:"TBD" }} - {{ assignment.match.away_team.name|default:"TBD" }}
+                            </span>
+                        </span>
+                    </label>
+                    {% endfor %}
+                    {% else %}
+                    <div style="padding: 2rem; text-align: center; color: var(--text-secondary);">
+                        Nincs lejátszott mérkőzés
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1rem;" id="file-group">
+                <label for="file-input" id="file-label">Dokumentum feltöltése</label>
+                <input type="file" id="file-input" name="document" accept=".pdf,.png,.jpg,.jpeg" class="form-control">
+            </div>
+
+            <div class="form-group" id="amount-group" style="margin-bottom: 1rem; display: none;">
+                <label for="amount-input" id="amount-label">Összeg (Ft)</label>
+                <input type="number" id="amount-input" name="amount" class="form-control" placeholder="pl. 2500" min="0">
+            </div>
+
+            <div id="upload-status" style="margin-bottom: 1rem; display: none;">
+                <div class="alert" style="padding: 0.75rem; border-radius: 0.5rem;"></div>
+            </div>
+
+            <div class="modal-footer" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeUploadModal()">Mégse</button>
+                <button type="submit" class="btn btn-primary" id="submit-btn">
+                    <span class="material-icons">upload</span>
+                    Feltöltés
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reupload Modal -->
+<div id="reupload-modal" class="modal" style="display: none;">
+    <div class="modal-backdrop" onclick="closeReuploadModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="reupload-modal-title">Dokumentum újrafeltöltése</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeReuploadModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+
+        <div id="reupload-reason" class="alert error" style="margin-bottom: 1rem; padding: 0.75rem; border-radius: 0.5rem;">
+            <strong>Visszaküldés oka:</strong>
+            <span id="reupload-reason-text"></span>
+        </div>
+
+        <form id="reupload-form" onsubmit="submitReupload(event)">
+            {% csrf_token %}
+            <input type="hidden" id="reupload-travel-cost-id" name="travel_cost_id" value="">
+
+            <div class="form-group" style="margin-bottom: 1rem;" id="reupload-file-group">
+                <label for="reupload-file-input" id="reupload-file-label">Új dokumentum feltöltése</label>
+                <input type="file" id="reupload-file-input" name="document" accept=".pdf,.png,.jpg,.jpeg" class="form-control">
+            </div>
+
+            <div class="form-group" id="reupload-amount-group" style="margin-bottom: 1rem;">
+                <label for="reupload-amount-input" id="reupload-amount-label">Összeg (Ft)</label>
+                <input type="number" id="reupload-amount-input" name="amount" class="form-control" placeholder="pl. 2500" min="0">
+            </div>
+
+            <div id="reupload-status" style="margin-bottom: 1rem; display: none;">
+                <div class="alert" style="padding: 0.75rem; border-radius: 0.5rem;"></div>
+            </div>
+
+            <div class="modal-footer" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeReuploadModal()">Mégse</button>
+                <button type="submit" class="btn btn-primary" id="reupload-submit-btn">
+                    <span class="material-icons">upload</span>
+                    Újrafeltöltés
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.filter-container {
+    padding: 1rem;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+}
+.month-btn {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-color);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.month-btn:hover {
+    background: var(--bg-color);
+}
+.month-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+}
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+.status-badge.pending {
+    background: #fef3c7;
+    color: #d97706;
+}
+.status-badge.approved {
+    background: #dcfce7;
+    color: #16a34a;
+}
+.status-badge.rejected {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.status-badge.returned {
+    background: #fef3c7;
+    color: #d97706;
+}
+.status-badge.declined {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+.expense-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+.expense-badge .material-icons {
+    font-size: 0.85rem;
+}
+.expense-badge.car {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+.expense-badge.public {
+    background: #dcfce7;
+    color: #16a34a;
+}
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-color);
+    color: var(--text-color);
+    transition: all 0.2s;
+}
+.btn-icon:hover {
+    background: var(--primary-color);
+    color: white;
+}
+.btn-icon.danger:hover {
+    background: var(--danger-color);
+}
+.btn-icon.decline:hover {
+    background: #6b7280;
+}
+.btn-icon .material-icons {
+    font-size: 1.1rem;
+}
+.dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 0.25rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 100;
+    min-width: 240px;
+}
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: none;
+    color: var(--text-color);
+    cursor: pointer;
+    text-align: left;
+}
+.dropdown-item:hover:not(.disabled) {
+    background: var(--bg-color);
+}
+.dropdown-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+}
+.modal-content {
+    position: relative;
+    background: var(--card-bg);
+    border-radius: 0.75rem;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.form-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+.form-control {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: var(--card-bg);
+    color: var(--text-color);
+}
+.match-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+}
+.match-option:last-child {
+    border-bottom: none;
+}
+.match-option:hover {
+    background: var(--bg-color);
+}
+.match-option input[type="radio"] {
+    flex-shrink: 0;
+}
+.alert.success {
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #86efac;
+}
+.alert.error {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+}
+.alert.info {
+    background: #e0f2fe;
+    color: #0284c7;
+    border: 1px solid #7dd3fc;
+}
+</style>
+
+<script>
+let currentYear = {{ selected_year }};
+let currentMonth = {{ selected_month }};
+
+function changeYear(delta) {
+    currentYear += delta;
+    document.getElementById('current-year').textContent = currentYear;
+    navigateToMonth();
+}
+
+function selectMonth(month) {
+    currentMonth = month;
+    document.querySelectorAll('.month-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (parseInt(btn.dataset.month) === month) {
+            btn.classList.add('active');
+        }
+    });
+    navigateToMonth();
+}
+
+function navigateToMonth() {
+    window.location.href = `{% url 'billing:travel_costs' %}?year=${currentYear}&month=${currentMonth}`;
+}
+
+function toggleDropdown() {
+    const dropdown = document.getElementById('upload-dropdown');
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('upload-dropdown');
+    const btn = document.getElementById('upload-btn');
+    if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+
+function openUploadModal(type) {
+    document.getElementById('upload-modal').style.display = 'flex';
+    document.getElementById('upload-type').value = type;
+    document.getElementById('upload-dropdown').style.display = 'none';
+    document.getElementById('upload-status').style.display = 'none';
+    document.getElementById('submit-btn').disabled = false;
+
+    // Reset form
+    document.getElementById('upload-form').reset();
+    document.getElementById('upload-type').value = type;
+
+    if (type === 'public_transport') {
+        document.getElementById('modal-title').textContent = 'Tömegközlekedés számla';
+        document.getElementById('file-label').textContent = 'Számla feltöltése';
+        document.getElementById('amount-label').textContent = 'Összeg (Ft)';
+    } else {
+        document.getElementById('modal-title').textContent = 'Autós kiküldetési rendelvény';
+        document.getElementById('file-label').textContent = 'Kiküldetési rendelvény feltöltése';
+        document.getElementById('amount-label').textContent = 'Igényelt összeg (Ft)';
+    }
+    // Show both fields for both types
+    document.getElementById('amount-group').style.display = 'block';
+    document.getElementById('file-group').style.display = 'block';
+}
+
+function closeUploadModal() {
+    document.getElementById('upload-modal').style.display = 'none';
+}
+
+function showUploadStatus(message, type) {
+    const statusDiv = document.getElementById('upload-status');
+    const alertDiv = statusDiv.querySelector('.alert');
+    alertDiv.textContent = message;
+    alertDiv.className = 'alert ' + type;
+    statusDiv.style.display = 'block';
+}
+
+async function submitUpload(event) {
+    event.preventDefault();
+
+    const form = document.getElementById('upload-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const formData = new FormData(form);
+
+    // Validate
+    if (!formData.get('assignment_id')) {
+        showUploadStatus('Kérlek válassz egy mérkőzést!', 'error');
+        return;
+    }
+
+    const type = formData.get('type');
+    // Document is required for both types
+    if (!formData.get('document') || !formData.get('document').name) {
+        showUploadStatus('Kérlek tölts fel egy dokumentumot!', 'error');
+        return;
+    }
+    // Amount is required
+    if (!formData.get('amount')) {
+        showUploadStatus('Kérlek add meg az összeget!', 'error');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    showUploadStatus('Feltöltés folyamatban...', 'info');
+
+    try {
+        const response = await fetch('{% url "billing:api_travel_cost_upload" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showUploadStatus(data.message, 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showUploadStatus(data.error || 'Hiba történt a feltöltés során.', 'error');
+            submitBtn.disabled = false;
+        }
+    } catch (error) {
+        showUploadStatus('Hiba történt: ' + error.message, 'error');
+        submitBtn.disabled = false;
+    }
+}
+
+async function deleteTravelCost(id) {
+    if (!confirm('Biztosan törölni szeretnéd ezt az útiköltség elszámolást?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/billing/api/travel-cost/${id}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById(`travel-cost-row-${id}`).remove();
+        } else {
+            alert(data.error || 'Hiba történt a törlés során.');
+        }
+    } catch (error) {
+        alert('Hiba történt: ' + error.message);
+    }
+}
+
+async function declineTravelCost(id) {
+    if (!confirm('Biztosan nem kéred az útiköltség elszámolást erre a mérkőzésre? Ez a művelet nem vonható vissza.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/billing/api/travel-cost/${id}/decline/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Hiba történt.');
+        }
+    } catch (error) {
+        alert('Hiba történt: ' + error.message);
+    }
+}
+
+let currentReuploadId = null;
+
+function openReuploadModal(id, expenseType, reason) {
+    currentReuploadId = id;
+    document.getElementById('reupload-modal').style.display = 'flex';
+    document.getElementById('reupload-travel-cost-id').value = id;
+    document.getElementById('reupload-status').style.display = 'none';
+    document.getElementById('reupload-submit-btn').disabled = false;
+    document.getElementById('reupload-reason-text').textContent = reason || 'Nincs megadva';
+
+    // Reset form
+    document.getElementById('reupload-form').reset();
+    document.getElementById('reupload-travel-cost-id').value = id;
+
+    // Set labels based on expense type
+    if (expenseType === 'public') {
+        document.getElementById('reupload-modal-title').textContent = 'Számla újrafeltöltése';
+        document.getElementById('reupload-file-label').textContent = 'Új számla feltöltése';
+        document.getElementById('reupload-amount-label').textContent = 'Összeg (Ft)';
+    } else {
+        document.getElementById('reupload-modal-title').textContent = 'Kiküldetési rendelvény újrafeltöltése';
+        document.getElementById('reupload-file-label').textContent = 'Új kiküldetési rendelvény feltöltése';
+        document.getElementById('reupload-amount-label').textContent = 'Igényelt összeg (Ft)';
+    }
+}
+
+function closeReuploadModal() {
+    document.getElementById('reupload-modal').style.display = 'none';
+    currentReuploadId = null;
+}
+
+function showReuploadStatus(message, type) {
+    const statusDiv = document.getElementById('reupload-status');
+    const alertDiv = statusDiv.querySelector('.alert');
+    alertDiv.textContent = message;
+    alertDiv.className = 'alert ' + type;
+    statusDiv.style.display = 'block';
+}
+
+async function submitReupload(event) {
+    event.preventDefault();
+
+    const form = document.getElementById('reupload-form');
+    const submitBtn = document.getElementById('reupload-submit-btn');
+    const formData = new FormData(form);
+
+    // Validate
+    if (!formData.get('document') || !formData.get('document').name) {
+        showReuploadStatus('Kérlek tölts fel egy új dokumentumot!', 'error');
+        return;
+    }
+    if (!formData.get('amount')) {
+        showReuploadStatus('Kérlek add meg az összeget!', 'error');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    showReuploadStatus('Feltöltés folyamatban...', 'info');
+
+    try {
+        const response = await fetch(`/billing/api/travel-cost/${currentReuploadId}/reupload/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showReuploadStatus(data.message || 'Sikeres újrafeltöltés!', 'success');
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showReuploadStatus(data.error || 'Hiba történt a feltöltés során.', 'error');
+            submitBtn.disabled = false;
+        }
+    } catch (error) {
+        showReuploadStatus('Hiba történt: ' + error.message, 'error');
+        submitBtn.disabled = false;
+    }
+}
+</script>
+{% endblock %}

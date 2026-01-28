@@ -1,0 +1,429 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if is_admin_view %}Felhasználók{% else %}Játékvezető profilok{% endif %}{% endblock %}
+{% block page_title %}{% if is_admin_view %}Felhasználók kezelése{% else %}Játékvezető profilok{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .page-stats {
+        display: flex;
+        gap: 1rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    .filter-bar {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .search-input {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        min-width: 200px;
+    }
+    .search-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .users-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--card-bg);
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+    .users-table th,
+    .users-table td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .users-table th {
+        background: var(--bg-color);
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+    }
+    .users-table tr:last-child td {
+        border-bottom: none;
+    }
+    .users-table tr:hover {
+        background: var(--bg-color);
+    }
+    .users-table tr.deleted {
+        opacity: 0.5;
+        background: rgba(220, 53, 69, 0.05);
+    }
+    .users-table tr.login-disabled {
+        background: rgba(255, 193, 7, 0.1);
+    }
+    .user-name {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--accent-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .user-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .user-info {
+        display: flex;
+        flex-direction: column;
+    }
+    .user-fullname {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    .user-email {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+    .badge-role {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .badge-admin {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+    .badge-jt-admin {
+        background: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+    .badge-referee {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+    }
+    .badge-inspector {
+        background: rgba(255, 193, 7, 0.2);
+        color: #856404;
+    }
+    .badge-billing {
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    .badge-efo {
+        background: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+    .badge-ekho {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+    }
+    .badge-nincs {
+        background: var(--bg-color);
+        color: var(--text-secondary);
+    }
+    .status-icon {
+        font-size: 1.1rem;
+    }
+    .status-icon.active {
+        color: var(--success-color);
+    }
+    .status-icon.inactive {
+        color: var(--text-secondary);
+    }
+    .actions-cell {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .btn-icon {
+        padding: 0.4rem;
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+    .btn-icon:hover {
+        background: var(--border-color);
+        color: var(--text-primary);
+    }
+    .btn-icon.danger:hover {
+        background: rgba(220, 53, 69, 0.1);
+        color: var(--danger-color);
+        border-color: var(--danger-color);
+    }
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+    .empty-state .material-icons {
+        font-size: 3rem;
+        opacity: 0.5;
+        margin-bottom: 1rem;
+    }
+    .last-login {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    @media (max-width: 1200px) {
+        .users-table {
+            display: block;
+            overflow-x: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: {% if message.tags == 'success' %}rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);{% elif message.tags == 'error' %}rgba(220, 53, 69, 0.1); border: 1px solid var(--danger-color);{% else %}rgba(23, 162, 184, 0.1); border: 1px solid var(--info-color);{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="page-header">
+    <div class="page-stats">
+        <span>Aktív: <strong>{{ total_count }}</strong></span>
+        <span>Törölt: <strong>{{ deleted_count }}</strong></span>
+    </div>
+    <div class="filter-bar">
+        <form method="get" style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="text" name="search" class="search-input" placeholder="Keresés név, email..." value="{{ search }}">
+            {% if show_deleted %}
+            <input type="hidden" name="show_deleted" value="1">
+            {% endif %}
+            <button type="submit" class="btn btn-secondary">
+                <span class="material-icons">search</span>
+            </button>
+        </form>
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" {% if show_deleted %}checked{% endif %} onchange="window.location.href='?show_deleted=' + (this.checked ? '1' : '0'){% if search %}&search={{ search }}{% endif %}">
+            Töröltek mutatása
+        </label>
+        <a href="{% url 'matches:user_create' %}" class="btn btn-primary">
+            <span class="material-icons">person_add</span>
+            Új játékvezető
+        </a>
+    </div>
+</div>
+
+{% if users %}
+<table class="users-table">
+    <thead>
+        <tr>
+            <th>Név</th>
+            <th>Telefonszám</th>
+            <th>Szerepkör</th>
+            <th>Ellenőr</th>
+            <th>Elszámolás</th>
+            <th>Utolsó belépés</th>
+            <th>Műveletek</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr class="{% if user.is_deleted %}deleted{% elif user.is_login_disabled %}login-disabled{% endif %}">
+            <td>
+                <div class="user-name">
+                    <div class="user-avatar">
+                        {% if user.profile_picture %}
+                        <img src="{{ user.profile_picture.url }}" alt="">
+                        {% else %}
+                        {{ user.first_name|slice:":1"|upper }}{{ user.last_name|slice:":1"|upper }}
+                        {% endif %}
+                    </div>
+                    <div class="user-info">
+                        <span class="user-fullname">{{ user.get_full_name|default:user.username }}</span>
+                        <span class="user-email">{{ user.email }}</span>
+                    </div>
+                </div>
+            </td>
+            <td>{{ user.phone|default:"-" }}</td>
+            <td>
+                <span class="badge-role {% if user.role == 'admin' %}badge-admin{% elif user.role == 'jt_admin' %}badge-jt-admin{% elif user.role == 'inspector' %}badge-inspector{% else %}badge-referee{% endif %}">
+                    {{ user.get_role_display }}
+                </span>
+            </td>
+            <td>
+                <span class="material-icons status-icon {% if user.is_inspector_flag %}active{% else %}inactive{% endif %}">
+                    {% if user.is_inspector_flag %}check_circle{% else %}remove_circle_outline{% endif %}
+                </span>
+            </td>
+            <td>
+                <span class="badge-billing badge-{{ user.billing_type }}">
+                    {{ user.get_billing_type_display }}
+                </span>
+            </td>
+            <td>
+                <span class="last-login">
+                    {% if user.last_login %}
+                    {{ user.last_login|date:"Y.m.d H:i" }}
+                    {% else %}
+                    Még nem lépett be
+                    {% endif %}
+                </span>
+            </td>
+            <td>
+                <div class="actions-cell">
+                    <a href="{% url 'matches:user_edit' user.id %}" class="btn-icon" title="Szerkesztés">
+                        <span class="material-icons">edit</span>
+                    </a>
+                    {% if not user.is_deleted %}
+                    <button type="button" class="btn-icon" title="{% if user.is_login_disabled %}Bejelentkezés engedélyezése{% else %}Bejelentkezés tiltása{% endif %}" onclick="toggleLogin({{ user.id }})">
+                        <span class="material-icons">{% if user.is_login_disabled %}lock{% else %}lock_open{% endif %}</span>
+                    </button>
+                    <button type="button" class="btn-icon danger" title="Törlés" onclick="deleteUser({{ user.id }}, '{{ user.get_full_name|escapejs }}')">
+                        <span class="material-icons">delete</span>
+                    </button>
+                    {% else %}
+                    {% if request.user.is_admin_user %}
+                    <button type="button" class="btn-icon" title="Visszaállítás" onclick="restoreUser({{ user.id }})">
+                        <span class="material-icons">restore</span>
+                    </button>
+                    <button type="button" class="btn-icon danger" title="Végleges törlés" onclick="permanentlyDeleteUser({{ user.id }}, '{{ user.get_full_name|escapejs }}')">
+                        <span class="material-icons">delete_forever</span>
+                    </button>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <span class="material-icons">people</span>
+    <h3>Nincs találat</h3>
+    <p>{% if search %}Próbálj más keresési kifejezést.{% else %}Még nincsenek felhasználók a rendszerben.{% endif %}</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+           document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+}
+
+async function deleteUser(userId, userName) {
+    if (!confirm(`Biztosan törölni szeretnéd "${userName}" felhasználót?`)) return;
+
+    try {
+        const response = await fetch(`/matches/api/user/${userId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Hiba történt');
+        }
+    } catch (err) {
+        alert('Hiba történt: ' + err.message);
+    }
+}
+
+async function toggleLogin(userId) {
+    try {
+        const response = await fetch(`/matches/api/user/${userId}/toggle-login/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Hiba történt');
+        }
+    } catch (err) {
+        alert('Hiba történt: ' + err.message);
+    }
+}
+
+async function restoreUser(userId) {
+    try {
+        const response = await fetch(`/matches/api/user/${userId}/restore/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Hiba történt');
+        }
+    } catch (err) {
+        alert('Hiba történt: ' + err.message);
+    }
+}
+
+async function permanentlyDeleteUser(userId, userName) {
+    if (!confirm(`FIGYELEM! Ez véglegesen törli "${userName}" felhasználót és minden hozzá tartozó adatot. Ez a művelet NEM vonható vissza!\n\nBiztosan folytatod?`)) return;
+
+    try {
+        const response = await fetch(`/matches/api/user/${userId}/permanently-delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Hiba történt');
+        }
+    } catch (err) {
+        alert('Hiba történt: ' + err.message);
+    }
+}
+</script>
+{% endblock %}

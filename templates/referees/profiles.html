@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+
+{% block title %}Profilok szerkesztése{% endblock %}
+{% block page_title %}Játékvezető profilok{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-box {
+        margin-bottom: 1.5rem;
+    }
+    .search-input {
+        padding: 0.5rem 1rem;
+        padding-left: 2.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        background: var(--card-bg);
+        color: var(--text-color);
+        width: 100%;
+        max-width: 300px;
+    }
+    .search-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    .search-wrapper .material-icons {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-secondary);
+        font-size: 1.25rem;
+    }
+    .profile-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .profile-table th {
+        text-align: left;
+        padding: 0.75rem 1rem;
+        background: var(--bg-color);
+        border-bottom: 2px solid var(--border-color);
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .profile-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+    .profile-table tr:hover {
+        background: var(--bg-color);
+    }
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+    .user-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+    .user-avatar.jt-admin {
+        background: #f59e0b;
+    }
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .badge-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+    .badge-warning {
+        background: #f59e0b;
+        color: white;
+    }
+    .badge-success {
+        background: #10b981;
+        color: white;
+    }
+    .badge-secondary {
+        background: var(--text-secondary);
+        color: white;
+    }
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-color);
+        color: var(--text-color);
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    .btn-icon:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+    .btn-icon .material-icons {
+        font-size: 1.1rem;
+    }
+    .btn-icon.active {
+        background: var(--primary-color);
+        color: white;
+    }
+    .btn-icon.danger:hover {
+        background: #dc3545;
+        color: white;
+    }
+    .actions-cell {
+        display: flex;
+        gap: 0.25rem;
+        justify-content: center;
+    }
+    .profile-table tr.hidden-user {
+        opacity: 0.5;
+    }
+    .profile-table tr.login-disabled {
+        background: rgba(255, 193, 7, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-box" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div class="search-wrapper">
+        <span class="material-icons">search</span>
+        <input type="text" id="search-input" placeholder="Keresés név alapján..." class="search-input" oninput="filterUsers()">
+    </div>
+    <a href="{% url 'matches:user_create' %}" class="btn btn-primary">
+        <span class="material-icons">person_add</span>
+        Új játékvezető
+    </a>
+</div>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table class="profile-table">
+            <thead>
+                <tr>
+                    <th>Név</th>
+                    <th>E-mail</th>
+                    <th>Telefon</th>
+                    <th>Szerepkör</th>
+                    <th>Elszámolás</th>
+                    <th>Ellenőr</th>
+                    <th style="text-align: center;">Műveletek</th>
+                </tr>
+            </thead>
+            <tbody id="users-tbody">
+                {% for user in users %}
+                <tr id="user-row-{{ user.id }}" data-name="{{ user.last_name|lower }} {{ user.first_name|lower }}" class="{% if user.is_hidden_from_colleagues %}hidden-user{% endif %} {% if user.is_login_disabled %}login-disabled{% endif %}">
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar {% if user.role == 'jt_admin' or user.is_jt_admin_flag %}jt-admin{% endif %}">
+                                {% if user.profile_picture %}
+                                <img src="{{ user.profile_picture.url }}" alt="{{ user.last_name }} {{ user.first_name }}">
+                                {% else %}
+                                {{ user.last_name|slice:":1" }}{{ user.first_name|slice:":1" }}
+                                {% endif %}
+                            </div>
+                            <span>{{ user.last_name }} {{ user.first_name }}</span>
+                        </div>
+                    </td>
+                    <td>{{ user.email|default:"-" }}</td>
+                    <td>{{ user.phone|default:"-" }}</td>
+                    <td>
+                        {% if user.role == 'jt_admin' or user.is_jt_admin_flag %}
+                        <span class="badge badge-warning">JT Admin</span>
+                        {% else %}
+                        <span class="badge badge-primary">Játékvezető</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if user.billing_type == 'efo' %}
+                        <span class="badge badge-success">EFO</span>
+                        {% elif user.billing_type == 'ekho' %}
+                        <span class="badge badge-primary">EKHO</span>
+                        {% else %}
+                        <span class="badge badge-secondary">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if user.is_inspector %}
+                        <span class="material-icons" style="color: #10b981;">check_circle</span>
+                        {% else %}
+                        <span class="material-icons" style="color: var(--text-secondary);">remove</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="actions-cell">
+                            <a href="{% url 'matches:user_edit' user.id %}" class="btn-icon" title="Szerkesztés">
+                                <span class="material-icons">edit</span>
+                            </a>
+                            <button type="button" class="btn-icon {% if user.is_hidden_from_colleagues %}active{% endif %}"
+                                    id="visibility-btn-{{ user.id }}"
+                                    title="{% if user.is_hidden_from_colleagues %}Láthatóvá tétel{% else %}Elrejtés{% endif %}"
+                                    onclick="toggleVisibility({{ user.id }})">
+                                <span class="material-icons">{% if user.is_hidden_from_colleagues %}visibility_off{% else %}visibility{% endif %}</span>
+                            </button>
+                            <button type="button" class="btn-icon {% if user.is_login_disabled %}active{% endif %}"
+                                    id="login-btn-{{ user.id }}"
+                                    title="{% if user.is_login_disabled %}Bejelentkezés engedélyezése{% else %}Bejelentkezés tiltása{% endif %}"
+                                    onclick="toggleLogin({{ user.id }})">
+                                <span class="material-icons">{% if user.is_login_disabled %}lock{% else %}lock_open{% endif %}</span>
+                            </button>
+                            <button type="button" class="btn-icon danger" title="Törlés" onclick="deleteUser({{ user.id }}, '{{ user.get_full_name|escapejs }}')">
+                                <span class="material-icons">delete</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">manage_accounts</span>
+                        <p>Nincs játékvezető</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function filterUsers() {
+    const searchTerm = document.getElementById('search-input').value.toLowerCase();
+    const rows = document.querySelectorAll('#users-tbody tr[data-name]');
+
+    rows.forEach(row => {
+        const name = row.dataset.name;
+        if (name.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+           document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+}
+
+async function toggleVisibility(userId) {
+    try {
+        const response = await fetch(`/matches/api/user/${userId}/toggle-visibility/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            const row = document.getElementById(`user-row-${userId}`);
+            const btn = document.getElementById(`visibility-btn-${userId}`);
+            const icon = btn.querySelector('.material-icons');
+
+            if (data.is_hidden) {
+                row.classList.add('hidden-user');
+                btn.classList.add('active');
+                btn.title = 'Láthatóvá tétel';
+                icon.textContent = 'visibility_off';
+            } else {
+                row.classList.remove('hidden-user');
+                btn.classList.remove('active');
+                btn.title = 'Elrejtés';
+                icon.textContent = 'visibility';
+            }
+        } else {
+            alert(data.error || 'Hiba történt');
+        }
+    } catch (err) {
+        alert('Hiba történt: ' + err.message);
+    }
+}
+
+async function toggleLogin(userId) {
+    try {
+        const response = await fetch(`/matches/api/user/${userId}/toggle-login/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            const row = document.getElementById(`user-row-${userId}`);
+            const btn = document.getElementById(`login-btn-${userId}`);
+            const icon = btn.querySelector('.material-icons');
+
+            if (data.is_login_disabled) {
+                row.classList.add('login-disabled');
+                btn.classList.add('active');
+                btn.title = 'Bejelentkezés engedélyezése';
+                icon.textContent = 'lock';
+            } else {
+                row.classList.remove('login-disabled');
+                btn.classList.remove('active');
+                btn.title = 'Bejelentkezés tiltása';
+                icon.textContent = 'lock_open';
+            }
+        } else {
+            alert(data.error || 'Hiba történt');
+        }
+    } catch (err) {
+        alert('Hiba történt: ' + err.message);
+    }
+}
+
+async function deleteUser(userId, userName) {
+    if (!confirm(`Biztosan törölni szeretnéd "${userName}" felhasználót?`)) return;
+
+    try {
+        const response = await fetch(`/matches/api/user/${userId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById(`user-row-${userId}`).remove();
+        } else {
+            alert(data.error || 'Hiba történt');
+        }
+    } catch (err) {
+        alert('Hiba történt: ' + err.message);
+    }
+}
+</script>
+{% endblock %}

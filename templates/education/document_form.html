@@ -1,0 +1,342 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if document %}Dokumentum szerkesztése{% else %}Új dokumentum{% endif %}{% endblock %}
+{% block page_title %}{% if document %}Dokumentum szerkesztése{% else %}Új dokumentum{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .form-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    .form-group small {
+        display: block;
+        margin-top: 0.25rem;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+    }
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    textarea.form-control {
+        min-height: 80px;
+        resize: vertical;
+    }
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+    .error-message {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #dc2626;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    /* Type selector */
+    .type-selector {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .type-option {
+        flex: 1;
+        padding: 1rem;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--bg-color);
+    }
+    .type-option:hover {
+        border-color: var(--primary-color);
+    }
+    .type-option.selected {
+        border-color: var(--primary-color);
+        background: rgba(59, 130, 246, 0.1);
+    }
+    .type-option .material-icons {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    .type-option.file-type .material-icons { color: #6b7280; }
+    .type-option.link-type .material-icons { color: #3b82f6; }
+    .type-option.youtube-type .material-icons { color: #ef4444; }
+    .type-option span:last-child {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+
+    /* File upload */
+    .file-upload {
+        border: 2px dashed var(--border-color);
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--bg-color);
+    }
+    .file-upload:hover {
+        border-color: var(--primary-color);
+        background: rgba(59, 130, 246, 0.05);
+    }
+    .file-upload .material-icons {
+        font-size: 3rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+    }
+    .file-upload-text {
+        color: var(--text-secondary);
+    }
+    .file-upload-name {
+        margin-top: 0.5rem;
+        font-weight: 500;
+        color: var(--primary-color);
+    }
+    .file-upload input[type="file"] {
+        display: none;
+    }
+
+    /* Current file info */
+    .current-file {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: var(--bg-color);
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+    }
+    .current-file .material-icons {
+        color: var(--primary-color);
+    }
+    .current-file-name {
+        flex: 1;
+        font-weight: 500;
+    }
+
+    /* Conditional fields */
+    .conditional-field {
+        display: none;
+    }
+    .conditional-field.active {
+        display: block;
+    }
+
+    @media (max-width: 480px) {
+        .type-selector {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-card">
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="category">Kategória *</label>
+                <select id="category" name="category" class="form-control" required>
+                    <option value="">Válassz kategóriát...</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if document.category_id == cat.id %}selected{% endif %}>
+                        {{ cat.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="title">Cím *</label>
+                <input type="text" id="title" name="title" class="form-control"
+                       value="{{ document.title|default:'' }}" required
+                       placeholder="Dokumentum címe">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Leírás</label>
+                <textarea id="description" name="description" class="form-control"
+                          placeholder="Rövid leírás...">{{ document.description|default:'' }}</textarea>
+            </div>
+
+            {% if not document %}
+            <div class="form-group">
+                <label>Típus *</label>
+                <input type="hidden" id="document_type" name="document_type" value="file">
+                <div class="type-selector">
+                    <div class="type-option file-type selected" data-type="file" onclick="selectType('file')">
+                        <span class="material-icons">upload_file</span>
+                        <span>Fájl feltöltés</span>
+                    </div>
+                    <div class="type-option link-type" data-type="link" onclick="selectType('link')">
+                        <span class="material-icons">link</span>
+                        <span>Link</span>
+                    </div>
+                    <div class="type-option youtube-type" data-type="youtube" onclick="selectType('youtube')">
+                        <span class="material-icons">smart_display</span>
+                        <span>YouTube</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- File upload field -->
+            <div class="form-group conditional-field {% if not document or document.document_type == 'file' %}active{% endif %}" id="fileField">
+                <label>Fájl {% if not document %}*{% endif %}</label>
+                {% if document and document.document_type == 'file' and document.file %}
+                <div class="current-file">
+                    <span class="material-icons">{{ document.file_icon }}</span>
+                    <span class="current-file-name">{{ document.original_filename }}</span>
+                </div>
+                <small>Új fájl feltöltése felülírja a régit</small>
+                {% endif %}
+                <label class="file-upload" id="fileUpload">
+                    <span class="material-icons">cloud_upload</span>
+                    <div class="file-upload-text">Kattints vagy húzd ide a fájlt</div>
+                    <div class="file-upload-name" id="fileName"></div>
+                    <input type="file" name="file" id="fileInput" onchange="updateFileName(this)">
+                </label>
+            </div>
+
+            <!-- URL field for links -->
+            <div class="form-group conditional-field {% if document and document.document_type == 'link' %}active{% endif %}" id="linkField">
+                <label for="urlLink">Link URL *</label>
+                <input type="url" id="urlLink" name="url" class="form-control"
+                       value="{% if document.document_type == 'link' %}{{ document.url }}{% endif %}"
+                       placeholder="https://example.com">
+            </div>
+
+            <!-- URL field for YouTube -->
+            <div class="form-group conditional-field {% if document and document.document_type == 'youtube' %}active{% endif %}" id="youtubeField">
+                <label for="urlYoutube">YouTube URL *</label>
+                <input type="url" id="urlYoutube" name="url" class="form-control"
+                       value="{% if document.document_type == 'youtube' %}{{ document.url }}{% endif %}"
+                       placeholder="https://youtube.com/watch?v=...">
+                <small>Támogatott formátumok: youtube.com/watch?v=..., youtu.be/...</small>
+            </div>
+
+            <div class="form-actions">
+                <a href="{% url 'education:document_library' %}" class="btn btn-secondary">Mégse</a>
+                <button type="submit" class="btn btn-primary">
+                    {% if document %}Mentés{% else %}Létrehozás{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function selectType(type) {
+    // Update hidden input
+    document.getElementById('document_type').value = type;
+
+    // Update visual selection
+    document.querySelectorAll('.type-option').forEach(el => el.classList.remove('selected'));
+    document.querySelector(`.type-option[data-type="${type}"]`).classList.add('selected');
+
+    // Show/hide conditional fields
+    document.querySelectorAll('.conditional-field').forEach(el => el.classList.remove('active'));
+
+    if (type === 'file') {
+        document.getElementById('fileField').classList.add('active');
+    } else if (type === 'link') {
+        document.getElementById('linkField').classList.add('active');
+    } else if (type === 'youtube') {
+        document.getElementById('youtubeField').classList.add('active');
+    }
+}
+
+function updateFileName(input) {
+    const fileName = input.files[0]?.name || '';
+    document.getElementById('fileName').textContent = fileName;
+}
+
+// Handle URL field sync (both link and youtube use 'url' name)
+document.querySelector('form').addEventListener('submit', function(e) {
+    const type = document.getElementById('document_type')?.value || '{{ document.document_type }}';
+
+    // Clear the URL field that's not being used
+    if (type === 'file') {
+        document.getElementById('urlLink').value = '';
+        document.getElementById('urlYoutube').value = '';
+    } else if (type === 'link') {
+        document.getElementById('urlYoutube').removeAttribute('name');
+    } else if (type === 'youtube') {
+        document.getElementById('urlLink').removeAttribute('name');
+    }
+});
+
+// Drag and drop for file upload
+const fileUpload = document.getElementById('fileUpload');
+const fileInput = document.getElementById('fileInput');
+
+if (fileUpload) {
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        fileUpload.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        fileUpload.addEventListener(eventName, () => fileUpload.style.borderColor = 'var(--primary-color)', false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        fileUpload.addEventListener(eventName, () => fileUpload.style.borderColor = '', false);
+    });
+
+    fileUpload.addEventListener('drop', function(e) {
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            fileInput.files = files;
+            updateFileName(fileInput);
+        }
+    }, false);
+}
+</script>
+{% endblock %}

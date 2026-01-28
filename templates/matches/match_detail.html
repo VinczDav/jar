@@ -1,0 +1,467 @@
+{% extends 'base.html' %}
+
+{% block title %}Mérkőzés részletek{% endblock %}
+{% block page_title %}Mérkőzés részletek{% endblock %}
+
+{% block extra_css %}
+<style>
+    .match-detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .match-teams-large {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 1rem 0;
+    }
+    .match-teams-large .team-display {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .match-teams-large .team-logo-large {
+        width: 48px;
+        height: 48px;
+        object-fit: contain;
+        border-radius: 8px;
+        background: var(--bg-color);
+    }
+    .match-teams-large .team-logo-placeholder-large {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        background: var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+    .match-teams-large .vs-text {
+        color: var(--text-secondary);
+        font-weight: normal;
+        font-size: 1.1rem;
+        padding: 0 0.5rem;
+    }
+    .match-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        margin: 1.5rem 0;
+        padding: 1rem 0;
+        border-top: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color);
+    }
+    .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .meta-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+    }
+    .meta-value {
+        font-size: 1rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .meta-value .material-icons {
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+    }
+    .referee-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+    }
+    .referee-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .referee-info {
+        flex: 1;
+    }
+    .referee-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    .referee-role {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .referee-status {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.9rem;
+    }
+    .status-accepted {
+        color: var(--success-color);
+    }
+    .status-pending {
+        color: var(--warning-color);
+    }
+    .status-declined {
+        color: var(--danger-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header match-detail-header">
+        <div>
+            {% if match.phase %}
+            <span class="badge" style="background: {{ match.phase.competition.color }}; color: white;">{{ match.phase.competition.short_name }} - {{ match.phase.name }}</span>
+            {% endif %}
+            <div class="match-teams-large">
+                {% if match.is_tournament %}
+                <!-- Torna: rendező csapat + Torna badge -->
+                <div class="team-display">
+                    {% if match.home_team.logo %}
+                    <img src="{{ match.home_team.logo.url }}" alt="" class="team-logo-large">
+                    {% else %}
+                    <div class="team-logo-placeholder-large">{{ match.home_team.short_name|default:match.home_team.name|slice:":3"|upper }}</div>
+                    {% endif %}
+                    <span>{{ match.home_team|default:"TBD" }}</span>
+                </div>
+                <div class="team-display" style="justify-content: center; flex-direction: column; gap: 0.25rem;">
+                    <span style="background: #7c3aed; color: white; padding: 0.4rem 1rem; border-radius: 16px; font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
+                        <span class="material-icons" style="font-size: 1.2rem;">emoji_events</span>
+                        Torna
+                    </span>
+                    <span style="font-size: 0.85rem; color: var(--text-secondary);">
+                        {{ match.tournament_match_count }} meccs / {{ match.tournament_court_count }} pálya
+                    </span>
+                </div>
+                {% else %}
+                <!-- Normal meccs: hazai vs vendég -->
+                <div class="team-display">
+                    {% if match.home_team.logo %}
+                    <img src="{{ match.home_team.logo.url }}" alt="" class="team-logo-large">
+                    {% else %}
+                    <div class="team-logo-placeholder-large">{{ match.home_team.short_name|default:match.home_team.name|slice:":3"|upper }}</div>
+                    {% endif %}
+                    <span>{{ match.home_team|default:"TBD" }}</span>
+                </div>
+                <span class="vs-text">vs</span>
+                <div class="team-display">
+                    {% if match.away_team.logo %}
+                    <img src="{{ match.away_team.logo.url }}" alt="" class="team-logo-large">
+                    {% else %}
+                    <div class="team-logo-placeholder-large">{{ match.away_team.short_name|default:match.away_team.name|slice:":3"|upper }}</div>
+                    {% endif %}
+                    <span>{{ match.away_team|default:"TBD" }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div>
+            {% if match.status == 'draft' %}
+            <span class="badge" style="background: var(--text-secondary);">Piszkozat</span>
+            {% elif match.status == 'scheduled' %}
+            <span class="badge" style="background: var(--warning-color);">Kiírva</span>
+            {% elif match.status == 'confirmed' %}
+            <span class="badge" style="background: var(--success-color);">Visszaigazolva</span>
+            {% elif match.status == 'completed' %}
+            <span class="badge" style="background: var(--primary-color);">Lejátszva</span>
+            {% elif match.status == 'cancelled' %}
+            <span class="badge" style="background: var(--danger-color);">Törölve</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="match-meta">
+        <div class="meta-item">
+            <span class="meta-label">Dátum</span>
+            <span class="meta-value">
+                <span class="material-icons">event</span>
+                {{ match.date|date:"Y. F j." }} ({{ match.date|date:"l" }})
+            </span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">Időpont</span>
+            <span class="meta-value">
+                <span class="material-icons">schedule</span>
+                {{ match.time|time:"H:i" }}
+            </span>
+        </div>
+        {% if match.venue %}
+        <div class="meta-item">
+            <span class="meta-label">Helyszín</span>
+            <span class="meta-value">
+                <span class="material-icons">location_on</span>
+                {{ match.venue.name }}
+                {% if match.court %}<small style="color: var(--text-secondary);"> ({{ match.court }})</small>{% endif %}
+            </span>
+        </div>
+        {% endif %}
+        {% if match.phase %}
+        <div class="meta-item">
+            <span class="meta-label">Bajnokság</span>
+            <span class="meta-value">
+                <span class="material-icons">emoji_events</span>
+                {{ match.phase.competition.name }}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if match.notes %}
+    <div style="margin-bottom: 1.5rem;">
+        <strong>Megjegyzés:</strong>
+        <p style="margin: 0.5rem 0; color: var(--text-secondary);">{{ match.notes }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Kijelölt játékvezetők -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3 class="card-title">Kijelölt játékvezetők</h3>
+    </div>
+
+    {% with referees=match.get_referees %}
+    {% if referees %}
+    <h4 style="margin: 0 0 1rem; font-size: 1rem; color: var(--text-secondary);">Játékvezetők</h4>
+    {% for assignment in referees %}
+    <div class="referee-card">
+        {% if assignment.placeholder_type == 'nincs' %}
+        <div class="referee-avatar" style="background: var(--text-secondary);">
+            <span class="material-icons" style="font-size: 1.25rem;">block</span>
+        </div>
+        <div class="referee-info">
+            <div class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</div>
+            <div class="referee-role">{{ assignment.get_role_display }}</div>
+        </div>
+        <div class="referee-status" style="color: var(--text-secondary);">
+            <span class="material-icons">remove_circle_outline</span>
+            Nem szükséges
+        </div>
+        {% else %}
+        <div class="referee-avatar">
+            {{ assignment.user.first_name|slice:":1" }}{{ assignment.user.last_name|slice:":1" }}
+        </div>
+        <div class="referee-info">
+            <div class="referee-name">{{ assignment.user.get_full_name }}</div>
+            <div class="referee-role">{{ assignment.get_role_display }}</div>
+        </div>
+        <div class="referee-status {% if assignment.response_status == 'accepted' %}status-accepted{% elif assignment.response_status == 'pending' %}status-pending{% else %}status-declined{% endif %}">
+            {% if assignment.response_status == 'accepted' %}
+            <span class="material-icons">check_circle</span>
+            Elfogadva
+            {% elif assignment.response_status == 'pending' %}
+            <span class="material-icons">schedule</span>
+            Függőben
+            {% else %}
+            <span class="material-icons">cancel</span>
+            Elutasítva
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    {% with reserves=match.get_reserves %}
+    {% if reserves %}
+    <h4 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--text-secondary);">Tartalékok</h4>
+    {% for assignment in reserves %}
+    <div class="referee-card">
+        {% if assignment.placeholder_type == 'nincs' %}
+        <div class="referee-avatar" style="background: var(--text-secondary);">
+            <span class="material-icons" style="font-size: 1.25rem;">block</span>
+        </div>
+        <div class="referee-info">
+            <div class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</div>
+            <div class="referee-role">{{ assignment.get_role_display }}</div>
+        </div>
+        <div class="referee-status" style="color: var(--text-secondary);">
+            <span class="material-icons">remove_circle_outline</span>
+            Nem szükséges
+        </div>
+        {% else %}
+        <div class="referee-avatar" style="background: var(--text-secondary);">
+            {{ assignment.user.first_name|slice:":1" }}{{ assignment.user.last_name|slice:":1" }}
+        </div>
+        <div class="referee-info">
+            <div class="referee-name">{{ assignment.user.get_full_name }}</div>
+            <div class="referee-role">{{ assignment.get_role_display }}</div>
+        </div>
+        <div class="referee-status {% if assignment.response_status == 'accepted' %}status-accepted{% elif assignment.response_status == 'pending' %}status-pending{% else %}status-declined{% endif %}">
+            {% if assignment.response_status == 'accepted' %}
+            <span class="material-icons">check_circle</span>
+            Elfogadva
+            {% elif assignment.response_status == 'pending' %}
+            <span class="material-icons">schedule</span>
+            Függőben
+            {% else %}
+            <span class="material-icons">cancel</span>
+            Elutasítva
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    {% with inspectors=match.get_inspectors %}
+    {% if inspectors %}
+    <h4 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--text-secondary);">Ellenőrök</h4>
+    {% for assignment in inspectors %}
+    <div class="referee-card">
+        {% if assignment.placeholder_type == 'nincs' %}
+        <div class="referee-avatar" style="background: var(--text-secondary);">
+            <span class="material-icons" style="font-size: 1.25rem;">block</span>
+        </div>
+        <div class="referee-info">
+            <div class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</div>
+            <div class="referee-role">{{ assignment.get_role_display }}</div>
+        </div>
+        <div class="referee-status" style="color: var(--text-secondary);">
+            <span class="material-icons">remove_circle_outline</span>
+            Nem szükséges
+        </div>
+        {% else %}
+        <div class="referee-avatar" style="background: var(--warning-color);">
+            {{ assignment.user.first_name|slice:":1" }}{{ assignment.user.last_name|slice:":1" }}
+        </div>
+        <div class="referee-info">
+            <div class="referee-name">{{ assignment.user.get_full_name }}</div>
+            <div class="referee-role">{{ assignment.get_role_display }}</div>
+        </div>
+        <div class="referee-status {% if assignment.response_status == 'accepted' %}status-accepted{% elif assignment.response_status == 'pending' %}status-pending{% else %}status-declined{% endif %}">
+            {% if assignment.response_status == 'accepted' %}
+            <span class="material-icons">check_circle</span>
+            Elfogadva
+            {% elif assignment.response_status == 'pending' %}
+            <span class="material-icons">schedule</span>
+            Függőben
+            {% else %}
+            <span class="material-icons">cancel</span>
+            Elutasítva
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    {% with tournament_directors=match.get_tournament_directors %}
+    {% if tournament_directors %}
+    <h4 style="margin: 1.5rem 0 1rem; font-size: 1rem; color: var(--text-secondary);">Tornaigazgatók</h4>
+    {% for assignment in tournament_directors %}
+    <div class="referee-card">
+        {% if assignment.placeholder_type == 'nincs' %}
+        <div class="referee-avatar" style="background: var(--text-secondary);">
+            <span class="material-icons" style="font-size: 1.25rem;">block</span>
+        </div>
+        <div class="referee-info">
+            <div class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</div>
+            <div class="referee-role">{{ assignment.get_role_display }}</div>
+        </div>
+        <div class="referee-status" style="color: var(--text-secondary);">
+            <span class="material-icons">remove_circle_outline</span>
+            Nem szükséges
+        </div>
+        {% else %}
+        <div class="referee-avatar" style="background: var(--info-color);">
+            {{ assignment.user.first_name|slice:":1" }}{{ assignment.user.last_name|slice:":1" }}
+        </div>
+        <div class="referee-info">
+            <div class="referee-name">{{ assignment.user.get_full_name }}</div>
+            <div class="referee-role">{{ assignment.get_role_display }}</div>
+        </div>
+        <div class="referee-status {% if assignment.response_status == 'accepted' %}status-accepted{% elif assignment.response_status == 'pending' %}status-pending{% else %}status-declined{% endif %}">
+            {% if assignment.response_status == 'accepted' %}
+            <span class="material-icons">check_circle</span>
+            Elfogadva
+            {% elif assignment.response_status == 'pending' %}
+            <span class="material-icons">schedule</span>
+            Függőben
+            {% else %}
+            <span class="material-icons">cancel</span>
+            Elutasítva
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    {% if not match.assignments.exists %}
+    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+        <span class="material-icons" style="font-size: 2.5rem; opacity: 0.5;">person_off</span>
+        <p>Nincs kijelölt játékvezető</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Visszajelzés ha a user ki van jelölve -->
+{% if user_assignment and user_assignment.response_status == 'pending' %}
+<div class="card" style="margin-top: 1.5rem; border-left: 4px solid var(--warning-color);">
+    <div class="card-header">
+        <h3 class="card-title">Válaszolj a kijelölésre</h3>
+    </div>
+    <form method="post" action="{% url 'matches:respond_to_assignment' user_assignment.id %}">
+        {% csrf_token %}
+        <p style="margin-bottom: 1rem;">Ki lettél jelölve erre a mérkőzésre {{ user_assignment.get_role_display|lower }}ként. Kérlek válaszolj!</p>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <button type="submit" name="response" value="accepted" class="btn btn-primary">
+                <span class="material-icons">check</span>
+                Elfogadom
+            </button>
+            <div style="flex: 1; min-width: 200px;">
+                <input type="text" name="decline_reason" placeholder="Elutasítás oka..." style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-color); color: var(--text-primary);">
+            </div>
+            <button type="submit" name="response" value="declined" class="btn" style="background: var(--danger-color); color: white;">
+                <span class="material-icons">close</span>
+                Elutasítom
+            </button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- Műveletek -->
+<div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+    <a href="{% url 'matches:all_matches' %}" class="btn btn-secondary">
+        <span class="material-icons">arrow_back</span>
+        Vissza a listához
+    </a>
+    {% if can_edit %}
+    <a href="{% url 'matches:edit_match' match.id %}" class="btn btn-primary">
+        <span class="material-icons">edit</span>
+        Szerkesztés
+    </a>
+    {% endif %}
+</div>
+{% endblock %}

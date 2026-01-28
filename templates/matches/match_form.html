@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .form-group label {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    .form-group .form-control {
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+    .form-group .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 1.5rem 0 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+    .assignment-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    .status-draft {
+        background: rgba(128, 128, 128, 0.1);
+        border: 1px solid var(--text-secondary);
+    }
+    .status-scheduled {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid var(--warning-color);
+    }
+    .status-confirmed {
+        background: rgba(40, 167, 69, 0.1);
+        border: 1px solid var(--success-color);
+    }
+    .button-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+    .button-group-right {
+        display: flex;
+        gap: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}" style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: {% if message.tags == 'success' %}rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);{% elif message.tags == 'error' %}rgba(220, 53, 69, 0.1); border: 1px solid var(--danger-color);{% else %}rgba(23, 162, 184, 0.1); border: 1px solid var(--info-color);{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Mérkőzés adatok</h3>
+        {% if match %}
+        <div class="status-indicator status-{{ match.status }}">
+            <span class="material-icons" style="font-size: 1.25rem;">
+                {% if match.status == 'draft' %}edit{% elif match.status == 'scheduled' %}schedule{% elif match.status == 'confirmed' %}check_circle{% else %}info{% endif %}
+            </span>
+            <span>{{ match.get_status_display }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_match">
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="id_date">Dátum *</label>
+                {{ form.date }}
+            </div>
+            <div class="form-group">
+                <label for="id_time">Időpont *</label>
+                {{ form.time }}
+            </div>
+            <div class="form-group">
+                <label for="id_venue">Helyszín</label>
+                {{ form.venue }}
+            </div>
+            <div class="form-group">
+                <label for="id_court">Pálya</label>
+                {{ form.court }}
+            </div>
+            <div class="form-group">
+                <label for="id_home_team">Hazai csapat</label>
+                {{ form.home_team }}
+            </div>
+            <div class="form-group">
+                <label for="id_away_team">Vendég csapat</label>
+                {{ form.away_team }}
+            </div>
+            <div class="form-group">
+                <label for="id_phase">Bajnokság / Szakasz</label>
+                {{ form.phase }}
+            </div>
+            <div class="form-group full-width">
+                <label for="id_notes">Megjegyzés</label>
+                {{ form.notes }}
+            </div>
+        </div>
+
+        {% if not match %}
+        <div class="button-group">
+            <a href="{% url 'matches:assignments' %}" class="btn btn-secondary">
+                <span class="material-icons">arrow_back</span>
+                Vissza
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">save</span>
+                Létrehozás és folytatás
+            </button>
+        </div>
+        {% else %}
+        <div class="button-group">
+            <div></div>
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">save</span>
+                Mentés
+            </button>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+{% if match %}
+<!-- Kijelölések szekció -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3 class="card-title">Játékvezető kijelölések</h3>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_assignments">
+
+        <div class="assignment-grid">
+            <div class="form-group">
+                <label for="id_referee1">1. Játékvezető</label>
+                {{ assignment_form.referee1 }}
+            </div>
+            <div class="form-group">
+                <label for="id_referee2">2. Játékvezető</label>
+                {{ assignment_form.referee2 }}
+            </div>
+            <div class="form-group">
+                <label for="id_inspector">Ellenőr</label>
+                {{ assignment_form.inspector }}
+            </div>
+            <div class="form-group">
+                <label for="id_reserve">Tartalék</label>
+                {{ assignment_form.reserve }}
+            </div>
+        </div>
+
+        <div class="button-group">
+            <div></div>
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">group</span>
+                Kijelölések mentése
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Műveletek -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3 class="card-title">Műveletek</h3>
+    </div>
+
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        {% if match.status == 'draft' %}
+        <form method="post" style="margin: 0;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="publish">
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">send</span>
+                Kiírás publikálása
+            </button>
+        </form>
+        {% endif %}
+
+        <a href="{% url 'matches:match_detail' match.id %}" class="btn btn-secondary">
+            <span class="material-icons">visibility</span>
+            Megtekintés
+        </a>
+
+        <form method="post" onsubmit="return confirm('Biztosan törölni szeretnéd a mérkőzést?');" style="margin: 0; margin-left: auto;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <button type="submit" class="btn" style="background: var(--danger-color); color: white;">
+                <span class="material-icons">delete</span>
+                Törlés
+            </button>
+        </form>
+    </div>
+</div>
+
+<div style="margin-top: 1.5rem;">
+    <a href="{% url 'matches:assignments' %}" class="btn btn-secondary">
+        <span class="material-icons">arrow_back</span>
+        Vissza a listához
+    </a>
+</div>
+{% endif %}
+{% endblock %}

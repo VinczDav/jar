@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}Mérkőzésszámok{% endblock %}
+{% block page_title %}Mérkőzésszámok{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Mérkőzések listája</h3>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-container">
+        <form method="get" class="filter-form">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="date_from">Dátumtól</label>
+                    <input type="date" id="date_from" name="date_from" value="{{ date_from }}" class="form-control">
+                </div>
+                <div class="filter-group">
+                    <label for="date_to">Dátumig</label>
+                    <input type="date" id="date_to" name="date_to" value="{{ date_to }}" class="form-control">
+                </div>
+                <div class="filter-group">
+                    <label for="competition">Bajnokság</label>
+                    <select id="competition" name="competition" class="form-control">
+                        <option value="">Összes bajnokság</option>
+                        {% for comp in competitions %}
+                        <option value="{{ comp.id }}" {% if selected_competition == comp.id|stringformat:"i" %}selected{% endif %}>
+                            {{ comp.short_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if is_admin_view %}
+                <div class="filter-group">
+                    <label for="user">Felhasználó</label>
+                    <select id="user" name="user" class="form-control">
+                        <option value="">{{ request.user.get_full_name }} (én)</option>
+                        {% for u in all_users %}
+                        {% if u.id != request.user.id %}
+                        <option value="{{ u.id }}" {% if selected_user_id == u.id|stringformat:"i" %}selected{% endif %}>
+                            {{ u.last_name }} {{ u.first_name }}
+                        </option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="filter-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="material-icons">filter_list</span>
+                        Szűrés
+                    </button>
+                    <a href="{% url 'billing:match_counts' %}" class="btn btn-secondary" title="Szűrők törlése">
+                        <span class="material-icons">clear</span>
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if selected_user_id and target_user != request.user %}
+    <div style="padding: 0.75rem 1rem; background: var(--bg-color); border-bottom: 1px solid var(--border-color);">
+        <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">person</span>
+        <strong>{{ target_user.get_full_name }}</strong> mérkőzései
+    </div>
+    {% endif %}
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Dátum</th>
+                    <th>Időpont</th>
+                    <th>Bajnokság</th>
+                    <th>Helyszín</th>
+                    <th>Hazai csapat</th>
+                    <th>Vendég csapat</th>
+                    <th>Pozíció</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if assignments %}
+                {% for assignment in assignments %}
+                <tr>
+                    <td>{{ assignment.match.date|date:"Y.m.d" }}</td>
+                    <td>{% if assignment.match.time %}{{ assignment.match.time|time:"H:i" }}{% else %}-{% endif %}</td>
+                    <td>
+                        {% if assignment.match.phase %}
+                        <span class="badge" style="background-color: {{ assignment.match.phase.competition.color }}; color: white;">
+                            {{ assignment.match.phase.competition.short_name }}
+                        </span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{{ assignment.match.venue.name|default:"-" }}</td>
+                    <td>{{ assignment.match.home_team.name|default:"TBD" }}</td>
+                    <td>{{ assignment.match.away_team.name|default:"TBD" }}</td>
+                    <td>{{ assignment.get_role_display }}</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">sports</span>
+                        <p>Nincs lejátszott mérkőzés</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+            <tfoot>
+                <tr style="font-weight: 600; background: var(--bg-color);">
+                    <td colspan="6">Összesen</td>
+                    <td>{{ assignments|length }} mérkőzés</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<style>
+.filter-container {
+    padding: 1rem;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+}
+.filter-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+.filter-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+.filter-form .form-control {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: var(--card-bg);
+    color: var(--text-color);
+    font-size: 0.875rem;
+    min-height: 38px;
+}
+.filter-form .form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+.filter-form select.form-control {
+    min-width: 160px;
+}
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+</style>
+{% endblock %}

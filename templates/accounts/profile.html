@@ -1,0 +1,540 @@
+{% extends 'base.html' %}
+
+{% block title %}Profilom{% endblock %}
+{% block page_title %}Profilom{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-container {
+        max-width: 900px;
+    }
+
+    .profile-header {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .profile-avatar-wrapper {
+        position: relative;
+    }
+
+    .profile-avatar {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 2.5rem;
+        overflow: hidden;
+    }
+
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .profile-avatar-actions {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        display: flex;
+        gap: 0.25rem;
+    }
+
+    .avatar-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 2px solid var(--card-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .avatar-btn.upload {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .avatar-btn.delete {
+        background: var(--danger-color);
+        color: white;
+    }
+
+    .avatar-btn:hover {
+        transform: scale(1.1);
+    }
+
+    .avatar-btn .material-icons {
+        font-size: 1rem;
+    }
+
+    .profile-info h2 {
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .profile-info p {
+        color: var(--text-secondary);
+        margin: 0;
+    }
+
+    .profile-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-header .material-icons {
+        color: var(--accent-color);
+    }
+
+    .section-header h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .form-group label {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .form-group input,
+    .form-group select {
+        padding: 0.625rem 0.875rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.9rem;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-group input:disabled,
+    .form-group select:disabled {
+        background: var(--border-color);
+        color: var(--text-secondary);
+        cursor: not-allowed;
+    }
+
+    .readonly-value {
+        padding: 0.625rem 0.875rem;
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .save-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-left: auto;
+        font-size: 0.875rem;
+        color: var(--success-color);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .save-status.visible {
+        opacity: 1;
+    }
+
+    .save-status .material-icons {
+        font-size: 1.1rem;
+    }
+
+    .info-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        background: rgba(59, 130, 246, 0.05);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+    }
+
+    .info-note .material-icons {
+        font-size: 1.1rem;
+        color: var(--accent-color);
+        flex-shrink: 0;
+        margin-top: 1px;
+    }
+
+    @media (max-width: 600px) {
+        .profile-header {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="card">
+        <div class="profile-header">
+            <div class="profile-avatar-wrapper">
+                <div class="profile-avatar" id="profileAvatar">
+                    {% if user.profile_picture %}
+                    <img src="{{ user.profile_picture.url }}" alt="Profilkép" id="avatarImage">
+                    {% else %}
+                    <span id="avatarInitials">{{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}</span>
+                    {% endif %}
+                </div>
+                <div class="profile-avatar-actions">
+                    <label class="avatar-btn upload" title="Kép feltöltése">
+                        <span class="material-icons">photo_camera</span>
+                        <input type="file" accept="image/*" style="display: none;" onchange="uploadProfilePicture(this)">
+                    </label>
+                    {% if user.profile_picture %}
+                    <button class="avatar-btn delete" title="Kép törlése" onclick="deleteProfilePicture()" id="deleteAvatarBtn">
+                        <span class="material-icons">close</span>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="profile-info">
+                <h2>{{ user.get_full_name }}</h2>
+                <p>{{ user.email }}</p>
+                <p style="margin-top: 0.25rem;">
+                    <span class="badge badge-info">{{ user.get_role_display }}</span>
+                </p>
+            </div>
+        </div>
+
+        <form id="profileForm">
+            <!-- Editable Contact Info -->
+            <div class="profile-section">
+                <div class="section-header">
+                    <span class="material-icons">edit</span>
+                    <h3>Szerkeszthető adatok</h3>
+                </div>
+                <div class="info-note">
+                    <span class="material-icons">info</span>
+                    <span>Az alábbi adatok módosítása esetén értesítést küldünk az adminisztrátoroknak.</span>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="email">E-mail cím</label>
+                        <input type="email" id="email" name="email" value="{{ user.email }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Telefonszám</label>
+                        <input type="tel" id="phone" name="phone" value="{{ user.phone }}" placeholder="+36 ...">
+                    </div>
+                    <div class="form-group">
+                        <label for="bank_account">Bankszámlaszám</label>
+                        <input type="text" id="bank_account" name="bank_account" value="{{ user.bank_account }}" placeholder="12345678-12345678-12345678">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Read-only Address Info -->
+            <div class="profile-section">
+                <div class="section-header">
+                    <span class="material-icons">home</span>
+                    <h3>Lakcím</h3>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Ország</label>
+                        <div class="readonly-value">{{ user.country|default:"-" }}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Irányítószám</label>
+                        <div class="readonly-value">{{ user.postal_code|default:"-" }}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Város</label>
+                        <div class="readonly-value">{{ user.city|default:"-" }}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Utca, házszám</label>
+                        <div class="readonly-value">{{ user.address|default:"-" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Read-only Birth Info -->
+            <div class="profile-section">
+                <div class="section-header">
+                    <span class="material-icons">cake</span>
+                    <h3>Születési adatok</h3>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Születési dátum</label>
+                        <div class="readonly-value">{% if user.birth_date %}{{ user.birth_date|date:"Y. F d." }}{% else %}-{% endif %}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Születési hely</label>
+                        <div class="readonly-value">{{ user.birth_place|default:"-" }}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Anyja leánykori neve</label>
+                        <div class="readonly-value">{{ user.mother_maiden_name|default:"-" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Read-only Billing Info -->
+            <div class="profile-section">
+                <div class="section-header">
+                    <span class="material-icons">account_balance</span>
+                    <h3>Számlázási adatok</h3>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Elszámolás típusa</label>
+                        <div class="readonly-value">{{ user.get_billing_type_display|default:"-" }}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>TAJ szám</label>
+                        <div class="readonly-value">{{ user.taj_number|default:"-" }}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Adóazonosító jel</label>
+                        <div class="readonly-value">{{ user.tax_id|default:"-" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medical Certificate -->
+            <div class="profile-section">
+                <div class="section-header">
+                    <span class="material-icons">medical_services</span>
+                    <h3>Sportorvosi</h3>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Érvényesség dátuma</label>
+                        <div class="readonly-value">{% if user.medical_valid_until %}{{ user.medical_valid_until|date:"Y.m.d" }}{% else %}-{% endif %}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Státusz</label>
+                        <div class="readonly-value" id="medicalStatus">
+                            {% if not user.medical_valid_until %}
+                                <span style="color: var(--text-secondary);">Nincs megadva</span>
+                            {% elif user.medical_valid_until < today %}
+                                <span style="color: var(--danger-color);">Lejárt ({{ user.medical_valid_until|date:"Y.m.d" }})</span>
+                            {% elif user.medical_days_until_expiry <= 7 %}
+                                <span style="color: var(--danger-color);">{{ user.medical_days_until_expiry }} nap múlva lejár</span>
+                            {% elif user.medical_days_until_expiry <= 30 %}
+                                <span style="color: var(--warning-color);">{{ user.medical_days_until_expiry }} nap múlva lejár</span>
+                            {% else %}
+                                <span style="color: var(--success-color);">Érvényes ({{ user.medical_valid_until|date:"Y.m.d" }})</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">save</span>
+                    Mentés
+                </button>
+                <div class="save-status" id="saveStatus">
+                    <span class="material-icons">check_circle</span>
+                    <span>Mentve</span>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('profileForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = {
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        bank_account: document.getElementById('bank_account').value,
+    };
+
+    try {
+        const response = await fetch('{% url "accounts:api_profile_update" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const status = document.getElementById('saveStatus');
+            status.classList.add('visible');
+            setTimeout(() => {
+                status.classList.remove('visible');
+            }, 3000);
+        } else {
+            alert('Hiba: ' + (data.error || 'Ismeretlen hiba'));
+        }
+    } catch (error) {
+        alert('Hiba történt: ' + error.message);
+    }
+});
+
+async function uploadProfilePicture(input) {
+    if (!input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('profile_picture', file);
+
+    try {
+        const response = await fetch('{% url "accounts:api_profile_picture_upload" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Update avatar
+            const avatar = document.getElementById('profileAvatar');
+            const initials = document.getElementById('avatarInitials');
+            let img = document.getElementById('avatarImage');
+
+            if (initials) {
+                initials.remove();
+            }
+
+            if (!img) {
+                img = document.createElement('img');
+                img.id = 'avatarImage';
+                img.alt = 'Profilkép';
+                avatar.appendChild(img);
+            }
+
+            img.src = data.url;
+
+            // Show delete button if not already visible
+            let deleteBtn = document.getElementById('deleteAvatarBtn');
+            if (!deleteBtn) {
+                const actions = document.querySelector('.profile-avatar-actions');
+                deleteBtn = document.createElement('button');
+                deleteBtn.className = 'avatar-btn delete';
+                deleteBtn.id = 'deleteAvatarBtn';
+                deleteBtn.title = 'Kép törlése';
+                deleteBtn.onclick = deleteProfilePicture;
+                deleteBtn.innerHTML = '<span class="material-icons">close</span>';
+                actions.appendChild(deleteBtn);
+            }
+        } else {
+            alert('Hiba: ' + (data.error || 'Ismeretlen hiba'));
+        }
+    } catch (error) {
+        alert('Hiba történt: ' + error.message);
+    }
+
+    // Reset input
+    input.value = '';
+}
+
+async function deleteProfilePicture() {
+    if (!confirm('Biztosan törlöd a profilképet?')) return;
+
+    try {
+        const response = await fetch('{% url "accounts:api_profile_picture_delete" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Replace image with initials
+            const avatar = document.getElementById('profileAvatar');
+            const img = document.getElementById('avatarImage');
+
+            if (img) {
+                img.remove();
+            }
+
+            const initials = document.createElement('span');
+            initials.id = 'avatarInitials';
+            initials.textContent = '{{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}';
+            avatar.appendChild(initials);
+
+            // Remove delete button
+            const deleteBtn = document.getElementById('deleteAvatarBtn');
+            if (deleteBtn) {
+                deleteBtn.remove();
+            }
+        } else {
+            alert('Hiba: ' + (data.error || 'Ismeretlen hiba'));
+        }
+    } catch (error) {
+        alert('Hiba történt: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

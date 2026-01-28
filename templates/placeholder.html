@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="placeholder-page">
+        <span class="material-icons">{{ icon|default:'construction' }}</span>
+        <h2>{{ title }}</h2>
+        <p>{{ description|default:'Ez az oldal még fejlesztés alatt áll.' }}</p>
+    </div>
+</div>
+{% endblock %}

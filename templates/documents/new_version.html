@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Új verzió - {{ document.title }}{% endblock %}
+{% block page_title %}Új verzió feltöltése{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        max-width: 600px;
+    }
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+    .form-input {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--card-bg);
+        font-size: 0.9rem;
+    }
+    .form-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .form-hint {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    .alert-error {
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+    }
+    .doc-info {
+        background: var(--bg-color);
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+    }
+    .doc-info h4 {
+        margin: 0 0 0.5rem 0;
+    }
+    .doc-info p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card form-card">
+    <div class="doc-info">
+        <h4>{{ document.title }}</h4>
+        {% if document.current_version %}
+        <p>Jelenlegi verzió: v{{ document.current_version.version_number }}</p>
+        {% endif %}
+    </div>
+
+    {% if error %}
+    <div class="alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label class="form-label">Új verziószám *</label>
+            <input type="text" name="version_number" class="form-input" required>
+            <div class="form-hint">pl. 1.1, 2.0, stb.</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Változások leírása</label>
+            <textarea name="changelog" class="form-input" rows="3" placeholder="Mi változott ebben a verzióban?"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Fájl *</label>
+            <input type="file" name="file" class="form-input" required>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">upload</span>
+                Feltöltés
+            </button>
+            <a href="{% url 'documents:list' %}" class="btn btn-secondary">Mégse</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

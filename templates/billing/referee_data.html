@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}Játékvezető adatok{% endblock %}
+{% block page_title %}Játékvezető adatok{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-box {
+        margin-bottom: 1.5rem;
+    }
+    .search-input {
+        padding: 0.5rem 1rem;
+        padding-left: 2.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        background: var(--card-bg);
+        color: var(--text-color);
+        width: 100%;
+        max-width: 300px;
+    }
+    .search-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    .search-wrapper .material-icons {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-secondary);
+        font-size: 1.25rem;
+    }
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+    .data-table th {
+        text-align: left;
+        padding: 0.75rem;
+        background: var(--bg-color);
+        border-bottom: 2px solid var(--border-color);
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+    .data-table td {
+        padding: 0.6rem 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+    .data-table tr:hover {
+        background: var(--bg-color);
+    }
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.7rem;
+        flex-shrink: 0;
+    }
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 500;
+    }
+    .badge-efo {
+        background: #dcfce7;
+        color: #166534;
+    }
+    .badge-ekho {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+    .badge-none {
+        background: var(--bg-color);
+        color: var(--text-secondary);
+    }
+    .table-scroll {
+        overflow-x: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="search-box">
+    <div class="search-wrapper">
+        <span class="material-icons">search</span>
+        <input type="text" id="search-input" placeholder="Keresés név alapján..." class="search-input" oninput="filterUsers()">
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Név</th>
+                    <th>E-mail</th>
+                    <th>Telefon</th>
+                    <th>Elszámolás</th>
+                    <th>TAJ szám</th>
+                    <th>Adószám</th>
+                    <th>Bankszámla</th>
+                    <th>Születési hely</th>
+                    <th>Születési idő</th>
+                    <th>Anyja neve</th>
+                    <th>Lakcím</th>
+                </tr>
+            </thead>
+            <tbody id="users-tbody">
+                {% for user in users %}
+                <tr data-name="{{ user.last_name|lower }} {{ user.first_name|lower }}">
+                    <td>
+                        <div class="user-cell">
+                            <div class="user-avatar">
+                                {{ user.last_name|slice:":1" }}{{ user.first_name|slice:":1" }}
+                            </div>
+                            <span>{{ user.last_name }} {{ user.first_name }}</span>
+                        </div>
+                    </td>
+                    <td>{{ user.email|default:"-" }}</td>
+                    <td>{{ user.phone|default:"-" }}</td>
+                    <td>
+                        {% if user.billing_type == 'efo' %}
+                        <span class="badge badge-efo">EFO</span>
+                        {% elif user.billing_type == 'ekho' %}
+                        <span class="badge badge-ekho">EKHO</span>
+                        {% else %}
+                        <span class="badge badge-none">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ user.taj_number|default:"-" }}</td>
+                    <td>{{ user.tax_id|default:"-" }}</td>
+                    <td>{{ user.bank_account|default:"-" }}</td>
+                    <td>{{ user.birth_place|default:"-" }}</td>
+                    <td>{% if user.birth_date %}{{ user.birth_date|date:"Y.m.d" }}{% else %}-{% endif %}</td>
+                    <td>{{ user.mother_maiden_name|default:"-" }}</td>
+                    <td>{% if user.postal_code or user.city or user.address %}{{ user.postal_code }} {{ user.city }}, {{ user.address }}{% else %}-{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="11" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">contact_page</span>
+                        <p>Nincs játékvezető</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function filterUsers() {
+    const searchTerm = document.getElementById('search-input').value.toLowerCase();
+    const rows = document.querySelectorAll('#users-tbody tr[data-name]');
+
+    rows.forEach(row => {
+        const name = row.dataset.name;
+        if (name.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}

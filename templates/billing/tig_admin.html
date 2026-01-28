@@ -1,0 +1,387 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if can_edit %}TIG módosítás{% else %}TIG megtekintés{% endif %}{% endblock %}
+{% block page_title %}{% if can_edit %}TIG összegek módosítása{% else %}TIG elszámolások{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">{% if can_edit %}Havi elszámolás módosítása{% else %}Havi elszámolás megtekintése{% endif %}</h3>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-container">
+        <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+            <!-- User selector FIRST -->
+            <div class="filter-group">
+                <label for="user">Felhasználó</label>
+                <select id="user" name="user" class="form-control" onchange="applyFilters()">
+                    <option value="">-- Válassz felhasználót --</option>
+                    {% for u in all_users %}
+                    <option value="{{ u.id }}" {% if selected_user_id == u.id|stringformat:"i" %}selected{% endif %}>
+                        {{ u.last_name }} {{ u.first_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if target_user %}
+            <div class="filter-divider"></div>
+
+            <!-- Year selector -->
+            <div class="year-selector" style="display: flex; align-items: center; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="changeYear(-1)">
+                    <span class="material-icons">chevron_left</span>
+                </button>
+                <span id="current-year" style="font-weight: 600; min-width: 50px; text-align: center;">{{ selected_year }}</span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="changeYear(1)">
+                    <span class="material-icons">chevron_right</span>
+                </button>
+            </div>
+
+            <!-- Month grid -->
+            <div class="month-grid" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem;">
+                {% for month_name in month_names %}
+                <button type="button"
+                        class="month-btn {% if forloop.counter == selected_month %}active{% endif %}"
+                        data-month="{{ forloop.counter }}"
+                        onclick="selectMonth({{ forloop.counter }})">
+                    {{ month_name|slice:":3" }}
+                </button>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if target_user %}
+    <div style="padding: 0.75rem 1rem; background: var(--bg-color); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">person</span>
+            <strong>{{ target_user.last_name }} {{ target_user.first_name }}</strong> elszámolása
+        </div>
+        {% if can_edit %}
+        <button type="button" class="btn btn-primary" onclick="saveAllChanges()" id="save-btn" style="display: none;">
+            <span class="material-icons">save</span>
+            Mentés
+        </button>
+        {% endif %}
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Dátum</th>
+                    <th>Időpont</th>
+                    <th>Bajnokság</th>
+                    <th>Helyszín</th>
+                    <th>Hazai csapat</th>
+                    <th>Vendég csapat</th>
+                    <th>Pozíció</th>
+                    <th style="text-align: right;">Díjazás</th>
+                    {% if can_edit %}<th style="text-align: center;">Műveletek</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% if assignments_with_fees %}
+                {% for item in assignments_with_fees %}
+                <tr data-assignment-id="{{ item.assignment.id }}" class="{% if item.is_custom %}custom-fee{% endif %}">
+                    <td>{{ item.assignment.match.date|date:"Y.m.d" }}</td>
+                    <td>{% if item.assignment.match.time %}{{ item.assignment.match.time|time:"H:i" }}{% else %}-{% endif %}</td>
+                    <td>
+                        {% if item.assignment.match.phase %}
+                        <span class="badge" style="background-color: {{ item.assignment.match.phase.competition.color }}; color: white;">
+                            {{ item.assignment.match.phase.competition.short_name }}
+                        </span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{{ item.assignment.match.venue.name|default:"-" }}</td>
+                    <td>{{ item.assignment.match.home_team.name|default:"TBD" }}</td>
+                    <td>{{ item.assignment.match.away_team.name|default:"TBD" }}</td>
+                    <td>{{ item.assignment.get_role_display }}</td>
+                    <td style="text-align: right;">
+                        <span class="fee-display">{% if item.fee_display %}{{ item.fee_display }} Ft{% else %}-{% endif %}</span>
+                        {% if can_edit %}<input type="number" class="fee-input" value="{{ item.fee }}" style="display: none;" data-original="{{ item.fee }}">{% endif %}
+                    </td>
+                    {% if can_edit %}
+                    <td style="text-align: center;">
+                        <button type="button" class="btn-icon edit-btn" title="Szerkesztés" onclick="toggleEdit(this)">
+                            <span class="material-icons">edit</span>
+                        </button>
+                        <button type="button" class="btn-icon delete-btn" title="Törlés" onclick="softDeleteAssignment({{ item.assignment.id }})">
+                            <span class="material-icons">delete</span>
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="{% if can_edit %}9{% else %}8{% endif %}" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">receipt_long</span>
+                        <p>Nincs elszámolás ebben a hónapban</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+            <tfoot>
+                <tr style="font-weight: 600; background: var(--bg-color);">
+                    <td colspan="7">Összesen</td>
+                    <td style="text-align: right;" id="total-fee">{{ total_fee_display }} Ft</td>
+                    {% if can_edit %}<td></td>{% endif %}
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    <div style="padding: 3rem; text-align: center; color: var(--text-secondary);">
+        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">person_search</span>
+        <p>Válassz egy felhasználót a szerkesztéshez</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.filter-container {
+    padding: 1rem;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+}
+.filter-divider {
+    width: 1px;
+    height: 40px;
+    background: var(--border-color);
+}
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+.filter-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+.filter-group .form-control {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: var(--card-bg);
+    color: var(--text-color);
+    font-size: 0.875rem;
+    min-width: 200px;
+}
+.month-btn {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-color);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.month-btn:hover {
+    background: var(--bg-color);
+}
+.month-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+}
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-color);
+    color: var(--text-color);
+    transition: all 0.2s;
+    margin: 0 2px;
+}
+.btn-icon:hover {
+    background: var(--primary-color);
+    color: white;
+}
+.btn-icon.delete-btn:hover {
+    background: var(--danger-color);
+    color: white;
+}
+.btn-icon .material-icons {
+    font-size: 1.1rem;
+}
+.fee-input {
+    width: 100px;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    text-align: right;
+    background: var(--card-bg);
+    color: var(--text-color);
+}
+.custom-fee td {
+    background: rgba(245, 158, 11, 0.1);
+}
+tr.editing {
+    background: rgba(99, 102, 241, 0.1) !important;
+}
+tr.deleted {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+</style>
+
+<script>
+let currentYear = {{ selected_year }};
+let currentMonth = {{ selected_month }};
+let hasChanges = false;
+
+function changeYear(delta) {
+    currentYear += delta;
+    document.getElementById('current-year').textContent = currentYear;
+    navigateToMonth();
+}
+
+function selectMonth(month) {
+    currentMonth = month;
+    document.querySelectorAll('.month-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (parseInt(btn.dataset.month) === month) {
+            btn.classList.add('active');
+        }
+    });
+    navigateToMonth();
+}
+
+function getFilterParams() {
+    const user = document.getElementById('user')?.value || '';
+    let params = '';
+    if (user) params += `&user=${user}`;
+    return params;
+}
+
+function navigateToMonth() {
+    window.location.href = `{% if can_edit %}{% url 'billing:tig_admin' %}{% else %}{% url 'billing:tig_vb' %}{% endif %}?year=${currentYear}&month=${currentMonth}${getFilterParams()}`;
+}
+
+function applyFilters() {
+    navigateToMonth();
+}
+
+{% if can_edit %}
+function toggleEdit(btn) {
+    const row = btn.closest('tr');
+    const feeDisplay = row.querySelector('.fee-display');
+    const feeInput = row.querySelector('.fee-input');
+
+    if (feeInput.style.display === 'none') {
+        // Show input
+        feeDisplay.style.display = 'none';
+        feeInput.style.display = 'inline-block';
+        feeInput.focus();
+        row.classList.add('editing');
+        btn.innerHTML = '<span class="material-icons">check</span>';
+    } else {
+        // Save and show display
+        const newValue = parseInt(feeInput.value) || 0;
+        const originalValue = parseInt(feeInput.dataset.original) || 0;
+
+        feeDisplay.textContent = newValue ? newValue.toLocaleString('hu-HU').replace(/\s/g, ' ') + ' Ft' : '-';
+        feeInput.style.display = 'none';
+        feeDisplay.style.display = 'inline';
+        row.classList.remove('editing');
+        btn.innerHTML = '<span class="material-icons">edit</span>';
+
+        if (newValue !== originalValue) {
+            row.classList.add('custom-fee');
+            showSaveButton();
+            updateTotal();
+        }
+    }
+}
+
+function showSaveButton() {
+    hasChanges = true;
+    document.getElementById('save-btn').style.display = 'flex';
+}
+
+function updateTotal() {
+    let total = 0;
+    document.querySelectorAll('tr[data-assignment-id]:not(.deleted)').forEach(row => {
+        const input = row.querySelector('.fee-input');
+        total += parseInt(input.value) || 0;
+    });
+    document.getElementById('total-fee').textContent = total.toLocaleString('hu-HU').replace(/\s/g, ' ') + ' Ft';
+}
+
+function softDeleteAssignment(assignmentId) {
+    if (!confirm('Biztosan törölni szeretnéd ezt a tételt?')) return;
+
+    const row = document.querySelector(`tr[data-assignment-id="${assignmentId}"]`);
+    row.classList.add('deleted');
+    row.querySelector('.fee-input').value = 0;
+    showSaveButton();
+    updateTotal();
+}
+
+function saveAllChanges() {
+    const changes = [];
+    const deletions = [];
+
+    document.querySelectorAll('tr[data-assignment-id]').forEach(row => {
+        const assignmentId = row.dataset.assignmentId;
+        const input = row.querySelector('.fee-input');
+        const newValue = parseInt(input.value) || 0;
+        const originalValue = parseInt(input.dataset.original) || 0;
+
+        if (row.classList.contains('deleted')) {
+            deletions.push(assignmentId);
+        } else if (newValue !== originalValue) {
+            changes.push({
+                assignment_id: assignmentId,
+                amount: newValue
+            });
+        }
+    });
+
+    fetch('{% url "billing:api_tig_update" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ changes, deletions })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Hiba történt: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Hiba történt: ' + error);
+    });
+}
+{% endif %}
+</script>
+{% endblock %}

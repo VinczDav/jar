@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}Új dokumentum{% endblock %}
+{% block page_title %}Új dokumentum feltöltése{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        max-width: 600px;
+    }
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+    .form-input {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--card-bg);
+        font-size: 0.9rem;
+    }
+    .form-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .form-hint {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    .alert-error {
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card form-card">
+    {% if error %}
+    <div class="alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label class="form-label">Cím *</label>
+            <input type="text" name="title" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Leírás</label>
+            <textarea name="description" class="form-input" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Kategória</label>
+            <select name="category" class="form-input">
+                <option value="">-- Válassz kategóriát --</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Verziószám</label>
+            <input type="text" name="version_number" class="form-input" value="1.0">
+            <div class="form-hint">pl. 1.0, 2.1, stb.</div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Fájl *</label>
+            <input type="file" name="file" class="form-input" required>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">upload</span>
+                Feltöltés
+            </button>
+            <a href="{% url 'documents:list' %}" class="btn btn-secondary">Mégse</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

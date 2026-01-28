@@ -1,0 +1,1953 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}JAR{% endblock %} - Játékvezetői Adminisztrációs Rendszer</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Theme initialization (prevents flash) -->
+    <script>
+        (function() {
+            const stored = localStorage.getItem('theme');
+            if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+            if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                document.documentElement.classList.add('sidebar-collapsed');
+            }
+        })();
+    </script>
+    <meta name="theme-color" content="#1a365d">
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --sidebar-collapsed-width: 70px;
+            --header-height: 60px;
+            --primary-color: #1a365d;
+            --primary-light: #2d4a7c;
+            --accent-color: #3b82f6;
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --info-color: #3b82f6;
+        }
+
+        /* Dark mode */
+        [data-theme="dark"] {
+            --primary-color: #1e3a5f;
+            --primary-light: #2d5a8c;
+            --accent-color: #60a5fa;
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --success-color: #34d399;
+            --warning-color: #fbbf24;
+            --danger-color: #f87171;
+            --info-color: #60a5fa;
+        }
+
+        [data-theme="dark"] .sidebar {
+            background: #0f172a;
+            border-right: 1px solid var(--border-color);
+        }
+
+        [data-theme="dark"] .header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        [data-theme="dark"] input,
+        [data-theme="dark"] textarea,
+        [data-theme="dark"] select {
+            background: var(--card-bg);
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] input:focus,
+        [data-theme="dark"] textarea:focus,
+        [data-theme="dark"] select:focus {
+            border-color: var(--accent-color);
+            outline: none;
+        }
+
+        [data-theme="dark"] .btn-secondary {
+            background: #334155;
+            border-color: #475569;
+        }
+
+        [data-theme="dark"] .btn-secondary:hover {
+            background: #475569;
+        }
+
+        [data-theme="dark"] tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Dark mode additional fixes */
+        [data-theme="dark"] label {
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] ::placeholder {
+            color: var(--text-secondary);
+            opacity: 1;
+        }
+
+        [data-theme="dark"] option {
+            background: var(--card-bg);
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .form-label,
+        [data-theme="dark"] .input-label {
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .form-text,
+        [data-theme="dark"] .help-text {
+            color: var(--text-secondary);
+        }
+
+        [data-theme="dark"] .modal-content,
+        [data-theme="dark"] .dropdown-menu,
+        [data-theme="dark"] .popover {
+            background: var(--card-bg);
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] hr {
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] code {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f472b6;
+        }
+
+        [data-theme="dark"] pre {
+            background: #0d1117;
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] blockquote {
+            border-color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="dark"] .text-muted {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] a:not(.btn):not(.nav-item) {
+            color: var(--accent-color);
+        }
+
+        /* Custom Scrollbar - Unified across browsers */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--text-secondary) transparent;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-secondary);
+            border-radius: 4px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-primary);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        ::-webkit-scrollbar-corner {
+            background: transparent;
+        }
+
+        /* Sidebar scrollbar */
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .sidebar {
+            scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+        }
+
+        /* Additional dark mode fixes for common elements */
+        [data-theme="dark"] table {
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] th {
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="dark"] td {
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .alert {
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] .alert-info {
+            background: rgba(96, 165, 250, 0.15);
+            border-color: rgba(96, 165, 250, 0.3);
+            color: #93c5fd;
+        }
+
+        [data-theme="dark"] .alert-success {
+            background: rgba(52, 211, 153, 0.15);
+            border-color: rgba(52, 211, 153, 0.3);
+            color: #6ee7b7;
+        }
+
+        [data-theme="dark"] .alert-warning {
+            background: rgba(251, 191, 36, 0.15);
+            border-color: rgba(251, 191, 36, 0.3);
+            color: #fcd34d;
+        }
+
+        [data-theme="dark"] .alert-danger,
+        [data-theme="dark"] .alert-error {
+            background: rgba(248, 113, 113, 0.15);
+            border-color: rgba(248, 113, 113, 0.3);
+            color: #fca5a5;
+        }
+
+        [data-theme="dark"] .list-group-item {
+            background: var(--card-bg);
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .list-group-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="dark"] .progress {
+            background: var(--border-color);
+        }
+
+        [data-theme="dark"] .tooltip {
+            background: #475569;
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .empty-state,
+        [data-theme="dark"] .no-data {
+            color: var(--text-secondary);
+        }
+
+        [data-theme="dark"] .divider {
+            background: var(--border-color);
+        }
+
+        [data-theme="dark"] fieldset {
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] legend {
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .chip,
+        [data-theme="dark"] .tag {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .overlay {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        [data-theme="dark"] .skeleton {
+            background: linear-gradient(90deg, var(--border-color) 25%, #475569 50%, var(--border-color) 75%);
+        }
+
+        [data-theme="dark"] summary {
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] details {
+            border-color: var(--border-color);
+        }
+
+        /* Ensure all text inherits proper color in dark mode */
+        [data-theme="dark"] p,
+        [data-theme="dark"] span,
+        [data-theme="dark"] div,
+        [data-theme="dark"] li,
+        [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
+        [data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
+            color: inherit;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Global animations */
+        *, *::before, *::after {
+            transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+
+        /* Disable transitions on page load */
+        .preload * {
+            transition: none !important;
+        }
+
+        html {
+            /* Fix for 100vh on mobile browsers */
+            height: -webkit-fill-available;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            /* Safe area insets for notched devices */
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--primary-color);
+            color: white;
+            overflow-y: auto;
+            overflow-x: hidden;
+            z-index: 1000;
+            transition: width 0.3s ease, transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Sidebar collapsed state */
+        .sidebar-collapsed .sidebar {
+            width: var(--sidebar-collapsed-width);
+        }
+
+        .sidebar-collapsed .sidebar .nav-item span:not(.material-icons),
+        .sidebar-collapsed .sidebar .nav-dropdown-toggle span:not(.material-icons):not(.arrow),
+        .sidebar-collapsed .sidebar .sidebar-logo-text,
+        .sidebar-collapsed .sidebar .nav-dropdown-menu {
+            display: none;
+        }
+
+        /* Keep section titles taking space but invisible */
+        .sidebar-collapsed .sidebar .nav-section-title {
+            visibility: hidden;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .sidebar-collapsed .sidebar .nav-item {
+            justify-content: center;
+            padding: 0.75rem;
+        }
+
+        .sidebar-collapsed .sidebar .nav-dropdown-toggle {
+            justify-content: center;
+            padding: 0.75rem;
+        }
+
+        .sidebar-collapsed .sidebar .nav-item .material-icons,
+        .sidebar-collapsed .sidebar .nav-dropdown-toggle .material-icons {
+            margin: 0;
+        }
+
+
+        .sidebar-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sidebar-logo-text {
+            white-space: nowrap;
+        }
+
+        /* Collapse button in header */
+        .sidebar-collapse-btn-header {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .sidebar-collapse-btn-header:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .sidebar-collapse-btn-header .material-icons {
+            font-size: 1.25rem;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-collapsed .sidebar-collapse-btn-header .material-icons {
+            transform: rotate(180deg);
+        }
+
+        .sidebar-collapsed .sidebar-header {
+            justify-content: center;
+            padding: 0.75rem 0.5rem;
+            height: 56px;
+        }
+
+        .sidebar-collapsed .sidebar-logo {
+            display: none;
+        }
+
+        /* Test server badge */
+        .test-badge {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #1a1a1a;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-left: 0.5rem;
+            animation: testPulse 2s ease-in-out infinite;
+            box-shadow: 0 2px 4px rgba(245, 158, 11, 0.4);
+            vertical-align: middle;
+        }
+
+        .header-test-badge {
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-right: 1rem;
+            animation: testPulse 2s ease-in-out infinite;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
+            white-space: nowrap;
+        }
+
+        @keyframes testPulse {
+            0%, 100% { opacity: 1; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5); }
+            50% { opacity: 0.85; box-shadow: 0 2px 12px rgba(239, 68, 68, 0.7); }
+        }
+
+        .sidebar-collapsed .test-badge {
+            display: none;
+        }
+
+        /* Sidebar footer - hidden on desktop, only visible on mobile */
+        .sidebar-footer {
+            display: none;
+        }
+
+        /* Sidebar collapsed tooltips */
+        .sidebar-collapsed .nav-item,
+        .sidebar-collapsed .nav-dropdown-toggle {
+            position: relative;
+        }
+
+        .sidebar-collapsed .nav-item::after,
+        .sidebar-collapsed .nav-dropdown-toggle::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(var(--sidebar-collapsed-width) + 8px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            z-index: 1001;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .sidebar-collapsed .nav-item:hover::after,
+        .sidebar-collapsed .nav-dropdown-toggle:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        [data-theme="dark"] .sidebar-collapsed .nav-item::after,
+        [data-theme="dark"] .sidebar-collapsed .nav-dropdown-toggle::after {
+            background: #334155;
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+
+        .nav-section {
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-section-title {
+            padding: 0.5rem 1.25rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .nav-item {
+            display: block;
+            padding: 0.75rem 1.25rem;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .nav-item.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border-left: 3px solid var(--accent-color);
+        }
+
+        .nav-item .material-icons {
+            font-size: 1.25rem;
+            opacity: 0.9;
+        }
+
+        /* Dropdown menu */
+        .nav-dropdown {
+            cursor: pointer;
+        }
+
+        .nav-dropdown-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.25rem;
+            color: rgba(255,255,255,0.8);
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .nav-dropdown-toggle:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .nav-dropdown-toggle .nav-item-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .nav-dropdown-toggle .material-icons.arrow {
+            font-size: 1.25rem;
+            transition: transform 0.2s;
+        }
+
+        .nav-dropdown.open .nav-dropdown-toggle .material-icons.arrow {
+            transform: rotate(180deg);
+        }
+
+        .nav-dropdown-menu {
+            display: none;
+            background: rgba(0,0,0,0.15);
+        }
+
+        .nav-dropdown.open .nav-dropdown-menu {
+            display: block;
+        }
+
+        .nav-dropdown-menu .nav-item {
+            padding-left: 3.25rem;
+            font-size: 0.85rem;
+        }
+
+        /* Main content */
+        .main-wrapper {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+
+        .sidebar-collapsed .main-wrapper {
+            margin-left: var(--sidebar-collapsed-width);
+        }
+
+        /* Header */
+        .header {
+            height: var(--header-height);
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        .theme-toggle .material-icons {
+            font-size: 1.25rem;
+        }
+
+        /* Hide icons based on theme */
+        [data-theme="dark"] .theme-toggle .icon-dark { display: none; }
+        [data-theme="dark"] .theme-toggle .icon-light { display: block; }
+        .theme-toggle .icon-light { display: none; }
+        .theme-toggle .icon-dark { display: block; }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        .page-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            padding: 0.35rem 0.5rem;
+            border-radius: 8px;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .user-menu:hover {
+            background: var(--bg-color);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            overflow: hidden;
+        }
+
+        .user-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .user-role {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .btn-logout {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-logout:hover {
+            background: #dc2626;
+        }
+
+        /* Notification icon */
+        .notification-btn {
+            position: relative;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .notification-btn:hover {
+            background: var(--bg-color);
+            color: var(--accent-color);
+        }
+        .notification-btn .material-icons {
+            font-size: 1.5rem;
+        }
+        .notification-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            min-width: 18px;
+            height: 18px;
+            background: var(--danger-color);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
+        .notification-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 320px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            z-index: 1000;
+            display: none;
+            margin-top: 0.5rem;
+        }
+        .notification-dropdown.show {
+            display: block;
+        }
+        .notification-dropdown-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .notification-dropdown-header a {
+            font-size: 0.85rem;
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+        .notification-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        .notification-item.unread {
+            background: rgba(59, 130, 246, 0.05);
+        }
+        .notification-item-title {
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+        .notification-item-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .notification-empty {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        /* Main content area */
+        .main-content {
+            padding: 1.5rem;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: var(--bg-color);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        tr:hover {
+            background: var(--bg-color);
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        /* Dark mode badge adjustments */
+        [data-theme="dark"] .badge-success {
+            background: rgba(52, 211, 153, 0.2);
+            color: #34d399;
+        }
+        [data-theme="dark"] .badge-warning {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+        [data-theme="dark"] .badge-danger {
+            background: rgba(248, 113, 113, 0.2);
+            color: #f87171;
+        }
+        [data-theme="dark"] .badge-info {
+            background: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+        }
+
+        /* Page animations */
+        .main-content {
+            animation: pageSlideIn 0.25s ease-out;
+        }
+
+        @keyframes pageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Card hover effect */
+        .card {
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] .card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Button hover lift */
+        .btn {
+            transition: all 0.15s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* Mobile sidebar overlay */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-overlay.show {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Responsive - Tablet */
+        @media (max-width: 1024px) {
+            .page-title {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Responsive - Mobile */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 280px;
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-wrapper {
+                margin-left: 0;
+            }
+
+            .main-content {
+                padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+            }
+
+            .sidebar-collapsed .main-wrapper {
+                margin-left: 0;
+            }
+
+            /* Hide collapse button on mobile - use hamburger menu instead */
+            .sidebar-collapse-btn-header {
+                display: none;
+            }
+
+            .sidebar-header {
+                justify-content: center;
+            }
+
+            .menu-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 40px;
+                height: 40px;
+                border-radius: 8px;
+                color: var(--text-primary);
+            }
+
+            .menu-toggle:active {
+                background: var(--bg-color);
+            }
+
+            /* Header compact */
+            .header {
+                padding: 0 0.75rem;
+                height: 56px;
+            }
+
+            .header-left {
+                gap: 0.5rem;
+            }
+
+            .page-title {
+                font-size: 1rem;
+                max-width: 140px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .header-right {
+                gap: 0.25rem;
+            }
+
+            .header-right .user-name,
+            .header-right .user-role {
+                display: none;
+            }
+
+            .user-menu {
+                padding: 0.25rem;
+            }
+
+            .user-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 0.75rem;
+            }
+
+            .btn-logout span:not(.material-icons) {
+                display: none;
+            }
+
+            .btn-logout {
+                padding: 0.5rem;
+                min-height: unset;
+            }
+
+            .theme-toggle {
+                padding: 0.35rem;
+            }
+
+            .notification-btn {
+                padding: 0.35rem;
+            }
+
+            /* Test badge on mobile */
+            .header-test-badge {
+                font-size: 0.6rem;
+                padding: 0.25rem 0.5rem;
+                margin-right: 0.5rem;
+            }
+
+            /* Cards smaller padding */
+            .card {
+                padding: 0.875rem;
+                border-radius: 10px;
+            }
+
+            .card-header {
+                padding-bottom: 0.75rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .card-title {
+                font-size: 1rem;
+            }
+
+            .main-content {
+                padding: 0.75rem;
+            }
+
+            /* Table improvements */
+            .table-wrapper {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                margin: 0 -0.875rem;
+                padding: 0 0.875rem;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.5rem 0.625rem;
+            }
+
+            /* Touch-friendly buttons */
+            .btn {
+                min-height: 44px;
+                padding: 0.5rem 1rem;
+            }
+
+            .btn-sm {
+                min-height: 36px;
+                padding: 0.35rem 0.75rem;
+                font-size: 0.8rem;
+            }
+
+            /* Badge sizes */
+            .badge {
+                font-size: 0.7rem;
+                padding: 0.2rem 0.5rem;
+            }
+
+            /* Notification dropdown full width */
+            .notification-dropdown {
+                position: fixed;
+                top: 56px;
+                left: 0.5rem;
+                right: 0.5rem;
+                width: auto;
+                max-width: none;
+                max-height: calc(100vh - 70px);
+                border-radius: 12px;
+            }
+
+            /* Form improvements */
+            input, select, textarea {
+                font-size: 16px !important; /* Prevents iOS zoom on focus */
+            }
+
+            .form-input {
+                padding: 0.75rem 1rem;
+            }
+
+            /* Mobile grid adjustments */
+            .grid, .row {
+                gap: 0.75rem;
+            }
+
+            /* Mobile modal */
+            .modal-dialog {
+                margin: 0.5rem;
+                max-height: calc(100vh - 1rem);
+            }
+
+            .modal-content {
+                border-radius: 12px;
+            }
+
+            /* Mobile filters/search */
+            .filter-bar, .search-bar {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .filter-bar > *, .search-bar > * {
+                width: 100%;
+            }
+
+            /* Stack buttons on mobile */
+            .btn-group-mobile {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .btn-group-mobile .btn {
+                width: 100%;
+            }
+
+            /* Hide less important columns on mobile */
+            .hide-mobile {
+                display: none !important;
+            }
+
+            /* Full width inputs on mobile */
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                width: 100%;
+            }
+
+            /* Action buttons spacing */
+            .action-buttons {
+                gap: 0.5rem;
+            }
+
+            .action-buttons .btn {
+                flex: 1;
+                justify-content: center;
+            }
+        }
+
+        /* Small phones */
+        @media (max-width: 375px) {
+            .page-title {
+                max-width: 100px;
+                font-size: 0.9rem;
+            }
+
+            .main-content {
+                padding: 0.5rem;
+            }
+
+            .card {
+                padding: 0.75rem;
+            }
+
+            .btn {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Touch feedback for touch devices */
+        @media (hover: none) and (pointer: coarse) {
+            .btn:active {
+                transform: scale(0.98);
+            }
+
+            .nav-item:active {
+                background: rgba(255, 255, 255, 0.15);
+            }
+
+            /* Disable hover effects on touch */
+            .card:hover {
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                transform: none;
+            }
+
+            .btn:hover {
+                transform: none;
+            }
+        }
+
+        /* Page specific placeholder */
+        .placeholder-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .placeholder-page .material-icons {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .placeholder-page h2 {
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="preload">
+    {% if user.is_authenticated %}
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="{% url 'accounts:dashboard' %}" class="sidebar-logo">JAR{% if IS_TEST_SERVER %}<span class="test-badge">TESZT</span>{% endif %}</a>
+            <button class="sidebar-collapse-btn-header" onclick="toggleSidebarCollapse()" title="Oldalsáv összecsukása">
+                <span class="material-icons">chevron_left</span>
+            </button>
+        </div>
+
+        <nav class="sidebar-nav">
+            <!-- Alapértelmezett menüpontok -->
+            <div class="nav-section">
+                <a href="{% url 'accounts:dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" data-tooltip="Kezdőlap">
+                    <span class="material-icons">home</span>
+                    <span>Kezdőlap</span>
+                </a>
+
+                {% if user.is_referee %}
+                <div class="nav-dropdown">
+                    <div class="nav-dropdown-toggle" data-tooltip="Mérkőzések">
+                        <div class="nav-item-left">
+                            <span class="material-icons">sports</span>
+                            <span>Mérkőzések</span>
+                        </div>
+                        <span class="material-icons arrow">expand_more</span>
+                    </div>
+                    <div class="nav-dropdown-menu">
+                        <a href="{% url 'matches:my_matches' %}" class="nav-item {% if request.resolver_match.url_name == 'my_matches' %}active{% endif %}" data-tooltip="Mérkőzéseim">
+                            <span class="material-icons">sports</span>
+                            <span>Mérkőzéseim</span>
+                        </a>
+                        <a href="{% url 'matches:all_matches' %}" class="nav-item {% if request.resolver_match.url_name == 'all_matches' %}active{% endif %}" data-tooltip="Összes mérkőzés">
+                            <span class="material-icons">list_alt</span>
+                            <span>Összes mérkőzés</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="nav-dropdown">
+                    <div class="nav-dropdown-toggle" data-tooltip="Statisztika">
+                        <div class="nav-item-left">
+                            <span class="material-icons">analytics</span>
+                            <span>Statisztika</span>
+                        </div>
+                        <span class="material-icons arrow">expand_more</span>
+                    </div>
+                    <div class="nav-dropdown-menu">
+                        <a href="{% url 'billing:match_counts' %}" class="nav-item {% if request.resolver_match.url_name == 'match_counts' %}active{% endif %}" data-tooltip="Mérkőzésszámok">
+                            <span class="material-icons">bar_chart</span>
+                            <span>Mérkőzésszámok</span>
+                        </a>
+                        <a href="{% url 'billing:tig' %}" class="nav-item {% if request.resolver_match.url_name == 'tig' %}active{% endif %}" data-tooltip="Teljesítési Igazolás">
+                            <span class="material-icons">receipt_long</span>
+                            <span>Teljesítési Igazolás</span>
+                        </a>
+                        <a href="{% url 'billing:travel_costs' %}" class="nav-item {% if request.resolver_match.url_name == 'travel_costs' %}active{% endif %}" data-tooltip="Útiköltség elszámolás">
+                            <span class="material-icons">directions_car</span>
+                            <span>Útiköltség elszámolás</span>
+                        </a>
+                    </div>
+                </div>
+
+                <a href="{% url 'referees:feedbacks' %}" class="nav-item {% if request.resolver_match.url_name == 'feedbacks' %}active{% endif %}" data-tooltip="Visszajelzéseim">
+                    <span class="material-icons">rate_review</span>
+                    <span>Visszajelzéseim</span>
+                </a>
+
+                <a href="{% url 'referees:unavailability' %}" class="nav-item {% if request.resolver_match.url_name == 'unavailability' %}active{% endif %}" data-tooltip="Szabadságaim">
+                    <span class="material-icons">event_busy</span>
+                    <span>Szabadságaim</span>
+                </a>
+
+                <a href="{% url 'referees:colleagues' %}" class="nav-item {% if request.resolver_match.url_name == 'colleagues' %}active{% endif %}" data-tooltip="Kollégák">
+                    <span class="material-icons">people</span>
+                    <span>Kollégák</span>
+                </a>
+
+                <a href="{% url 'education:knowledge_base' %}" class="nav-item {% if request.resolver_match.url_name == 'knowledge_base' %}active{% endif %}" data-tooltip="Tudástár">
+                    <span class="material-icons">school</span>
+                    <span>Tudástár</span>
+                </a>
+
+                <a href="{% url 'education:document_library' %}" class="nav-item {% if request.resolver_match.url_name == 'document_library' %}active{% endif %}" data-tooltip="Dokumentumtár">
+                    <span class="material-icons">folder_copy</span>
+                    <span>Dokumentumtár</span>
+                </a>
+                {% endif %}
+            </div>
+
+            {% if user.is_inspector %}
+            <!-- Ellenőr menüpontok -->
+            <div class="nav-section">
+                <div class="nav-section-title">Ellenőr</div>
+                <div class="nav-dropdown">
+                    <div class="nav-dropdown-toggle" data-tooltip="Jelentések">
+                        <div class="nav-item-left">
+                            <span class="material-icons">assignment</span>
+                            <span>Jelentések</span>
+                        </div>
+                        <span class="material-icons arrow">expand_more</span>
+                    </div>
+                    <div class="nav-dropdown-menu">
+                        <a href="{% url 'referees:create_report' %}" class="nav-item {% if request.resolver_match.url_name == 'create_report' %}active{% endif %}" data-tooltip="Jelentés készítése">
+                            <span class="material-icons">add_circle</span>
+                            <span>Jelentés készítése</span>
+                        </a>
+                        <a href="{% url 'referees:reports' %}" class="nav-item {% if request.resolver_match.url_name == 'reports' %}active{% endif %}" data-tooltip="Jelentések">
+                            <span class="material-icons">list</span>
+                            <span>Jelentések</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if user.is_vb %}
+            <!-- VB tag menüpontok -->
+            <div class="nav-section">
+                <div class="nav-section-title">VB Tag</div>
+                {% if not user.is_referee %}
+                <a href="{% url 'matches:all_matches' %}" class="nav-item {% if request.resolver_match.url_name == 'all_matches' %}active{% endif %}" data-tooltip="Összes mérkőzés">
+                    <span class="material-icons">list_alt</span>
+                    <span>Összes mérkőzés</span>
+                </a>
+                {% endif %}
+                <div class="nav-dropdown">
+                    <div class="nav-dropdown-toggle" data-tooltip="Elszámolások">
+                        <div class="nav-item-left">
+                            <span class="material-icons">payments</span>
+                            <span>Játékvezetői elszámolások</span>
+                        </div>
+                        <span class="material-icons arrow">expand_more</span>
+                    </div>
+                    <div class="nav-dropdown-menu">
+                        <a href="{% url 'billing:travel_costs_admin' %}" class="nav-item {% if request.resolver_match.url_name == 'travel_costs_admin' %}active{% endif %}" data-tooltip="Úti ktg elszámolás">
+                            <span class="material-icons">directions_car</span>
+                            <span>Úti ktg elszámolás</span>
+                        </a>
+                        <a href="{% url 'billing:tig_vb' %}" class="nav-item {% if request.resolver_match.url_name == 'tig_vb' %}active{% endif %}" data-tooltip="TIG elszámolás">
+                            <span class="material-icons">receipt_long</span>
+                            <span>TIG elszámolás</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if user.is_jt_admin %}
+            <!-- JT Admin menüpontok -->
+            <div class="nav-section">
+                <div class="nav-section-title">JT Admin</div>
+                {% if not user.is_referee %}
+                <a href="{% url 'matches:all_matches' %}" class="nav-item {% if request.resolver_match.url_name == 'all_matches' %}active{% endif %}" data-tooltip="Összes mérkőzés">
+                    <span class="material-icons">list_alt</span>
+                    <span>Összes mérkőzés</span>
+                </a>
+                {% endif %}
+                <a href="{% url 'matches:assignments' %}" class="nav-item {% if request.resolver_match.url_name == 'assignments' %}active{% endif %}" data-tooltip="Kiírások">
+                    <span class="material-icons">edit_calendar</span>
+                    <span>Kiírások</span>
+                </a>
+                <a href="{% url 'billing:tig_admin' %}" class="nav-item {% if request.resolver_match.url_name == 'tig_admin' %}active{% endif %}" data-tooltip="TIG módosítás">
+                    <span class="material-icons">price_change</span>
+                    <span>TIG módosítás</span>
+                </a>
+                <a href="{% url 'billing:travel_costs_admin' %}" class="nav-item {% if request.resolver_match.url_name == 'travel_costs_admin' %}active{% endif %}" data-tooltip="Úti ktg elszámolás">
+                    <span class="material-icons">directions_car</span>
+                    <span>Úti ktg elszámolás</span>
+                </a>
+                <a href="{% url 'referees:profiles' %}" class="nav-item {% if request.resolver_match.url_name == 'profiles' %}active{% endif %}" data-tooltip="Profilok szerkesztése">
+                    <span class="material-icons">manage_accounts</span>
+                    <span>Profilok szerkesztése</span>
+                </a>
+            </div>
+            {% endif %}
+
+            {% if user.is_accountant %}
+            <!-- Könyvelő menüpontok -->
+            <div class="nav-section">
+                <div class="nav-section-title">Könyvelő</div>
+                <a href="{% url 'billing:efo' %}" class="nav-item {% if request.resolver_match.url_name == 'efo' %}active{% endif %}" data-tooltip="EFO Bejelentés">
+                    <span class="material-icons">fact_check</span>
+                    <span>EFO Bejelentés</span>
+                </a>
+                <a href="{% url 'billing:ekho' %}" class="nav-item {% if request.resolver_match.url_name == 'ekho' %}active{% endif %}" data-tooltip="EKHO Bejelentés">
+                    <span class="material-icons">checklist</span>
+                    <span>EKHO Bejelentés</span>
+                </a>
+                <a href="{% url 'billing:tig' %}" class="nav-item {% if request.resolver_match.url_name == 'tig' and request.resolver_match.app_name == 'billing' %}active{% endif %}" data-tooltip="Teljesítési Igazolás">
+                    <span class="material-icons">receipt_long</span>
+                    <span>Teljesítési Igazolás</span>
+                </a>
+                <a href="{% url 'billing:referee_data' %}" class="nav-item {% if request.resolver_match.url_name == 'referee_data' %}active{% endif %}" data-tooltip="Adatok">
+                    <span class="material-icons">contact_page</span>
+                    <span>Adatok</span>
+                </a>
+            </div>
+            {% endif %}
+
+            {% if user.is_admin_user %}
+            <!-- Admin menüpontok -->
+            <div class="nav-section">
+                <div class="nav-section-title">Adminisztráció</div>
+                <div class="nav-dropdown">
+                    <div class="nav-dropdown-toggle" data-tooltip="Mérkőzés adatok">
+                        <div class="nav-item-left">
+                            <span class="material-icons">sports_soccer</span>
+                            <span>Mérkőzés adatok</span>
+                        </div>
+                        <span class="material-icons arrow">expand_more</span>
+                    </div>
+                    <div class="nav-dropdown-menu">
+                        <a href="{% url 'matches:teams_list' %}" class="nav-item {% if request.resolver_match.url_name == 'teams_list' or request.resolver_match.url_name == 'team_edit' or request.resolver_match.url_name == 'team_new' %}active{% endif %}" data-tooltip="Csapatok">
+                            <span class="material-icons">groups</span>
+                            <span>Csapatok</span>
+                        </a>
+                        <a href="{% url 'matches:venues_list' %}" class="nav-item {% if request.resolver_match.url_name == 'venues_list' or request.resolver_match.url_name == 'venue_edit' or request.resolver_match.url_name == 'venue_new' %}active{% endif %}" data-tooltip="Helyszínek">
+                            <span class="material-icons">location_on</span>
+                            <span>Helyszínek</span>
+                        </a>
+                        <a href="{% url 'matches:competitions_list' %}" class="nav-item {% if request.resolver_match.url_name == 'competitions_list' or request.resolver_match.url_name == 'edit_competition' %}active{% endif %}" data-tooltip="Bajnokságok">
+                            <span class="material-icons">emoji_events</span>
+                            <span>Bajnokságok</span>
+                        </a>
+                    </div>
+                </div>
+                <a href="{% url 'accounts:database' %}" class="nav-item {% if request.resolver_match.url_name == 'database' %}active{% endif %}" data-tooltip="Adatbázis">
+                    <span class="material-icons">storage</span>
+                    <span>Adatbázis</span>
+                </a>
+                <a href="{% url 'accounts:admin_settings' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_settings' %}active{% endif %}" data-tooltip="Beállítások">
+                    <span class="material-icons">settings</span>
+                    <span>Beállítások</span>
+                </a>
+                <a href="{% url 'matches:users_list' %}" class="nav-item {% if request.resolver_match.url_name == 'users_list' or request.resolver_match.url_name == 'user_edit' or request.resolver_match.url_name == 'user_create' %}active{% endif %}" data-tooltip="Felhasználók">
+                    <span class="material-icons">admin_panel_settings</span>
+                    <span>Felhasználók</span>
+                </a>
+                <a href="{% url 'matches:deleted_items' %}" class="nav-item {% if request.resolver_match.url_name == 'deleted_items' %}active{% endif %}" data-tooltip="Törlések">
+                    <span class="material-icons">delete_sweep</span>
+                    <span>Törlések</span>
+                </a>
+                <a href="{% url 'audit:log_list' %}" class="nav-item {% if request.resolver_match.namespace == 'audit' %}active{% endif %}" data-tooltip="Napló">
+                    <span class="material-icons">history</span>
+                    <span>Napló</span>
+                </a>
+            </div>
+            {% endif %}
+        </nav>
+
+    </aside>
+
+    <!-- Mobile sidebar overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <!-- Main content wrapper -->
+    <div class="main-wrapper">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" onclick="toggleSidebar()">
+                    <span class="material-icons">menu</span>
+                </button>
+                <h1 class="page-title">{% block page_title %}Kezdőlap{% endblock %}</h1>
+            </div>
+            <div class="header-right">
+                {% if IS_TEST_SERVER %}<span class="header-test-badge">⚠ TESZT SZERVER</span>{% endif %}
+                <!-- Theme toggle -->
+                <button class="theme-toggle" onclick="toggleTheme()" title="Téma váltás">
+                    <span class="material-icons icon-dark">dark_mode</span>
+                    <span class="material-icons icon-light">light_mode</span>
+                </button>
+
+                <!-- Notifications -->
+                <div style="position: relative;">
+                    <button class="notification-btn" onclick="toggleNotifications()" title="Értesítések">
+                        <span class="material-icons">notifications</span>
+                        {% if unread_notifications_count %}<span class="notification-badge">{{ unread_notifications_count }}</span>{% endif %}
+                    </button>
+                    <div class="notification-dropdown" id="notificationDropdown">
+                        <div class="notification-dropdown-header">
+                            <span>Értesítések</span>
+                            <a href="#" onclick="markAllNotificationsRead(event)" style="font-size: 0.8rem;">Összes olvasottnak</a>
+                        </div>
+                        <div class="notification-empty" id="notificationEmpty">
+                            <span class="material-icons" style="font-size: 2rem; opacity: 0.5; margin-bottom: 0.5rem;">notifications_none</span>
+                            <p>Nincs új értesítés</p>
+                        </div>
+                        <div id="notificationsList"></div>
+                        <div style="padding: 0.75rem; border-top: 1px solid var(--border-color); text-align: center;">
+                            <button id="showMoreBtn" onclick="event.stopPropagation(); loadAllNotifications();" style="display: none; background: none; border: none; color: var(--accent-color); cursor: pointer; font-size: 0.85rem;">
+                                Összes betöltése
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="{% url 'accounts:profile' %}" class="user-menu" title="Profilom">
+                    <div class="user-avatar">
+                        {% if user.profile_picture %}
+                        <img src="{{ user.profile_picture.url }}" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                        {{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}
+                        {% endif %}
+                    </div>
+                    <div>
+                        <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+                        <div class="user-role">{{ user.get_role_display }}</div>
+                    </div>
+                </a>
+                <a href="{% url 'accounts:logout' %}" class="btn-logout">
+                    <span class="material-icons">logout</span>
+                    Kilépés
+                </a>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        // Dropdown toggle
+        document.querySelectorAll('.nav-dropdown-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                toggle.parentElement.classList.toggle('open');
+            });
+        });
+
+        // Mobile sidebar toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('show');
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('show');
+        }
+
+        // Sidebar collapse toggle
+        function toggleSidebarCollapse() {
+            const isCollapsed = document.documentElement.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+        }
+
+        // Theme toggle
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+
+            // Update theme-color meta tag for mobile browsers
+            const themeColor = newTheme === 'dark' ? '#0f172a' : '#1a365d';
+            document.querySelector('meta[name="theme-color"]').setAttribute('content', themeColor);
+        }
+
+        // Auto-open dropdown if child is active
+        document.querySelectorAll('.nav-dropdown-menu .nav-item.active').forEach(item => {
+            item.closest('.nav-dropdown').classList.add('open');
+        });
+
+        // Remove preload class after initial render to enable transitions
+        window.addEventListener('load', function() {
+            document.body.classList.remove('preload');
+        });
+
+        // Notification dropdown toggle
+        let notificationsLoaded = false;
+
+        function toggleNotifications() {
+            const dropdown = document.getElementById('notificationDropdown');
+            dropdown.classList.toggle('show');
+
+            // Load notifications when opening dropdown
+            if (dropdown.classList.contains('show')) {
+                if (!notificationsLoaded) {
+                    loadNotifications(3);
+                }
+                // Mark all as read when opening dropdown
+                markAllNotificationsReadSilently();
+            }
+        }
+
+        async function loadNotifications(limit = 3) {
+            try {
+                console.log('[NOTIFICATIONS] Loading with limit:', limit);
+                const response = await fetch(`/api/notifications/?limit=${limit}`);
+                const data = await response.json();
+                console.log('[NOTIFICATIONS] API returned:', data.notifications.length, 'of', data.total_count, 'total');
+
+                const listContainer = document.getElementById('notificationsList');
+                const emptyState = document.getElementById('notificationEmpty');
+                const showMoreBtn = document.getElementById('showMoreBtn');
+
+                if (data.notifications.length === 0) {
+                    emptyState.style.display = 'block';
+                    showMoreBtn.style.display = 'none';
+                    listContainer.innerHTML = '';
+                    listContainer.style.maxHeight = '';
+                    listContainer.style.overflowY = '';
+                    return;
+                }
+
+                emptyState.style.display = 'none';
+                listContainer.innerHTML = '';
+
+                data.notifications.forEach(notif => {
+                    const item = document.createElement('div');
+                    item.className = 'notification-item' + (notif.is_read ? '' : ' unread');
+
+                    const message = notif.message.replace(/\n/g, '<br>');
+
+                    item.innerHTML = `
+                        <div class="notification-item-title">${notif.title}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.35rem;">${message}</div>
+                        <div class="notification-item-time">${notif.created_at}</div>
+                    `;
+                    listContainer.appendChild(item);
+                });
+
+                // Show "load more" button only if there are more notifications to load
+                const totalCount = data.total_count || data.notifications.length;
+                const displayedCount = data.notifications.length;
+
+                if (displayedCount < totalCount) {
+                    showMoreBtn.style.display = 'block';
+                    showMoreBtn.textContent = `Összes betöltése (${totalCount})`;
+                    listContainer.style.maxHeight = '';
+                    listContainer.style.overflowY = '';
+                } else {
+                    showMoreBtn.style.display = 'none';
+                    // Enable scroll when showing many notifications
+                    if (displayedCount > 5) {
+                        listContainer.style.maxHeight = '450px';
+                        listContainer.style.overflowY = 'auto';
+                    } else {
+                        listContainer.style.maxHeight = '';
+                        listContainer.style.overflowY = '';
+                    }
+                }
+
+                notificationsLoaded = true;
+            } catch (error) {
+                console.error('Failed to load notifications:', error);
+            }
+        }
+
+        async function loadAllNotifications() {
+            await loadNotifications('all');
+        }
+
+        async function markNotificationRead(id, link) {
+            try {
+                await fetch(`/api/notifications/${id}/read/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                // Update badge count
+                const badge = document.querySelector('.notification-badge');
+                if (badge) {
+                    const count = parseInt(badge.textContent) - 1;
+                    if (count <= 0) {
+                        badge.remove();
+                    } else {
+                        badge.textContent = count;
+                    }
+                }
+
+                // Reload notifications
+                notificationsLoaded = false;
+                loadNotifications(3);
+
+                // Navigate to link if provided
+                if (link) {
+                    window.location.href = link;
+                }
+            } catch (error) {
+                console.error('Failed to mark notification as read:', error);
+            }
+        }
+
+        async function markAllNotificationsRead(event) {
+            event.preventDefault();
+            try {
+                await fetch('/api/notifications/mark-all-read/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                // Remove badge
+                const badge = document.querySelector('.notification-badge');
+                if (badge) {
+                    badge.remove();
+                }
+
+                // Reload notifications
+                notificationsLoaded = false;
+                loadNotifications(3);
+            } catch (error) {
+                console.error('Failed to mark all notifications as read:', error);
+            }
+        }
+
+        async function markAllNotificationsReadSilently() {
+            try {
+                const badge = document.querySelector('.notification-badge');
+                // Only mark as read if there are unread notifications
+                if (!badge) return;
+
+                await fetch('/api/notifications/mark-all-read/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                // Remove badge
+                badge.remove();
+
+                // Update UI to show notifications as read (remove unread class)
+                document.querySelectorAll('.notification-item.unread').forEach(item => {
+                    item.classList.remove('unread');
+                });
+            } catch (error) {
+                // Silently fail - don't show error to user
+                console.error('Failed to mark notifications as read:', error);
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Close notification dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('notificationDropdown');
+            const btn = e.target.closest('.notification-btn');
+            if (!btn && !e.target.closest('.notification-dropdown')) {
+                dropdown.classList.remove('show');
+            }
+        });
+    </script>
+    <script src="{% static 'js/datetime-input.js' %}"></script>
+    <script src="{% static 'js/color-picker.js' %}"></script>
+    {% else %}
+    {% block anonymous_content %}{% endblock %}
+    {% endif %}
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

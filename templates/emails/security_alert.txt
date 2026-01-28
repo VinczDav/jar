@@ -1,0 +1,44 @@
+BIZTONSÁGI FIGYELMEZTETÉS - JAR
+================================
+
+Biztonsági esemény észlelve a JAR rendszerben.
+
+ESEMÉNY RÉSZLETEI
+-----------------
+Felhasználó: {{ user.get_full_name }} ({{ user.username }})
+Email: {{ user.email }}
+{% if ip_address %}IP cím: {{ ip_address }}{% endif %}
+Időpont: {% now "Y. m. d. H:i:s" %}
+
+{% if alert_type == 'failed_logins' %}
+SIKERTELEN BEJELENTKEZÉSEK
+--------------------------
+A felhasználó 10 sikertelen bejelentkezési kísérletet hajtott végre.
+Ez brute force támadásra vagy elfelejtett jelszóra utalhat.
+
+Sikertelen kísérletek száma: {{ user.failed_login_count }}
+{% if user.last_failed_login %}Utolsó sikertelen kísérlet: {{ user.last_failed_login|date:"Y. m. d. H:i:s" }}{% endif %}
+{% elif alert_type == 'suspicious_activity' %}
+GYANÚS TEVÉKENYSÉG
+------------------
+Szokatlan vagy gyanús tevékenység észlelve a felhasználói fiókban.
+{% for key, value in details.items %}
+{{ key }}: {{ value }}
+{% endfor %}
+{% else %}
+ESEMÉNY TÍPUSA: {{ alert_type }}
+{% for key, value in details.items %}
+{{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
+
+Kérjük, ellenőrizd a felhasználói fiókot és szükség esetén tegyél lépéseket.
+
+LEHETSÉGES MŰVELETEK:
+- Ellenőrizd a felhasználó adatait a rendszerben
+- Szükség esetén tiltsd le a fiókot ideiglenesen
+- Lépj kapcsolatba a felhasználóval
+- Ellenőrizd az audit logot további részletekért
+
+---
+Ez egy automatikus üzenet a JAR rendszerből.

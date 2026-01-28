@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+
+{% block title %}Jelentés készítése{% endblock %}
+{% block page_title %}Új ellenőri jelentés{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Jelentés létrehozása</h3>
+    </div>
+
+    {% if available_matches %}
+    <form method="post">
+        {% csrf_token %}
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Mérkőzés kiválasztása</label>
+            <div class="match-selection" style="max-height: 350px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+                {% for item in available_matches %}
+                <label class="match-option" data-match-id="{{ item.match.id }}">
+                    <input type="radio" name="match_id" value="{{ item.match.id }}" onchange="selectMatch({{ item.match.id }})">
+                    <span class="match-info">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <strong>{{ item.match.date|date:"Y.m.d" }}</strong>
+                            {% if item.match.phase %}
+                            <span class="badge" style="background-color: {{ item.match.phase.competition.color }}; color: white; font-size: 0.7rem;">
+                                {{ item.match.phase.competition.short_name }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <span style="color: var(--text-secondary);">
+                            {{ item.match.home_team.name|default:"TBD" }} - {{ item.match.away_team.name|default:"TBD" }}
+                        </span>
+                        {% if item.match.venue %}
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">
+                            <span class="material-icons" style="font-size: 0.875rem; vertical-align: middle;">location_on</span>
+                            {{ item.match.venue.name }}
+                        </span>
+                        {% endif %}
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div id="referees-section" style="margin-top: 1.5rem; display: none;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Játékvezetők értékelése</label>
+            <div id="referees-container">
+                <!-- Referees will be populated here by JavaScript -->
+            </div>
+        </div>
+
+        <div style="margin-top: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Általános megjegyzések</label>
+            <textarea name="notes" rows="5" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; background: var(--card-bg); color: var(--text-color);" placeholder="Részletes visszajelzés a mérkőzésről..."></textarea>
+        </div>
+
+        <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+            <a href="{% url 'referees:reports' %}" class="btn btn-secondary">Mégse</a>
+            <button type="submit" class="btn btn-primary" id="submit-btn" disabled>
+                <span class="material-icons">save</span>
+                Mentés
+            </button>
+        </div>
+    </form>
+    {% else %}
+    <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">event_busy</span>
+        <h3 style="margin-top: 1rem;">Nincs értékelhető mérkőzés</h3>
+        <p>Csak olyan mérkőzéshez készíthetsz jelentést, amelyre ellenőrként voltál kiírva.</p>
+        <a href="{% url 'referees:reports' %}" class="btn btn-secondary" style="margin-top: 1rem;">Vissza</a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.match-selection {
+    background: var(--card-bg);
+}
+.match-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.15s;
+}
+.match-option:last-child {
+    border-bottom: none;
+}
+.match-option:hover {
+    background: var(--bg-color);
+}
+.match-option input[type="radio"] {
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+.match-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.badge {
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+.referee-card {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.referee-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+.referee-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+}
+.referee-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+.rating-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+.rating-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.rating-label {
+    min-width: 140px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+.rating-stars {
+    display: flex;
+    gap: 0.25rem;
+}
+.rating-stars input[type="radio"] {
+    display: none;
+}
+.rating-stars label {
+    cursor: pointer;
+    color: var(--border-color);
+    font-size: 1.5rem;
+    transition: color 0.15s;
+}
+.rating-stars label:hover,
+.rating-stars label:hover ~ label,
+.rating-stars input:checked ~ label {
+    color: #ffc107;
+}
+.rating-stars {
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}
+.rating-stars input:checked + label,
+.rating-stars input:checked + label ~ label {
+    color: #ffc107;
+}
+.rating-row-overall {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+.rating-row-overall .rating-label {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+</style>
+
+<script>
+const matchRefereesData = {
+    {% for item in available_matches %}
+    {{ item.match.id }}: [
+        {% for referee in item.referees %}
+        {
+            id: {{ referee.id }},
+            name: "{{ referee.get_full_name|escapejs }}",
+            initials: "{{ referee.first_name|slice:":1"|upper }}{{ referee.last_name|slice:":1"|upper }}",
+            picture: {% if referee.profile_picture %}"{{ referee.profile_picture.url }}"{% else %}null{% endif %}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]{% if not forloop.last %},{% endif %}
+    {% endfor %}
+};
+
+function selectMatch(matchId) {
+    const referees = matchRefereesData[matchId] || [];
+    const container = document.getElementById('referees-container');
+    const section = document.getElementById('referees-section');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (referees.length === 0) {
+        container.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">Nincs kiírt játékvezető ehhez a mérkőzéshez</div>';
+        section.style.display = 'block';
+        submitBtn.disabled = true;
+        return;
+    }
+
+    container.innerHTML = referees.map(referee => `
+        <div class="referee-card">
+            <div class="referee-header">
+                <div class="referee-avatar">
+                    ${referee.picture ? `<img src="${referee.picture}" alt="">` : referee.initials}
+                </div>
+                <div>
+                    <strong>${referee.name}</strong>
+                </div>
+            </div>
+            <div class="rating-group">
+                ${createRatingRow(referee.id, 'rules', 'Szabályismeret')}
+                ${createRatingRow(referee.id, 'positioning', 'Pozícionálás')}
+                ${createRatingRow(referee.id, 'communication', 'Kommunikáció')}
+                ${createRatingRow(referee.id, 'fitness', 'Fizikai felkészültség')}
+                ${createRatingRow(referee.id, 'overall', 'Összértékelés', true)}
+            </div>
+            <div style="margin-top: 1rem;">
+                <label style="font-size: 0.875rem; color: var(--text-secondary);">Egyéni megjegyzés</label>
+                <textarea name="referee_${referee.id}_notes" rows="2" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit; margin-top: 0.25rem; background: var(--card-bg); color: var(--text-color);" placeholder="Megjegyzés ehhez a játékvezetőhöz..."></textarea>
+            </div>
+        </div>
+    `).join('');
+
+    section.style.display = 'block';
+    submitBtn.disabled = false;
+}
+
+function createRatingRow(refereeId, category, label, isOverall = false) {
+    const name = `referee_${refereeId}_${category}`;
+    const rowClass = isOverall ? 'rating-row rating-row-overall' : 'rating-row';
+    return `
+        <div class="${rowClass}">
+            <span class="rating-label">${label}</span>
+            <div class="rating-stars">
+                ${[5,4,3,2,1].map(i => `
+                    <input type="radio" name="${name}" value="${i}" id="${name}_${i}">
+                    <label for="${name}_${i}"><span class="material-icons">star</span></label>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+</script>
+{% endblock %}

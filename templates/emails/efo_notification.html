@@ -1,0 +1,57 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}EFO bejelentés - JAR{% endblock %}
+
+{% block header_title %}
+{% if notification_type == 'pending' %}Várakozó EFO bejelentés{% elif notification_type == 'modified' %}Módosult EFO bejelentés{% elif notification_type == 'deleted' %}Törölt EFO bejelentés{% else %}EFO bejelentés{% endif %}
+{% endblock %}
+
+{% block content %}
+<p style="font-size: 16px; color: #1e293b;">Kedves {{ accountant_name|default:"Könyvelő" }}!</p>
+
+{% if notification_type == 'pending' %}
+<p>Az alábbi mérkőzéseken dolgozó kollégát EFO-val kell bejelenteni.</p>
+{% elif notification_type == 'modified' %}
+<p>Az alábbi módosítás történt egy olyan mérkőzésen ahol már bejelentett kolléga működik közre.</p>
+{% elif notification_type == 'deleted' %}
+<p>Az alábbi mérkőzésről törölték a kiírást, a bejelentést törölni kell.</p>
+{% endif %}
+
+{% for item in assignments %}
+<table class="data-table" style="margin-bottom: 20px;">
+    <tr>
+        <th>Játékvezető</th>
+        <td>{{ item.user.get_full_name }}</td>
+    </tr>
+    <tr{% if notification_type == 'modified' and 'date' in item.changes or 'time' in item.changes %} class="highlight"{% endif %}>
+        <th>Mérkőzés időpontja</th>
+        <td>{{ item.match.date|date:"Y.m.d" }} ({{ item.match.date|date:"l" }}) {{ item.match.time|time:"H:i" }}</td>
+    </tr>
+    <tr{% if notification_type == 'modified' and 'venue' in item.changes %} class="highlight"{% endif %}>
+        <th>Helyszín</th>
+        <td>{{ item.match.venue.name }}{% if item.match.venue.city %}, {{ item.match.venue.city }}{% endif %}</td>
+    </tr>
+    <tr>
+        <th>Bajnokság</th>
+        <td>{{ item.match.phase.competition.name|default:item.match.competition.name }}</td>
+    </tr>
+    {% if not item.match.is_tournament %}
+    <tr{% if notification_type == 'modified' and 'home_team' in item.changes or 'away_team' in item.changes %} class="highlight"{% endif %}>
+        <th>Mérkőzés</th>
+        <td>{{ item.match.home_team.name|default:"TBD" }} - {{ item.match.away_team.name|default:"TBD" }}</td>
+    </tr>
+    {% else %}
+    <tr>
+        <th>Esemény típus</th>
+        <td>Torna</td>
+    </tr>
+    {% endif %}
+    <tr>
+        <th>Pozíció</th>
+        <td>{{ item.get_role_display }}</td>
+    </tr>
+</table>
+{% endfor %}
+
+<p style="margin-top: 24px;">Üdvözlettel,<br>JAR rendszer</p>
+{% endblock %}

@@ -1,0 +1,821 @@
+{% extends 'base.html' %}
+
+{% block title %}Beállítások{% endblock %}
+{% block page_title %}Rendszer beállítások{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-section {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .settings-section h3 {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+        font-size: 1.1rem;
+    }
+
+    .settings-section h3 .material-icons {
+        font-size: 1.5rem;
+    }
+
+    .section-description {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .settings-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .form-row {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .form-group {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .input-with-suffix {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .input-with-suffix .form-input {
+        width: 120px;
+        flex-shrink: 0;
+    }
+
+    .input-with-suffix .suffix {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .form-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .save-status {
+        font-size: 0.9rem;
+        color: var(--success-color);
+    }
+
+    .save-status.error {
+        color: var(--danger-color);
+    }
+
+    .danger-zone {
+        border-color: var(--danger-color);
+        background: linear-gradient(to right, rgba(220, 53, 69, 0.05), transparent);
+    }
+
+    .danger-zone h3 {
+        color: var(--danger-color);
+    }
+
+    .stat-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        background: var(--bg-color);
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+    }
+
+    .stat-box .label {
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+
+    .stat-box .value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .warning-text {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid var(--warning-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .warning-text .material-icons {
+        color: var(--warning-color);
+        font-size: 1.5rem;
+    }
+
+    .warning-text p {
+        margin: 0;
+        color: var(--text-primary);
+        flex: 1;
+    }
+
+    .danger-button {
+        background: var(--danger-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .danger-button:hover {
+        background: #c82333;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+    }
+
+    .danger-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .confirmation-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .confirmation-modal.show {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-content h4 {
+        margin: 0 0 1rem 0;
+        color: var(--danger-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .modal-content p {
+        margin: 0 0 1.5rem 0;
+        color: var(--text-secondary);
+    }
+
+    .modal-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+    }
+
+    .modal-buttons .btn-secondary {
+        background: var(--text-secondary);
+        color: white;
+    }
+
+    /* Coordinators */
+    .coordinator-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        background: var(--bg-color);
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+    }
+
+    .coordinator-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .coordinator-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .coordinator-phone {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .coordinator-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-icon {
+        background: transparent;
+        border: none;
+        padding: 0.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        transition: all 0.15s;
+    }
+
+    .btn-icon:hover {
+        background: var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .btn-icon.active {
+        color: var(--success-color);
+    }
+
+    .btn-icon.delete:hover {
+        background: rgba(220, 53, 69, 0.1);
+        color: var(--danger-color);
+    }
+
+    .add-coordinator-form {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .empty-coordinators {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
+    }
+
+    .empty-coordinators .material-icons {
+        font-size: 2rem;
+        opacity: 0.5;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-coordinators p {
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Lemondási beállítások -->
+<div class="settings-section">
+    <h3>
+        <span class="material-icons">event_busy</span>
+        Lemondási beállítások
+    </h3>
+    <p class="section-description">
+        Ha a mérkőzés a megadott időn belül van, a játékvezető nem mondhatja le önállóan a rendszeren keresztül.
+        Ilyenkor a koordinátorhoz kell fordulnia közvetlenül.
+    </p>
+
+    <form id="siteSettingsForm" class="settings-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="min_cancellation_hours">Minimum lemondási idő</label>
+                <div class="input-with-suffix">
+                    <input type="number"
+                           id="min_cancellation_hours"
+                           name="min_cancellation_hours"
+                           value="{{ site_settings.min_cancellation_hours }}"
+                           min="0"
+                           class="form-input">
+                    <span class="suffix">óra ({{ site_settings.get_cancellation_days }} nap)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">save</span>
+                Mentés
+            </button>
+            <span id="saveStatus" class="save-status"></span>
+        </div>
+    </form>
+</div>
+
+<!-- Koordinátorok -->
+<div class="settings-section">
+    <h3>
+        <span class="material-icons">contacts</span>
+        Koordinátorok
+    </h3>
+    <p class="section-description">
+        A lemondási időn belüli lemondáskor a felhasználók ezek közül választhatnak, hogy kit hívjanak.
+    </p>
+
+    <div id="coordinatorsList">
+        {% for coordinator in coordinators %}
+        <div class="coordinator-item" data-id="{{ coordinator.id }}" data-user-id="{{ coordinator.user.id }}">
+            <div class="coordinator-info">
+                <span class="coordinator-name">{{ coordinator.name }}</span>
+                <span class="coordinator-phone">{{ coordinator.phone }}</span>
+            </div>
+            <div class="coordinator-actions">
+                <button type="button" class="btn-icon {% if coordinator.is_active %}active{% endif %}" onclick="toggleCoordinator({{ coordinator.id }})" title="{% if coordinator.is_active %}Aktív{% else %}Inaktív{% endif %}">
+                    <span class="material-icons">{% if coordinator.is_active %}visibility{% else %}visibility_off{% endif %}</span>
+                </button>
+                <button type="button" class="btn-icon delete" onclick="deleteCoordinator({{ coordinator.id }}, {{ coordinator.user.id }})" title="Törlés">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-coordinators" id="emptyCoordinators">
+            <span class="material-icons">person_off</span>
+            <p>Még nincs koordinátor megadva</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="add-coordinator-form" id="addCoordinatorForm">
+        <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+                <label for="new_coordinator_user">JT Admin felhasználó kiválasztása</label>
+                <select id="new_coordinator_user" class="form-input">
+                    <option value="">-- Válassz felhasználót --</option>
+                    {% for user in jt_admin_users %}
+                    <option value="{{ user.id }}" data-name="{{ user.get_full_name }}" data-phone="{{ user.phone }}">
+                        {{ user.get_full_name }}{% if user.phone %} ({{ user.phone }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="align-self: flex-end;">
+                <button type="button" class="btn btn-primary" onclick="addCoordinator()" {% if not jt_admin_users %}disabled{% endif %}>
+                    <span class="material-icons">add</span>
+                    Hozzáadás
+                </button>
+            </div>
+        </div>
+        {% if not jt_admin_users and not coordinators %}
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">
+            Nincs elérhető JT Admin jogosultságú felhasználó, akit hozzá lehetne adni.
+        </p>
+        {% elif not jt_admin_users %}
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">
+            Minden JT Admin jogosultságú felhasználó már koordinátorként van megadva.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="settings-section">
+    <h3>
+        <span class="material-icons">info</span>
+        Rendszer statisztika
+    </h3>
+    <div class="stat-box">
+        <span class="label">Mérkőzések száma</span>
+        <span class="value">{{ match_count }}</span>
+    </div>
+    <div class="stat-box">
+        <span class="label">Kijelölések száma</span>
+        <span class="value">{{ assignment_count }}</span>
+    </div>
+    <div class="stat-box">
+        <span class="label">Értesítések száma</span>
+        <span class="value">{{ notification_count }}</span>
+    </div>
+</div>
+
+<div class="settings-section danger-zone">
+    <h3>
+        <span class="material-icons">warning</span>
+        Veszélyes műveletek
+    </h3>
+
+    <div class="warning-text">
+        <span class="material-icons">error</span>
+        <p>
+            <strong>Figyelem!</strong> Ezek a műveletek nem visszavonhatók és azonnal törlődnek az adatok.
+            Győződj meg róla, hogy biztosan ezt szeretnéd tenni.
+        </p>
+    </div>
+
+    <div class="button-group">
+        <button class="danger-button" onclick="showConfirmation('matches')">
+            <span class="material-icons">delete_forever</span>
+            Összes mérkőzés törlése
+        </button>
+        <button class="danger-button" onclick="showConfirmation('notifications')">
+            <span class="material-icons">notifications_off</span>
+            Összes értesítés törlése
+        </button>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div id="confirmationModal" class="confirmation-modal">
+    <div class="modal-content">
+        <h4>
+            <span class="material-icons">warning</span>
+            <span id="modalTitle">Biztosan törlöd?</span>
+        </h4>
+        <p id="modalMessage"></p>
+        <div class="modal-buttons">
+            <button class="btn btn-secondary" onclick="hideConfirmation()">
+                Mégsem
+            </button>
+            <button class="danger-button" id="confirmButton">
+                <span class="material-icons">delete_forever</span>
+                Törlés
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Site Settings Form
+document.getElementById('siteSettingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const form = this;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const statusEl = document.getElementById('saveStatus');
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Mentés...';
+    statusEl.textContent = '';
+    statusEl.className = 'save-status';
+
+    try {
+        const response = await fetch('{% url "accounts:api_save_site_settings" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                min_cancellation_hours: parseInt(document.getElementById('min_cancellation_hours').value)
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            statusEl.textContent = 'Mentve!';
+            statusEl.className = 'save-status';
+            // Update the days display
+            const hours = result.settings.min_cancellation_hours;
+            const days = (hours / 24).toFixed(1);
+            document.querySelector('.input-with-suffix .suffix').textContent = `óra (${days} nap)`;
+        } else {
+            statusEl.textContent = 'Hiba: ' + result.error;
+            statusEl.className = 'save-status error';
+        }
+    } catch (error) {
+        statusEl.textContent = 'Hiba: ' + error.message;
+        statusEl.className = 'save-status error';
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span class="material-icons">save</span> Mentés';
+});
+
+// Coordinator functions
+async function addCoordinator() {
+    const userSelect = document.getElementById('new_coordinator_user');
+    const userId = userSelect.value;
+    const selectedOption = userSelect.options[userSelect.selectedIndex];
+
+    if (!userId) {
+        alert('Kérlek válassz ki egy felhasználót!');
+        return;
+    }
+
+    try {
+        const response = await fetch('{% url "accounts:api_add_coordinator" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ user_id: parseInt(userId) })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Hide empty state if visible
+            const emptyState = document.getElementById('emptyCoordinators');
+            if (emptyState) emptyState.style.display = 'none';
+
+            // Add new coordinator to list
+            const list = document.getElementById('coordinatorsList');
+            const item = document.createElement('div');
+            item.className = 'coordinator-item';
+            item.dataset.id = result.coordinator.id;
+            item.dataset.userId = result.coordinator.user_id;
+            item.innerHTML = `
+                <div class="coordinator-info">
+                    <span class="coordinator-name">${result.coordinator.name}</span>
+                    <span class="coordinator-phone">${result.coordinator.phone}</span>
+                </div>
+                <div class="coordinator-actions">
+                    <button type="button" class="btn-icon active" onclick="toggleCoordinator(${result.coordinator.id})" title="Aktív">
+                        <span class="material-icons">visibility</span>
+                    </button>
+                    <button type="button" class="btn-icon delete" onclick="deleteCoordinator(${result.coordinator.id}, ${result.coordinator.user_id})" title="Törlés">
+                        <span class="material-icons">delete</span>
+                    </button>
+                </div>
+            `;
+            list.appendChild(item);
+
+            // Remove the selected user from dropdown
+            selectedOption.remove();
+            userSelect.value = '';
+
+            // Disable button if no more users available
+            if (userSelect.options.length <= 1) {
+                document.querySelector('#addCoordinatorForm button').disabled = true;
+            }
+        } else {
+            alert('Hiba: ' + result.error);
+        }
+    } catch (error) {
+        alert('Hiba: ' + error.message);
+    }
+}
+
+async function deleteCoordinator(id, userId) {
+    if (!confirm('Biztosan törölni szeretnéd ezt a koordinátort?')) return;
+
+    try {
+        const response = await fetch(`{% url "accounts:api_delete_coordinator" 0 %}`.replace('/0/', `/${id}/`), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const item = document.querySelector(`.coordinator-item[data-id="${id}"]`);
+            const name = item.querySelector('.coordinator-name').textContent;
+            const phone = item.querySelector('.coordinator-phone').textContent;
+
+            // Add user back to dropdown
+            const userSelect = document.getElementById('new_coordinator_user');
+            const option = document.createElement('option');
+            option.value = userId;
+            option.dataset.name = name;
+            option.dataset.phone = phone;
+            option.textContent = `${name}${phone ? ` (${phone})` : ''}`;
+            userSelect.appendChild(option);
+
+            // Enable button
+            document.querySelector('#addCoordinatorForm button').disabled = false;
+
+            // Remove from list
+            item.remove();
+
+            // Show empty state if no coordinators left
+            const items = document.querySelectorAll('.coordinator-item');
+            if (items.length === 0) {
+                const list = document.getElementById('coordinatorsList');
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-coordinators';
+                emptyState.id = 'emptyCoordinators';
+                emptyState.innerHTML = `
+                    <span class="material-icons">person_off</span>
+                    <p>Még nincs koordinátor megadva</p>
+                `;
+                list.appendChild(emptyState);
+            }
+        } else {
+            alert('Hiba: ' + result.error);
+        }
+    } catch (error) {
+        alert('Hiba: ' + error.message);
+    }
+}
+
+async function toggleCoordinator(id) {
+    try {
+        const response = await fetch(`{% url "accounts:api_toggle_coordinator" 0 %}`.replace('/0/', `/${id}/`), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const item = document.querySelector(`.coordinator-item[data-id="${id}"]`);
+            const btn = item.querySelector('.btn-icon:first-child');
+            const icon = btn.querySelector('.material-icons');
+
+            if (result.is_active) {
+                btn.classList.add('active');
+                btn.title = 'Aktív';
+                icon.textContent = 'visibility';
+            } else {
+                btn.classList.remove('active');
+                btn.title = 'Inaktív';
+                icon.textContent = 'visibility_off';
+            }
+        } else {
+            alert('Hiba: ' + result.error);
+        }
+    } catch (error) {
+        alert('Hiba: ' + error.message);
+    }
+}
+
+let currentAction = null;
+
+function showConfirmation(action) {
+    currentAction = action;
+    const modal = document.getElementById('confirmationModal');
+    const title = document.getElementById('modalTitle');
+    const message = document.getElementById('modalMessage');
+    const confirmBtn = document.getElementById('confirmButton');
+
+    if (action === 'matches') {
+        title.textContent = 'Összes mérkőzés törlése?';
+        message.textContent = 'Ez törölni fog minden mérkőzést, kijelölést és hozzájuk tartozó értesítést. Ez a művelet nem visszavonható!';
+        confirmBtn.onclick = deleteAllMatches;
+    } else if (action === 'notifications') {
+        title.textContent = 'Összes értesítés törlése?';
+        message.textContent = 'Ez törölni fog minden értesítést az összes felhasználótól. Ez a művelet nem visszavonható!';
+        confirmBtn.onclick = deleteAllNotifications;
+    }
+
+    modal.classList.add('show');
+}
+
+function hideConfirmation() {
+    const modal = document.getElementById('confirmationModal');
+    modal.classList.remove('show');
+    currentAction = null;
+}
+
+async function deleteAllMatches() {
+    const confirmBtn = document.getElementById('confirmButton');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Törlés...';
+
+    try {
+        const response = await fetch('{% url "accounts:api_delete_all_matches" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            hideConfirmation();
+            alert(`Sikeresen törölve ${result.deleted} mérkőzés!`);
+            window.location.reload();
+        } else {
+            alert('Hiba történt: ' + result.error);
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<span class="material-icons">delete_forever</span> Törlés';
+        }
+    } catch (error) {
+        alert('Hiba történt: ' + error.message);
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<span class="material-icons">delete_forever</span> Törlés';
+    }
+}
+
+async function deleteAllNotifications() {
+    const confirmBtn = document.getElementById('confirmButton');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Törlés...';
+
+    try {
+        const response = await fetch('{% url "accounts:api_delete_all_notifications" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            hideConfirmation();
+            alert(`Sikeresen törölve ${result.deleted} értesítés!`);
+            window.location.reload();
+        } else {
+            alert('Hiba történt: ' + result.error);
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<span class="material-icons">delete_forever</span> Törlés';
+        }
+    } catch (error) {
+        alert('Hiba történt: ' + error.message);
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<span class="material-icons">delete_forever</span> Törlés';
+    }
+}
+
+// Close modal on ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        hideConfirmation();
+    }
+});
+
+// Close modal on background click
+document.getElementById('confirmationModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideConfirmation();
+    }
+});
+</script>
+{% endblock %}

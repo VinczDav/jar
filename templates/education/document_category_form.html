@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if category %}Kategória szerkesztése{% else %}Új kategória{% endif %}{% endblock %}
+{% block page_title %}{% if category %}Kategória szerkesztése{% else %}Új kategória{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .form-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    .form-group small {
+        display: block;
+        margin-top: 0.25rem;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+    }
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    textarea.form-control {
+        min-height: 80px;
+        resize: vertical;
+    }
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+    .error-message {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #dc2626;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+
+    /* Icon selector */
+    .icon-selector {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .icon-option {
+        width: 44px;
+        height: 44px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--bg-color);
+    }
+    .icon-option:hover {
+        border-color: var(--primary-color);
+    }
+    .icon-option.selected {
+        border-color: var(--primary-color);
+        background: var(--primary-color);
+        color: white;
+    }
+    .icon-option .material-icons {
+        font-size: 1.5rem;
+    }
+
+    /* Color selector */
+    .color-selector {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .color-option {
+        width: 36px;
+        height: 36px;
+        border: 3px solid transparent;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .color-option:hover {
+        transform: scale(1.1);
+    }
+    .color-option.selected {
+        border-color: var(--text-primary);
+    }
+
+    /* Preview */
+    .category-preview {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: var(--bg-color);
+        border-radius: 8px;
+        margin-top: 1rem;
+    }
+    .preview-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+    .preview-icon .material-icons {
+        font-size: 1.5rem;
+    }
+    .preview-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-card">
+        {% if error %}
+        <div class="error-message">{{ error }}</div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="name">Kategória neve *</label>
+                <input type="text" id="name" name="name" class="form-control"
+                       value="{{ category.name|default:'' }}" required
+                       placeholder="pl. Szabálykönyvek">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Leírás</label>
+                <textarea id="description" name="description" class="form-control"
+                          placeholder="Rövid leírás a kategóriáról...">{{ category.description|default:'' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Ikon</label>
+                <input type="hidden" id="icon" name="icon" value="{{ category.icon|default:'folder' }}">
+                <div class="icon-selector">
+                    {% for icon in icons %}
+                    <div class="icon-option {% if category.icon == icon or not category and icon == 'folder' %}selected{% endif %}"
+                         data-icon="{{ icon }}" onclick="selectIcon('{{ icon }}')">
+                        <span class="material-icons">{{ icon }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Szín</label>
+                <input type="hidden" id="color" name="color" value="{{ category.color|default:'#3b82f6' }}">
+                <div class="color-selector">
+                    {% for clr in colors %}
+                    <div class="color-option {% if category.color == clr or not category and clr == '#3b82f6' %}selected{% endif %}"
+                         style="background: {{ clr }}" data-color="{{ clr }}" onclick="selectColor('{{ clr }}')">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Előnézet</label>
+                <div class="category-preview">
+                    <div class="preview-icon" id="previewIcon" style="background: {{ category.color|default:'#3b82f6' }}">
+                        <span class="material-icons" id="previewIconName">{{ category.icon|default:'folder' }}</span>
+                    </div>
+                    <div class="preview-name" id="previewName">{{ category.name|default:'Kategória neve' }}</div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{% url 'education:document_library' %}" class="btn btn-secondary">Mégse</a>
+                <button type="submit" class="btn btn-primary">
+                    {% if category %}Mentés{% else %}Létrehozás{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function selectIcon(icon) {
+    document.querySelectorAll('.icon-option').forEach(el => el.classList.remove('selected'));
+    document.querySelector(`.icon-option[data-icon="${icon}"]`).classList.add('selected');
+    document.getElementById('icon').value = icon;
+    document.getElementById('previewIconName').textContent = icon;
+}
+
+function selectColor(color) {
+    document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+    document.querySelector(`.color-option[data-color="${color}"]`).classList.add('selected');
+    document.getElementById('color').value = color;
+    document.getElementById('previewIcon').style.background = color;
+}
+
+// Update preview name on input
+document.getElementById('name').addEventListener('input', function() {
+    document.getElementById('previewName').textContent = this.value || 'Kategória neve';
+});
+</script>
+{% endblock %}

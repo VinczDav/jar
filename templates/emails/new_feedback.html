@@ -1,0 +1,56 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Új értékelés - JAR{% endblock %}
+
+{% block header_title %}Új értékelést kaptál: {{ feedback.match.date|date:"Y.m.d" }} ({{ feedback.match.date|date:"l" }}), {{ feedback.match.venue.name }}{% endblock %}
+
+{% block content %}
+<p style="font-size: 16px; color: #1e293b;">Kedves Kolléga!</p>
+
+<p>Új értékelést kaptál az alábbi mérkőzésre.</p>
+
+<table class="data-table">
+    <tr>
+        <th>Mérkőzés időpontja</th>
+        <td>{{ feedback.match.date|date:"Y.m.d" }} ({{ feedback.match.date|date:"l" }}) {{ feedback.match.time|time:"H:i" }}</td>
+    </tr>
+    <tr>
+        <th>Helyszín</th>
+        <td>{{ feedback.match.venue.name }}{% if feedback.match.venue.city %}, {{ feedback.match.venue.city }}{% endif %}</td>
+    </tr>
+    <tr>
+        <th>Bajnokság</th>
+        <td>{{ feedback.match.phase.competition.name|default:feedback.match.competition.name }}</td>
+    </tr>
+    {% if not feedback.match.is_tournament %}
+    <tr>
+        <th>Mérkőzés</th>
+        <td>{{ feedback.match.home_team.name|default:"TBD" }} - {{ feedback.match.away_team.name|default:"TBD" }}</td>
+    </tr>
+    {% else %}
+    <tr>
+        <th>Esemény típus</th>
+        <td>Torna</td>
+    </tr>
+    {% endif %}
+</table>
+
+{% if feedback.overall_rating or feedback.comment %}
+<table class="data-table" style="margin-top: 20px;">
+    {% if feedback.overall_rating %}
+    <tr>
+        <th>Összpontszám</th>
+        <td><strong>{{ feedback.overall_rating }}</strong></td>
+    </tr>
+    {% endif %}
+    {% if feedback.comment %}
+    <tr>
+        <th>Megjegyzés</th>
+        <td>{{ feedback.comment }}</td>
+    </tr>
+    {% endif %}
+</table>
+{% endif %}
+
+<p style="margin-top: 24px;">Üdvözlettel,<br>JAR rendszer</p>
+{% endblock %}

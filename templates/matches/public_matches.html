@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Következő mérkőzések | JAR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --primary-color: #3b82f6;
+            --accent-color: #8b5cf6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 0.95rem;
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        .header-actions a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .header-actions a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Page Title */
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Container */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        /* Date Header */
+        .date-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+            color: white;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            margin-top: 2rem;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .date-header:first-of-type {
+            margin-top: 0;
+        }
+
+        .date-header .material-icons {
+            font-size: 1.5rem;
+        }
+
+        .date-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .date-header .day-name {
+            font-weight: 400;
+            opacity: 0.9;
+        }
+
+        /* Match Card */
+        .match-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .match-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .match-teams {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .match-teams span {
+            color: var(--text-secondary);
+            font-weight: 400;
+            padding: 0 0.25rem;
+        }
+
+        .competition-badge {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .match-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .match-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .match-meta-item .material-icons {
+            font-size: 1rem;
+        }
+
+        /* Referees */
+        .referees-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .referee-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .referee-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .referee-name {
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .no-referee {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .material-icons {
+            font-size: 4rem;
+            opacity: 0.3;
+            margin-bottom: 1rem;
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .header {
+                padding: 0.75rem 1rem;
+                flex-direction: column;
+                gap: 0.75rem;
+                text-align: center;
+            }
+
+            .header-title {
+                font-size: 0.85rem;
+            }
+
+            .page-title {
+                font-size: 1.25rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .match-card {
+                padding: 1rem;
+            }
+
+            .match-teams {
+                font-size: 1rem;
+            }
+
+            .referees-section {
+                gap: 1rem;
+            }
+
+            .referee-item {
+                min-width: 45%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <span class="header-title">Magyar Floorball Szakszövetség - Játékvezetői adminisztrációs rendszer</span>
+        <div class="header-actions">
+            <a href="{% url 'accounts:login' %}">
+                <span class="material-icons">login</span>
+                Bejelentkezés
+            </a>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1 class="page-title">Következő mérkőzések</h1>
+        {% if matches_by_date %}
+            {% for day in matches_by_date %}
+            <div class="date-header">
+                <span class="material-icons">event</span>
+                <h2>
+                    {{ day.date|date:"Y. m. d." }}
+                    <span class="day-name">{{ day.date|date:"l" }}</span>
+                </h2>
+            </div>
+
+            {% for match in day.matches %}
+            <div class="match-card">
+                <div class="match-header">
+                    <div class="match-teams">
+                        {% if match.home_team %}{{ match.home_team.name }}{% else %}TBD{% endif %}
+                        {% if match.is_tournament %}
+                        <span style="background: #7c3aed; color: white; padding: 0.2rem 0.5rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-left: 0.5rem; display: inline-flex; align-items: center; gap: 0.25rem;">
+                            <span class="material-icons" style="font-size: 0.9rem;">emoji_events</span>
+                            Torna
+                        </span>
+                        {% else %}
+                        <span>-</span>
+                        {% if match.away_team %}{{ match.away_team.name }}{% else %}TBD{% endif %}
+                        {% endif %}
+                    </div>
+                    {% if match.phase %}
+                    <span class="competition-badge" style="background: {{ match.phase.competition.color }};">
+                        {{ match.phase.competition.short_name }}
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="match-meta">
+                    <div class="match-meta-item">
+                        <span class="material-icons">schedule</span>
+                        {{ match.time|time:"H:i" }}
+                    </div>
+                    {% if match.venue %}
+                    <div class="match-meta-item">
+                        <span class="material-icons">location_on</span>
+                        {{ match.venue.name }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="referees-section">
+                    {% if match.is_assignment_published and match.status != 'draft' %}
+                        {% with referees=match.get_referees reserves=match.get_reserves inspectors=match.get_inspectors tournament_directors=match.get_tournament_directors %}
+                        {% for assignment in referees %}
+                        <div class="referee-item">
+                            <span class="referee-label">Játékvezető</span>
+                            {% if assignment.placeholder_type %}
+                            <span class="referee-name no-referee">
+                                {% if assignment.placeholder_type == 'hianyzik' %}Hiányzik
+                                {% elif assignment.placeholder_type == 'szukseges' %}Szükséges
+                                {% else %}Nincs{% endif %}
+                            </span>
+                            {% else %}
+                            <span class="referee-name">{{ assignment.user.get_full_name }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        {% for assignment in reserves %}
+                        <div class="referee-item">
+                            <span class="referee-label">Tartalék</span>
+                            {% if assignment.placeholder_type %}
+                            <span class="referee-name no-referee">
+                                {% if assignment.placeholder_type == 'hianyzik' %}Hiányzik
+                                {% elif assignment.placeholder_type == 'szukseges' %}Szükséges
+                                {% else %}Nincs{% endif %}
+                            </span>
+                            {% else %}
+                            <span class="referee-name">{{ assignment.user.get_full_name }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        {% for assignment in inspectors %}
+                        <div class="referee-item">
+                            <span class="referee-label">Ellenőr</span>
+                            {% if assignment.placeholder_type %}
+                            <span class="referee-name no-referee">
+                                {% if assignment.placeholder_type == 'hianyzik' %}Hiányzik
+                                {% elif assignment.placeholder_type == 'szukseges' %}Szükséges
+                                {% else %}Nincs{% endif %}
+                            </span>
+                            {% else %}
+                            <span class="referee-name">{{ assignment.user.get_full_name }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        {% for assignment in tournament_directors %}
+                        <div class="referee-item">
+                            <span class="referee-label">Tornaigazg.</span>
+                            {% if assignment.placeholder_type %}
+                            <span class="referee-name no-referee">
+                                {% if assignment.placeholder_type == 'hianyzik' %}Hiányzik
+                                {% elif assignment.placeholder_type == 'szukseges' %}Szükséges
+                                {% else %}Nincs{% endif %}
+                            </span>
+                            {% else %}
+                            <span class="referee-name">{{ assignment.user.get_full_name }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        {% endwith %}
+                    {% else %}
+                    <div class="referee-item">
+                        <span class="referee-name no-referee" style="font-style: italic;">Még nincs kiírás</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            {% endfor %}
+        {% else %}
+        <div class="empty-state">
+            <span class="material-icons">event_busy</span>
+            <h3>Nincs közelgő mérkőzés</h3>
+            <p>A következő 2 héten belül nincs kiírt mérkőzés.</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

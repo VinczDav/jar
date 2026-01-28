@@ -1,0 +1,608 @@
+{% extends 'base.html' %}
+
+{% block title %}Rendszernapló{% endblock %}
+{% block page_title %}Rendszernapló{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .stat-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.25rem;
+        border: 1px solid var(--border-color);
+    }
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .stat-card .stat-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .stat-card.danger .stat-value {
+        color: var(--danger-color);
+    }
+
+    .filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        align-items: flex-end;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .filter-group label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    .filter-group select,
+    .filter-group input {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        min-width: 150px;
+    }
+
+    .log-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--card-bg);
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+    .log-table th {
+        text-align: left;
+        padding: 1rem;
+        background: var(--bg-color);
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-color);
+    }
+    .log-table td {
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+    .log-table tr:last-child td {
+        border-bottom: none;
+    }
+    .log-table tr:hover {
+        background: rgba(0,0,0,0.02);
+    }
+    .log-table tr.clickable {
+        cursor: pointer;
+    }
+
+    .log-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    .log-action .material-icons {
+        font-size: 1rem;
+    }
+
+    .log-category {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        background: var(--bg-color);
+        color: var(--text-secondary);
+    }
+
+    .log-timestamp {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .log-timestamp .time {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .log-user {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .log-user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--accent-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .log-user-info {
+        line-height: 1.3;
+    }
+    .log-user-name {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    .log-user-ip {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .log-description {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .pagination-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 1.5rem 0;
+        gap: 0.5rem;
+    }
+    .pagination-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--card-bg);
+        color: var(--text-primary);
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: all 0.15s;
+        min-width: 36px;
+    }
+    .pagination-btn:hover:not(.disabled):not(.active) {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+    }
+    .pagination-btn.active {
+        background: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
+    .pagination-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .pagination-info {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        margin: 0 1rem;
+    }
+
+    /* Detail Modal */
+    .log-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
+    }
+    .log-modal.show {
+        display: flex;
+    }
+    .log-modal-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        max-width: 700px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    .log-modal-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .log-modal-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+    .log-modal-body {
+        padding: 1.5rem;
+    }
+    .log-detail-grid {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 0.75rem 1rem;
+    }
+    .log-detail-label {
+        font-weight: 500;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    .log-detail-value {
+        color: var(--text-primary);
+    }
+    .log-changes {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+    .log-changes h4 {
+        margin: 0 0 1rem 0;
+        font-size: 0.95rem;
+    }
+    .change-item {
+        background: var(--bg-color);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .change-field {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    .change-values {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+    }
+    .change-old {
+        color: var(--danger-color);
+        text-decoration: line-through;
+    }
+    .change-new {
+        color: var(--success-color);
+    }
+
+    @media (max-width: 1024px) {
+        .log-table {
+            display: block;
+            overflow-x: auto;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .filter-form {
+            flex-direction: column;
+        }
+        .filter-group {
+            width: 100%;
+        }
+        .filter-group select,
+        .filter-group input {
+            width: 100%;
+        }
+        .log-detail-grid {
+            grid-template-columns: 1fr;
+        }
+        .log-detail-label {
+            margin-top: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Statisztikák -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total|default:0 }}</div>
+        <div class="stat-label">Összes bejegyzés</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.today|default:0 }}</div>
+        <div class="stat-label">Mai bejegyzések</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.week|default:0 }}</div>
+        <div class="stat-label">Elmúlt 7 nap</div>
+    </div>
+    <div class="stat-card danger">
+        <div class="stat-value">{{ stats.failed_logins_today|default:0 }}</div>
+        <div class="stat-label">Sikertelen bejelentkezés ma</div>
+    </div>
+</div>
+
+<!-- Szűrők -->
+<form method="get" class="filter-form">
+    <div class="filter-group">
+        <label>Kategória</label>
+        <select name="category">
+            <option value="">Összes</option>
+            {% for value, label in categories %}
+            <option value="{{ value }}" {% if filters.category == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Művelet</label>
+        <select name="action">
+            <option value="">Összes</option>
+            {% for value, label in actions %}
+            <option value="{{ value }}" {% if filters.action == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Felhasználó</label>
+        <select name="user">
+            <option value="">Mindenki</option>
+            {% for user in users %}
+            <option value="{{ user.id }}" {% if filters.user == user.id|stringformat:"i" %}selected{% endif %}>{{ user.last_name }} {{ user.first_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Dátumtól</label>
+        <input type="date" name="date_from" value="{{ filters.date_from }}">
+    </div>
+    <div class="filter-group">
+        <label>Dátumig</label>
+        <input type="date" name="date_to" value="{{ filters.date_to }}">
+    </div>
+    <div class="filter-group">
+        <label>Keresés</label>
+        <input type="text" name="search" value="{{ filters.search }}" placeholder="Leírás, IP, név...">
+    </div>
+    <div class="filter-group" style="align-self: flex-end;">
+        <button type="submit" class="btn btn-primary">
+            <span class="material-icons">search</span>
+            Szűrés
+        </button>
+    </div>
+    <div class="filter-group" style="align-self: flex-end;">
+        <a href="{% url 'audit:log_list' %}" class="btn btn-secondary">
+            <span class="material-icons">clear</span>
+            Törlés
+        </a>
+    </div>
+</form>
+
+<!-- Log táblázat -->
+{% if logs %}
+<table class="log-table">
+    <thead>
+        <tr>
+            <th>Időpont</th>
+            <th>Felhasználó</th>
+            <th>Kategória</th>
+            <th>Művelet</th>
+            <th>Leírás</th>
+            <th>Objektum</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr class="clickable" onclick="showLogDetail({{ log.id }})">
+            <td>
+                <div class="log-timestamp">
+                    <div class="time">{{ log.timestamp|time:"H:i:s" }}</div>
+                    <div>{{ log.timestamp|date:"Y.m.d" }}</div>
+                </div>
+            </td>
+            <td>
+                <div class="log-user">
+                    {% if log.user %}
+                    <div class="log-user-avatar">{{ log.user.first_name|slice:":1" }}{{ log.user.last_name|slice:":1" }}</div>
+                    <div class="log-user-info">
+                        <div class="log-user-name">{{ log.user.get_full_name }}</div>
+                        <div class="log-user-ip">{{ log.ip_address|default:"-" }}</div>
+                    </div>
+                    {% else %}
+                    <div class="log-user-avatar" style="background: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 1rem;">computer</span>
+                    </div>
+                    <div class="log-user-info">
+                        <div class="log-user-name">Rendszer</div>
+                        <div class="log-user-ip">{{ log.ip_address|default:"-" }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </td>
+            <td>
+                <span class="log-category">{{ log.get_category_display }}</span>
+            </td>
+            <td>
+                <span class="log-action" style="background: {{ log.action_color }}20; color: {{ log.action_color }};">
+                    <span class="material-icons">{{ log.action_icon }}</span>
+                    {{ log.get_action_display }}
+                </span>
+            </td>
+            <td>
+                <div class="log-description" title="{{ log.description }}">{{ log.description }}</div>
+            </td>
+            <td>
+                {% if log.object_repr %}
+                <span title="{{ log.object_type }} #{{ log.object_id }}">{{ log.object_repr }}</span>
+                {% else %}
+                <span style="color: var(--text-secondary);">-</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+<div class="pagination-container">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if filters.category %}&category={{ filters.category }}{% endif %}{% if filters.action %}&action={{ filters.action }}{% endif %}{% if filters.user %}&user={{ filters.user }}{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.date_from %}&date_from={{ filters.date_from }}{% endif %}{% if filters.date_to %}&date_to={{ filters.date_to }}{% endif %}" class="pagination-btn">
+        <span class="material-icons">first_page</span>
+    </a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if filters.category %}&category={{ filters.category }}{% endif %}{% if filters.action %}&action={{ filters.action }}{% endif %}{% if filters.user %}&user={{ filters.user }}{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.date_from %}&date_from={{ filters.date_from }}{% endif %}{% if filters.date_to %}&date_to={{ filters.date_to }}{% endif %}" class="pagination-btn">
+        <span class="material-icons">chevron_left</span>
+    </a>
+    {% else %}
+    <span class="pagination-btn disabled"><span class="material-icons">first_page</span></span>
+    <span class="pagination-btn disabled"><span class="material-icons">chevron_left</span></span>
+    {% endif %}
+
+    <span class="pagination-info">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }} oldal</span>
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if filters.category %}&category={{ filters.category }}{% endif %}{% if filters.action %}&action={{ filters.action }}{% endif %}{% if filters.user %}&user={{ filters.user }}{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.date_from %}&date_from={{ filters.date_from }}{% endif %}{% if filters.date_to %}&date_to={{ filters.date_to }}{% endif %}" class="pagination-btn">
+        <span class="material-icons">chevron_right</span>
+    </a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if filters.category %}&category={{ filters.category }}{% endif %}{% if filters.action %}&action={{ filters.action }}{% endif %}{% if filters.user %}&user={{ filters.user }}{% endif %}{% if filters.search %}&search={{ filters.search }}{% endif %}{% if filters.date_from %}&date_from={{ filters.date_from }}{% endif %}{% if filters.date_to %}&date_to={{ filters.date_to }}{% endif %}" class="pagination-btn">
+        <span class="material-icons">last_page</span>
+    </a>
+    {% else %}
+    <span class="pagination-btn disabled"><span class="material-icons">chevron_right</span></span>
+    <span class="pagination-btn disabled"><span class="material-icons">last_page</span></span>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div style="text-align: center; padding: 3rem; color: var(--text-secondary); background: var(--card-bg); border-radius: 12px;">
+    <span class="material-icons" style="font-size: 3rem; opacity: 0.5; margin-bottom: 1rem;">receipt_long</span>
+    <p>Nincs találat a megadott szűrőkkel</p>
+</div>
+{% endif %}
+
+<!-- Log Detail Modal -->
+<div id="logModal" class="log-modal">
+    <div class="log-modal-content">
+        <div class="log-modal-header">
+            <h3><span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">info</span>Napló részletek</h3>
+            <button type="button" onclick="closeLogModal()" class="btn-icon" style="padding: 0.5rem;">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="log-modal-body" id="logModalBody">
+            <p style="text-align: center; color: var(--text-secondary);">Betöltés...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+function showLogDetail(logId) {
+    const modal = document.getElementById('logModal');
+    const body = document.getElementById('logModalBody');
+
+    body.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Betöltés...</p>';
+    modal.classList.add('show');
+
+    fetch(`/audit/api/${logId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                body.innerHTML = `<p style="color: var(--danger-color);">${data.error}</p>`;
+                return;
+            }
+
+            let html = `
+                <div class="log-detail-grid">
+                    <div class="log-detail-label">Időpont</div>
+                    <div class="log-detail-value">${data.timestamp}</div>
+
+                    <div class="log-detail-label">Felhasználó</div>
+                    <div class="log-detail-value">${data.user}${data.user_email ? ` (${data.user_email})` : ''}</div>
+
+                    <div class="log-detail-label">IP cím</div>
+                    <div class="log-detail-value">${data.ip_address || '-'}</div>
+
+                    <div class="log-detail-label">Böngésző</div>
+                    <div class="log-detail-value" style="word-break: break-all; font-size: 0.85rem;">${data.user_agent || '-'}</div>
+
+                    <div class="log-detail-label">Kategória</div>
+                    <div class="log-detail-value">${data.category}</div>
+
+                    <div class="log-detail-label">Művelet</div>
+                    <div class="log-detail-value">${data.action}</div>
+
+                    <div class="log-detail-label">Leírás</div>
+                    <div class="log-detail-value">${data.description}</div>
+
+                    ${data.object_type ? `
+                    <div class="log-detail-label">Objektum</div>
+                    <div class="log-detail-value">${data.object_type} #${data.object_id} - ${data.object_repr}</div>
+                    ` : ''}
+                </div>
+            `;
+
+            if (data.changes && Object.keys(data.changes).length > 0) {
+                html += '<div class="log-changes"><h4>Változások</h4>';
+                for (const [field, values] of Object.entries(data.changes)) {
+                    html += `
+                        <div class="change-item">
+                            <div class="change-field">${field}</div>
+                            <div class="change-values">
+                                <span class="change-old">${values.from ?? '(üres)'}</span>
+                                <span class="material-icons" style="font-size: 1rem;">arrow_forward</span>
+                                <span class="change-new">${values.to ?? '(üres)'}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                html += '</div>';
+            }
+
+            if (data.extra_data && Object.keys(data.extra_data).length > 0) {
+                html += '<div class="log-changes"><h4>További adatok</h4>';
+                html += '<pre style="background: var(--bg-color); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem;">';
+                html += JSON.stringify(data.extra_data, null, 2);
+                html += '</pre></div>';
+            }
+
+            body.innerHTML = html;
+        })
+        .catch(error => {
+            body.innerHTML = `<p style="color: var(--danger-color);">Hiba történt: ${error}</p>`;
+        });
+}
+
+function closeLogModal() {
+    document.getElementById('logModal').classList.remove('show');
+}
+
+// Close modal on ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeLogModal();
+    }
+});
+
+// Close modal on background click
+document.getElementById('logModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeLogModal();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}Helyszínek{% endblock %}
+{% block page_title %}Helyszínek kezelése{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .page-stats {
+        display: flex;
+        gap: 1rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    .filter-bar {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    .venue-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s;
+    }
+    .venue-card:hover {
+        border-color: var(--accent-color);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .venue-card.inactive {
+        opacity: 0.6;
+        background: var(--bg-color);
+    }
+    .venue-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        background: var(--accent-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .venue-icon .material-icons {
+        font-size: 1.5rem;
+        color: white;
+    }
+    .venue-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .venue-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .venue-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .venue-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+    .btn-icon {
+        padding: 0.5rem;
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+    }
+    .btn-icon:hover {
+        background: var(--border-color);
+        color: var(--text-primary);
+    }
+    .btn-icon.active {
+        color: var(--success-color);
+    }
+    .btn-icon.inactive {
+        color: var(--danger-color);
+    }
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+    .empty-state .material-icons {
+        font-size: 3rem;
+        opacity: 0.5;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="page-header">
+    <div class="page-stats">
+        <span>Összes: <strong>{{ total_count }}</strong></span>
+        <span>Aktív: <strong>{{ active_count }}</strong></span>
+    </div>
+    <div class="filter-bar">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" {% if show_inactive %}checked{% endif %} onchange="window.location.href='?show_inactive=' + (this.checked ? '1' : '0')">
+            Inaktívak mutatása
+        </label>
+        <a href="{% url 'matches:venue_new' %}" class="btn btn-primary">
+            <span class="material-icons">add</span>
+            Új helyszín
+        </a>
+    </div>
+</div>
+
+{% if venues %}
+    {% for venue in venues %}
+    <div class="venue-card {% if not venue.is_active %}inactive{% endif %}">
+        <div class="venue-icon">
+            <span class="material-icons">location_on</span>
+        </div>
+        <div class="venue-info">
+            <div class="venue-name">
+                {{ venue.name }}
+                {% if not venue.is_active %}
+                <span class="badge badge-danger" style="font-size: 0.7rem;">Inaktív</span>
+                {% endif %}
+            </div>
+            <div class="venue-meta">
+                {{ venue.city }}{% if venue.address %} - {{ venue.address }}{% endif %}
+            </div>
+        </div>
+        <div class="venue-actions">
+            <a href="{% url 'matches:venue_edit' venue.id %}" class="btn-icon" title="Szerkesztés">
+                <span class="material-icons">edit</span>
+            </a>
+            <form method="post" action="{% url 'matches:venue_toggle_active' venue.id %}" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="btn-icon {% if venue.is_active %}active{% else %}inactive{% endif %}" title="{% if venue.is_active %}Deaktiválás{% else %}Aktiválás{% endif %}">
+                    <span class="material-icons">{% if venue.is_active %}toggle_on{% else %}toggle_off{% endif %}</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="empty-state">
+    <span class="material-icons">location_on</span>
+    <h3>Nincs helyszín</h3>
+    <p>Adj hozzá helyszíneket a rendszerhez.</p>
+    <a href="{% url 'matches:venue_new' %}" class="btn btn-primary" style="margin-top: 1rem;">
+        <span class="material-icons">add</span>
+        Új helyszín
+    </a>
+</div>
+{% endif %}
+{% endblock %}

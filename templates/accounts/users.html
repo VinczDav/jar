@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Felhasználók{% endblock %}
+{% block page_title %}Felhasználók kezelése{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Felhasználók</h3>
+        <div style="display: flex; gap: 0.5rem;">
+            <input type="text" placeholder="Keresés..." class="btn btn-secondary" style="padding: 0.5rem 1rem; width: 200px;">
+            <select class="btn btn-secondary" style="padding: 0.5rem 1rem;">
+                <option>Összes szerepkör</option>
+                <option>Játékvezető</option>
+                <option>JT Admin</option>
+                <option>VB</option>
+                <option>Ellenőr</option>
+                <option>Könyvelő</option>
+                <option>Admin</option>
+            </select>
+            <button class="btn btn-primary">
+                <span class="material-icons">person_add</span>
+                Új felhasználó
+            </button>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Név</th>
+                    <th>E-mail</th>
+                    <th>Felhasználónév</th>
+                    <th>Szerepkör</th>
+                    <th>Státusz</th>
+                    <th>Utolsó belépés</th>
+                    <th>Műveletek</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.get_full_name|default:"-" }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.username }}</td>
+                    <td>
+                        <span class="badge {% if u.role == 'admin' %}badge-danger{% elif u.role == 'jt_admin' %}badge-info{% else %}badge-success{% endif %}">
+                            {{ u.get_role_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if u.is_active %}
+                        <span class="badge badge-success">Aktív</span>
+                        {% else %}
+                        <span class="badge badge-danger">Inaktív</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ u.last_login|date:"Y.m.d H:i"|default:"-" }}</td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem;">
+                            <span class="material-icons" style="font-size: 1rem;">edit</span>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">admin_panel_settings</span>
+                        <p>Nincs felhasználó</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Hiányos mérkőzés - JAR{% endblock %}
+
+{% block header_title %}Hiányos mérkőzés {{ match.date|date:"Y.m.d" }} ({{ match.date|date:"l" }}), {% if match.time %}{{ match.time|time:"H:i" }}{% endif %} {{ match.venue.name|default:"" }}{% endblock %}
+
+{% block content %}
+<p style="font-size: 16px; color: #1e293b;">Kedves Kolléga!</p>
+
+<p>Az alábbi mérkőzés adatai hiányosak a rendszerben.</p>
+
+<table class="data-table">
+    {% if match.is_tournament %}
+    <tr>
+        <th>Esemény típus</th>
+        <td style="color: #7c3aed; font-weight: 600;">Torna</td>
+    </tr>
+    {% endif %}
+    <tr>
+        <th>Dátum</th>
+        <td><strong>{{ match.date|date:"Y.m.d" }} ({{ match.date|date:"l" }})</strong></td>
+    </tr>
+    <tr>
+        <th>Időpont</th>
+        <td>{% if match.time %}{{ match.time|time:"H:i" }}{% else %}<span style="color: #dc2626;">Hiányzik!</span>{% endif %}</td>
+    </tr>
+    {% if not match.is_tournament %}
+    <tr>
+        <th>Hazai csapat</th>
+        <td>{% if match.home_team %}{{ match.home_team.name }}{% else %}<span style="color: #dc2626;">Hiányzik!</span>{% endif %}</td>
+    </tr>
+    <tr>
+        <th>Vendég csapat</th>
+        <td>{% if match.away_team %}{{ match.away_team.name }}{% else %}<span style="color: #dc2626;">Hiányzik!</span>{% endif %}</td>
+    </tr>
+    {% endif %}
+    <tr>
+        <th>Helyszín</th>
+        <td>{% if match.venue %}{{ match.venue.name }}{% else %}<span style="color: #dc2626;">Hiányzik!</span>{% endif %}</td>
+    </tr>
+    <tr>
+        <th>Játékvezetők</th>
+        <td>{% if match.has_assigned_referees %}Kiírva{% else %}<span style="color: #dc2626;">Nincsenek kiírva!</span>{% endif %}</td>
+    </tr>
+</table>
+
+<p style="margin-top: 24px;">Üdvözlettel,<br>JAR rendszer</p>
+{% endblock %}

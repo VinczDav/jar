@@ -1,0 +1,1053 @@
+{% extends 'base.html' %}
+
+{% block title %}Úti költség elszámolás{% endblock %}
+{% block page_title %}Úti költség elszámolás{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-container {
+        padding: 1rem;
+        background: var(--card-bg);
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+    }
+    .filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+    .filter-row + .filter-row {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+    .filter-divider {
+        width: 1px;
+        height: 40px;
+        background: var(--border-color);
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+    }
+    .filter-group label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+    .filter-group input,
+    .filter-group select {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        background: var(--bg-color);
+        color: var(--text-color);
+        font-size: 0.875rem;
+        min-width: 140px;
+    }
+    .month-btn {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.75rem;
+        border: 1px solid var(--border-color);
+        background: var(--card-bg);
+        color: var(--text-color);
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .month-btn:hover {
+        background: var(--bg-color);
+    }
+    .month-btn.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+    }
+    .view-toggle {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .view-toggle-btn {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        background: var(--card-bg);
+        color: var(--text-color);
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.15s ease;
+    }
+    .view-toggle-btn:hover {
+        background: var(--bg-color);
+    }
+    .view-toggle-btn.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+    .view-toggle-btn .badge-count {
+        background: rgba(255,255,255,0.2);
+        padding: 0.1rem 0.4rem;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    .view-toggle-btn:not(.active) .badge-count {
+        background: var(--warning-color);
+        color: white;
+    }
+    .match-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        gap: 1rem;
+    }
+    .match-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .match-header {
+        padding: 1rem;
+        background: var(--bg-color);
+        border-bottom: 1px solid var(--border-color);
+    }
+    .match-teams {
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .match-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+    .match-meta span {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .match-meta .material-icons {
+        font-size: 1rem;
+    }
+    .match-body {
+        padding: 1rem;
+    }
+    .referee-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-color);
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .referee-row:last-child {
+        border-bottom: none;
+    }
+    .referee-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .referee-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+    .referee-name {
+        font-weight: 500;
+    }
+    .expense-type {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+    .expense-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .expense-badge.none {
+        background: var(--bg-color);
+        color: var(--text-secondary);
+    }
+    .expense-badge.car {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+    .expense-badge.public {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    .expense-amount {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .expense-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-color);
+        color: var(--text-color);
+        transition: all 0.2s;
+    }
+    .btn-icon:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+    .btn-icon.approve:hover {
+        background: #10b981;
+    }
+    .btn-icon.reject:hover {
+        background: var(--danger-color);
+    }
+    .btn-icon .material-icons {
+        font-size: 1rem;
+    }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    .status-badge.pending {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .status-badge.approved {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    .status-badge.rejected {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .status-badge.returned {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .status-badge.declined {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+    .btn-icon.return:hover {
+        background: #f59e0b;
+    }
+    .btn-icon.edit:hover {
+        background: #3b82f6;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-secondary);
+        background: var(--card-bg);
+        border-radius: 12px;
+    }
+    .empty-state .material-icons {
+        font-size: 4rem;
+        opacity: 0.5;
+        margin-bottom: 1rem;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal.active {
+        display: flex;
+    }
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    .modal-content.preview-modal {
+        max-width: 90vw;
+        max-height: 90vh;
+        width: auto;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .modal-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-secondary);
+        padding: 0.25rem;
+    }
+    .modal-close:hover {
+        color: var(--text-color);
+    }
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    .form-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-bottom: 0.375rem;
+    }
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        background: var(--bg-color);
+        color: var(--text-color);
+        resize: vertical;
+        min-height: 100px;
+    }
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    /* Preview content */
+    .preview-content {
+        max-width: 100%;
+        max-height: 70vh;
+        overflow: auto;
+    }
+    .preview-content img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+    }
+    .preview-content iframe {
+        width: 100%;
+        height: 70vh;
+        border: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="filter-container">
+    <!-- View toggle and month selector row -->
+    <div class="filter-row">
+        <div class="view-toggle">
+            <button type="button" class="view-toggle-btn {% if view_mode == 'month' %}active{% endif %}" onclick="setViewMode('month')">
+                <span class="material-icons">calendar_month</span>
+                Havi nézet
+            </button>
+            <button type="button" class="view-toggle-btn {% if view_mode == 'all_pending' %}active{% endif %}" onclick="setViewMode('all_pending')">
+                <span class="material-icons">pending_actions</span>
+                Összes feldolgozatlan
+                {% if all_pending_count > 0 %}
+                <span class="badge-count">{{ all_pending_count }}</span>
+                {% endif %}
+            </button>
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <!-- Year selector -->
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="changeYear(-1)">
+                <span class="material-icons">chevron_left</span>
+            </button>
+            <span id="current-year" style="font-weight: 600; min-width: 50px; text-align: center;">{{ selected_year }}</span>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="changeYear(1)">
+                <span class="material-icons">chevron_right</span>
+            </button>
+        </div>
+
+        <!-- Month grid -->
+        <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem;">
+            {% for month_name in month_names %}
+            <button type="button"
+                    class="month-btn {% if forloop.counter == selected_month %}active{% endif %}"
+                    data-month="{{ forloop.counter }}"
+                    onclick="selectMonth({{ forloop.counter }})">
+                {{ month_name|slice:":3" }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Additional filters row -->
+    <div class="filter-row">
+        <div class="filter-group">
+            <label>Dátum tól</label>
+            <input type="date" id="date_from" value="{{ date_from }}">
+        </div>
+        <div class="filter-group">
+            <label>Dátum ig</label>
+            <input type="date" id="date_to" value="{{ date_to }}">
+        </div>
+        <div class="filter-group">
+            <label>Helyszín</label>
+            <select id="venue">
+                <option value="">Összes</option>
+                {% for venue in venues %}
+                <option value="{{ venue.id }}" {% if selected_venue == venue.id|stringformat:"s" %}selected{% endif %}>{{ venue.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Játékvezető</label>
+            <select id="user">
+                <option value="">Összes</option>
+                {% for u in users %}
+                <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"s" %}selected{% endif %}>{{ u.last_name }} {{ u.first_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Bajnokság</label>
+            <select id="competition">
+                <option value="">Összes</option>
+                {% for comp in competitions %}
+                <option value="{{ comp.id }}" {% if selected_competition == comp.id|stringformat:"s" %}selected{% endif %}>{{ comp.short_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if view_mode == 'month' %}
+        <div class="filter-group">
+            <label>Státusz</label>
+            <select id="status">
+                <option value="">Összes</option>
+                <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>Jóváhagyásra vár</option>
+                <option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>Jóváhagyva</option>
+                <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>Elutasítva</option>
+                <option value="returned" {% if selected_status == 'returned' %}selected{% endif %}>Visszaküldve</option>
+                <option value="declined" {% if selected_status == 'declined' %}selected{% endif %}>Nem igényelt</option>
+            </select>
+        </div>
+        {% endif %}
+        <button class="btn btn-primary" onclick="applyFilters()">
+            <span class="material-icons">filter_list</span>
+            Szűrés
+        </button>
+    </div>
+</div>
+
+{% if assignments_data %}
+<div class="match-cards">
+    {% regroup assignments_data by assignment.match as match_groups %}
+    {% for match_group in match_groups %}
+    <div class="match-card">
+        <div class="match-header">
+            <div class="match-teams">
+                {{ match_group.grouper.home_team.name|default:"TBD" }} - {{ match_group.grouper.away_team.name|default:"TBD" }}
+            </div>
+            <div class="match-meta">
+                <span>
+                    <span class="material-icons">event</span>
+                    {{ match_group.grouper.date|date:"Y.m.d" }}
+                </span>
+                {% if match_group.grouper.time %}
+                <span>
+                    <span class="material-icons">schedule</span>
+                    {{ match_group.grouper.time|time:"H:i" }}
+                </span>
+                {% endif %}
+                <span>
+                    <span class="material-icons">place</span>
+                    {{ match_group.grouper.venue.name|default:"-" }}
+                </span>
+                {% if match_group.grouper.phase %}
+                <span class="badge" style="background-color: {{ match_group.grouper.phase.competition.color }}; color: white; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem;">
+                    {{ match_group.grouper.phase.competition.short_name }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="match-body">
+            {% for item in match_group.list %}
+            <div class="referee-row" data-assignment-id="{{ item.assignment.id }}">
+                <div class="referee-info">
+                    <div class="referee-avatar">
+                        {{ item.assignment.user.last_name|slice:":1" }}{{ item.assignment.user.first_name|slice:":1" }}
+                    </div>
+                    <div>
+                        <div class="referee-name">{{ item.assignment.user.last_name }} {{ item.assignment.user.first_name }}</div>
+                        <div class="expense-type">
+                            {% if item.travel_cost %}
+                                {% if item.travel_cost.expense_type == 'car' %}
+                                <span class="expense-badge car">
+                                    <span class="material-icons" style="font-size: 0.85rem; margin-right: 0.25rem;">directions_car</span>
+                                    Autós kiküldetés
+                                </span>
+                                {% elif item.travel_cost.expense_type == 'public' %}
+                                <span class="expense-badge public">
+                                    <span class="material-icons" style="font-size: 0.85rem; margin-right: 0.25rem;">directions_bus</span>
+                                    Tömegközlekedés
+                                </span>
+                                {% else %}
+                                <span class="expense-badge none">Nincs megadva</span>
+                                {% endif %}
+                            {% else %}
+                            <span class="expense-badge none">Nincs kitöltve</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="expense-actions">
+                    {% if item.travel_cost %}
+                    {% if item.travel_cost.amount %}
+                    <span class="expense-amount" {% if item.travel_cost.status != 'approved' %}style="color: var(--text-secondary);"{% endif %}>{{ item.travel_cost.amount|floatformat:0 }} Ft</span>
+                    {% elif item.travel_cost.receipt_amount %}
+                    <span class="expense-amount" style="color: var(--text-secondary);">{{ item.travel_cost.receipt_amount|floatformat:0 }} Ft</span>
+                    {% else %}
+                    <span class="expense-amount" style="color: var(--text-secondary);">0 Ft</span>
+                    {% endif %}
+
+                    {% if item.travel_cost.receipt_file %}
+                    <!-- Preview button -->
+                    <button class="btn-icon" title="Megtekintés" onclick="previewFile({{ item.travel_cost.id }})">
+                        <span class="material-icons">visibility</span>
+                    </button>
+                    {% endif %}
+
+                    {% if item.travel_cost.status == 'pending' %}
+                    <button class="btn-icon approve" title="Jóváhagyás" onclick="showApproveModal({{ item.travel_cost.id }}, '{{ item.travel_cost.expense_type }}', {{ item.travel_cost.receipt_amount|default:0 }}, '{{ item.assignment.user.get_full_name|escapejs }}')">
+                        <span class="material-icons">check</span>
+                    </button>
+                    <button class="btn-icon return" title="Visszaküldés" onclick="showReturnModal({{ item.travel_cost.id }})">
+                        <span class="material-icons">replay</span>
+                    </button>
+                    <button class="btn-icon reject" title="Elutasítás" onclick="showRejectModal({{ item.travel_cost.id }})">
+                        <span class="material-icons">close</span>
+                    </button>
+                    {% else %}
+                    <span class="status-badge {{ item.travel_cost.status }}">
+                        {% if item.travel_cost.status == 'approved' %}Jóváhagyva{% elif item.travel_cost.status == 'rejected' %}Elutasítva{% elif item.travel_cost.status == 'returned' %}Visszaküldve{% elif item.travel_cost.status == 'declined' %}Nem igényelt{% else %}Függőben{% endif %}
+                    </span>
+                    {% endif %}
+                    {% if is_admin %}
+                    <button class="btn-icon edit" title="Szerkesztés" onclick="showEditModal({{ item.travel_cost.id }}, '{{ item.travel_cost.status }}', {{ item.travel_cost.amount|default:item.travel_cost.receipt_amount|default:0 }}, '{{ item.assignment.user.get_full_name|escapejs }}')">
+                        <span class="material-icons">edit</span>
+                    </button>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <span class="material-icons">{% if view_mode == 'all_pending' %}check_circle{% else %}directions_car{% endif %}</span>
+    {% if view_mode == 'all_pending' %}
+    <h3>Nincs feldolgozatlan tétel</h3>
+    <p>Minden beküldött útiköltség elszámolás fel lett dolgozva.</p>
+    {% else %}
+    <h3>Nincs megjeleníthető tétel</h3>
+    <p>Ebben a hónapban nincs beküldött útiköltség elszámolás.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Approve Modal -->
+<div class="modal" id="approveModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-title">Jóváhagyás</span>
+            <button class="modal-close" onclick="closeModal('approveModal')">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div id="approveModalInfo" style="background: var(--bg-color); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.9rem;">
+            <!-- Info populated by JS -->
+        </div>
+        <div class="form-group">
+            <label>Összeg (Ft) *</label>
+            <input type="number" id="approveAmount" min="0" step="1" placeholder="Összeg Ft-ban..." style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color);">
+            <small style="color: var(--text-secondary); display: block; margin-top: 0.25rem;">Ha autós kiküldetés, add meg a jóváhagyott összeget.</small>
+        </div>
+        <div class="form-group">
+            <label>Megjegyzés (opcionális)</label>
+            <textarea id="approveComment" placeholder="Írd ide a megjegyzésed..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('approveModal')">Mégse</button>
+            <button class="btn btn-primary" onclick="confirmApprove()">
+                <span class="material-icons">check</span>
+                Jóváhagyás
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal" id="rejectModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-title">Elutasítás</span>
+            <button class="modal-close" onclick="closeModal('rejectModal')">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="form-group">
+            <label>Indoklás</label>
+            <textarea id="rejectComment" placeholder="Írd ide az elutasítás okát..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('rejectModal')">Mégse</button>
+            <button class="btn" style="background: var(--danger-color); color: white;" onclick="confirmReject()">
+                <span class="material-icons">close</span>
+                Elutasítás
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Return Modal -->
+<div class="modal" id="returnModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-title">Visszaküldés</span>
+            <button class="modal-close" onclick="closeModal('returnModal')">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <p style="margin-bottom: 1rem; color: var(--text-secondary);">A dokumentum visszaküldésre kerül, és a játékvezető újra feltöltheti.</p>
+        <div class="form-group">
+            <label>Visszaküldés oka *</label>
+            <textarea id="returnComment" placeholder="Írd ide a visszaküldés okát (pl. rossz minőségű kép, nem olvasható, stb.)..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('returnModal')">Mégse</button>
+            <button class="btn" style="background: #f59e0b; color: white;" onclick="confirmReturn()">
+                <span class="material-icons">replay</span>
+                Visszaküldés
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal (Admin only) -->
+{% if is_admin %}
+<div class="modal" id="editModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-title">Szerkesztés</span>
+            <button class="modal-close" onclick="closeModal('editModal')">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div id="editModalInfo" style="background: var(--bg-color); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.9rem;">
+            <!-- Info populated by JS -->
+        </div>
+        <div class="form-group">
+            <label>Státusz *</label>
+            <select id="editStatus" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color);">
+                <option value="pending">Függőben</option>
+                <option value="approved">Jóváhagyva</option>
+                <option value="rejected">Elutasítva</option>
+                <option value="returned">Visszaküldve</option>
+                <option value="declined">Nem igényelt</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Összeg (Ft) *</label>
+            <input type="number" id="editAmount" min="0" step="1" placeholder="Összeg Ft-ban..." style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color);">
+        </div>
+        <div class="form-group">
+            <label>Megjegyzés (opcionális)</label>
+            <textarea id="editComment" placeholder="Írd ide a megjegyzésed..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('editModal')">Mégse</button>
+            <button class="btn btn-primary" onclick="confirmEdit()">
+                <span class="material-icons">save</span>
+                Mentés
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Preview Modal -->
+<div class="modal" id="previewModal">
+    <div class="modal-content preview-modal">
+        <div class="modal-header">
+            <span class="modal-title">Dokumentum megtekintése</span>
+            <button class="modal-close" onclick="closeModal('previewModal')">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div id="previewContent" class="preview-content">
+            <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                <span class="material-icons" style="font-size: 2rem;">hourglass_empty</span>
+                <p>Betöltés...</p>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <a id="downloadLink" href="#" class="btn btn-secondary" target="_blank" style="display: none;">
+                <span class="material-icons">download</span>
+                Letöltés
+            </a>
+            <button class="btn btn-secondary" onclick="closeModal('previewModal')">Bezárás</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentTravelCostId = null;
+let currentYear = {{ selected_year }};
+let currentMonth = {{ selected_month }};
+let currentViewMode = '{{ view_mode }}';
+
+function setViewMode(mode) {
+    currentViewMode = mode;
+    navigateWithFilters();
+}
+
+function changeYear(delta) {
+    currentYear += delta;
+    document.getElementById('current-year').textContent = currentYear;
+    navigateWithFilters();
+}
+
+function selectMonth(month) {
+    currentMonth = month;
+    document.querySelectorAll('.month-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (parseInt(btn.dataset.month) === month) {
+            btn.classList.add('active');
+        }
+    });
+    navigateWithFilters();
+}
+
+function getFilterParams() {
+    const params = new URLSearchParams();
+
+    params.append('view', currentViewMode);
+
+    // Always pass year/month for both views
+    params.append('year', currentYear);
+    params.append('month', currentMonth);
+
+    if (currentViewMode === 'month') {
+        const status = document.getElementById('status')?.value;
+        if (status) params.append('status', status);
+    }
+
+    // Date filters are available for all views
+    const dateFrom = document.getElementById('date_from')?.value;
+    const dateTo = document.getElementById('date_to')?.value;
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+
+    const venue = document.getElementById('venue')?.value;
+    const user = document.getElementById('user')?.value;
+    const competition = document.getElementById('competition')?.value;
+
+    if (venue) params.append('venue', venue);
+    if (user) params.append('user', user);
+    if (competition) params.append('competition', competition);
+
+    return params.toString();
+}
+
+function navigateWithFilters() {
+    window.location.href = '{% url "billing:travel_costs_admin" %}?' + getFilterParams();
+}
+
+function applyFilters() {
+    navigateWithFilters();
+}
+
+function showApproveModal(travelCostId, expenseType, currentAmount, userName) {
+    currentTravelCostId = travelCostId;
+    document.getElementById('approveComment').value = '';
+    document.getElementById('approveAmount').value = currentAmount || '';
+
+    // Build info text
+    const typeLabel = expenseType === 'car' ? 'Autós kiküldetés' : 'Tömegközlekedés';
+    const amountInfo = currentAmount > 0 ? `<br><span style="color: var(--text-secondary);">Igényelt összeg: <strong>${currentAmount} Ft</strong></span>` : '';
+    const infoHtml = `<strong>${userName}</strong><br><span style="color: var(--text-secondary);">${typeLabel}</span>${amountInfo}`;
+    document.getElementById('approveModalInfo').innerHTML = infoHtml;
+
+    document.getElementById('approveModal').classList.add('active');
+}
+
+function showRejectModal(travelCostId) {
+    currentTravelCostId = travelCostId;
+    document.getElementById('rejectComment').value = '';
+    document.getElementById('rejectModal').classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+    if (modalId !== 'previewModal') {
+        currentTravelCostId = null;
+    }
+}
+
+function confirmApprove() {
+    if (!currentTravelCostId) return;
+
+    const comment = document.getElementById('approveComment').value;
+    const amount = document.getElementById('approveAmount').value;
+
+    if (!amount || parseFloat(amount) < 0) {
+        alert('Kérlek add meg az összeget!');
+        return;
+    }
+
+    fetch(`/billing/api/travel-cost/${currentTravelCostId}/approve/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ comment, amount: parseFloat(amount) })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Hiba: ' + data.error);
+        }
+    });
+}
+
+function confirmReject() {
+    if (!currentTravelCostId) return;
+
+    const comment = document.getElementById('rejectComment').value;
+
+    fetch(`/billing/api/travel-cost/${currentTravelCostId}/reject/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ comment })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Hiba: ' + data.error);
+        }
+    });
+}
+
+function showReturnModal(travelCostId) {
+    currentTravelCostId = travelCostId;
+    document.getElementById('returnComment').value = '';
+    document.getElementById('returnModal').classList.add('active');
+}
+
+function confirmReturn() {
+    if (!currentTravelCostId) return;
+
+    const comment = document.getElementById('returnComment').value;
+    if (!comment.trim()) {
+        alert('Kérlek add meg a visszaküldés okát!');
+        return;
+    }
+
+    fetch(`/billing/api/travel-cost/${currentTravelCostId}/return/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ comment })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Hiba: ' + data.error);
+        }
+    });
+}
+
+{% if is_admin %}
+function showEditModal(travelCostId, currentStatus, currentAmount, userName) {
+    currentTravelCostId = travelCostId;
+    document.getElementById('editStatus').value = currentStatus;
+    document.getElementById('editAmount').value = currentAmount || '';
+    document.getElementById('editComment').value = '';
+
+    const statusLabels = {
+        'pending': 'Függőben',
+        'approved': 'Jóváhagyva',
+        'rejected': 'Elutasítva',
+        'returned': 'Visszaküldve',
+        'declined': 'Nem igényelt'
+    };
+    const infoHtml = `<strong>${userName}</strong><br><span style="color: var(--text-secondary);">Jelenlegi státusz: ${statusLabels[currentStatus] || currentStatus}</span>`;
+    document.getElementById('editModalInfo').innerHTML = infoHtml;
+
+    document.getElementById('editModal').classList.add('active');
+}
+
+function confirmEdit() {
+    if (!currentTravelCostId) return;
+
+    const status = document.getElementById('editStatus').value;
+    const amount = document.getElementById('editAmount').value;
+    const comment = document.getElementById('editComment').value;
+
+    if (!amount || parseFloat(amount) < 0) {
+        alert('Kérlek add meg az összeget!');
+        return;
+    }
+
+    fetch(`/billing/api/travel-cost/${currentTravelCostId}/edit/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ status, amount: parseFloat(amount), comment })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Hiba: ' + data.error);
+        }
+    });
+}
+{% endif %}
+
+async function previewFile(travelCostId) {
+    const previewContent = document.getElementById('previewContent');
+    const downloadLink = document.getElementById('downloadLink');
+
+    // Reset content
+    previewContent.innerHTML = `
+        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+            <span class="material-icons" style="font-size: 2rem;">hourglass_empty</span>
+            <p>Betöltés...</p>
+        </div>
+    `;
+    downloadLink.style.display = 'none';
+
+    // Show modal
+    document.getElementById('previewModal').classList.add('active');
+
+    try {
+        const response = await fetch(`/billing/api/travel-cost/${travelCostId}/preview/`);
+        const data = await response.json();
+
+        if (data.success) {
+            // Set download link
+            downloadLink.href = data.file_url;
+            downloadLink.style.display = 'inline-flex';
+
+            // Display content based on type
+            if (data.is_image) {
+                previewContent.innerHTML = `<img src="${data.file_url}" alt="Számla kép">`;
+            } else if (data.is_pdf) {
+                previewContent.innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <span class="material-icons" style="font-size: 4rem; color: #dc2626;">picture_as_pdf</span>
+                        <p style="margin: 1rem 0; color: var(--text-secondary);">PDF dokumentum</p>
+                        <a href="${data.file_url}" target="_blank" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                            <span class="material-icons">open_in_new</span>
+                            Megnyitás új ablakban
+                        </a>
+                    </div>
+                `;
+            } else {
+                previewContent.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 3rem;">description</span>
+                        <p>Ez a fájltípus nem megjeleníthető. Kérlek töltsd le a megtekintéshez.</p>
+                    </div>
+                `;
+            }
+        } else {
+            previewContent.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: var(--danger-color);">
+                    <span class="material-icons" style="font-size: 3rem;">error</span>
+                    <p>${data.error || 'Hiba történt a fájl betöltésekor.'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        previewContent.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: var(--danger-color);">
+                <span class="material-icons" style="font-size: 3rem;">error</span>
+                <p>Hiba történt: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+// Close modal on backdrop click
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('active');
+        }
+    });
+});
+</script>
+{% endblock %}

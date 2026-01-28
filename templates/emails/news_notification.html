@@ -1,0 +1,11 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Új hír - JAR{% endblock %}
+
+{% block header_title %}Új hír jelent meg a hírfolyamban! {{ news.title }}{% endblock %}
+
+{% block content %}
+{{ news.content|safe }}
+
+<p style="margin-top: 24px;">Üdvözlettel,<br>JAR rendszer</p>
+{% endblock %}

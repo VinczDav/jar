@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if team %}Csapat szerkesztése{% else %}Új csapat{% endif %}{% endblock %}
+{% block page_title %}{% if team %}{{ team.name }} szerkesztése{% else %}Új csapat{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        background: var(--card-bg);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .form-card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .form-card-title .material-icons {
+        color: var(--accent-color);
+    }
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+    .form-group label {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    .form-group input,
+    .form-group select {
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .checkbox-group input {
+        width: auto;
+    }
+    .logo-preview {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 0.5rem;
+    }
+    .logo-preview img {
+        width: 64px;
+        height: 64px;
+        object-fit: contain;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+    .alt-name-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: var(--bg-color);
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+    }
+    .alt-name-item .name {
+        flex: 1;
+        font-weight: 500;
+    }
+    .alt-name-item .competition {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .add-alt-form {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+    .add-alt-form input,
+    .add-alt-form select {
+        flex: 1;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+    .btn-icon-small {
+        padding: 0.35rem;
+        background: none;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--text-secondary);
+    }
+    .btn-icon-small:hover {
+        background: #fee2e2;
+        color: var(--danger-color);
+        border-color: var(--danger-color);
+    }
+    .button-group {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="form-card">
+        <div class="form-card-title">
+            <span class="material-icons">info</span>
+            Alapadatok
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="name">Csapat neve *</label>
+                <input type="text" id="name" name="name" value="{{ team.name|default:'' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="short_name">Rövid név</label>
+                <input type="text" id="short_name" name="short_name" value="{{ team.short_name|default:'' }}" placeholder="pl. SZPK">
+            </div>
+            <div class="form-group">
+                <label for="city">Város</label>
+                <input type="text" id="city" name="city" value="{{ team.city|default:'' }}">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-group">
+                    <input type="checkbox" name="is_active" {% if team.is_active or not team %}checked{% endif %}>
+                    Aktív csapat
+                </label>
+            </div>
+            <div class="form-group full-width">
+                <label for="logo">Logó</label>
+                <input type="file" id="logo" name="logo" accept="image/*">
+                {% if team and team.logo %}
+                <div class="logo-preview">
+                    <img src="{{ team.logo.url }}" alt="Jelenlegi logó">
+                    <span style="color: var(--text-secondary);">Jelenlegi logó</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="button-group">
+        <a href="{% url 'matches:teams_list' %}" class="btn btn-secondary">
+            <span class="material-icons">arrow_back</span>
+            Vissza
+        </a>
+        <button type="submit" class="btn btn-primary">
+            <span class="material-icons">save</span>
+            {% if team %}Mentés{% else %}Létrehozás{% endif %}
+        </button>
+    </div>
+</form>
+
+{% if team %}
+<!-- Alternatív nevek -->
+<div class="form-card" style="margin-top: 1.5rem;">
+    <div class="form-card-title">
+        <span class="material-icons">label</span>
+        Alternatív nevek
+    </div>
+
+    <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+        Ha egy csapat más néven szerepel bizonyos bajnokságokban, itt adhatod meg az alternatív neveket.
+    </p>
+
+    {% for alt in team.alternative_names.all %}
+    <div class="alt-name-item">
+        <span class="name">{{ alt.name }}</span>
+        {% if alt.competition %}
+        <span class="competition">{{ alt.competition.short_name }} - {{ alt.competition.name }}</span>
+        {% endif %}
+        <form method="post" action="{% url 'matches:team_delete_alternative' alt.id %}" style="margin: 0;">
+            {% csrf_token %}
+            <button type="submit" class="btn-icon-small" onclick="return confirm('Biztosan törlöd?');">
+                <span class="material-icons" style="font-size: 1rem;">close</span>
+            </button>
+        </form>
+    </div>
+    {% empty %}
+    <p style="color: var(--text-secondary); font-style: italic;">Nincs alternatív név megadva.</p>
+    {% endfor %}
+
+    <form method="post" action="{% url 'matches:team_add_alternative' team.id %}" class="add-alt-form">
+        {% csrf_token %}
+        <input type="text" name="name" placeholder="Alternatív név" required>
+        <select name="competition">
+            <option value="">Minden bajnokság</option>
+            {% for comp in competitions %}
+            <option value="{{ comp.id }}">{{ comp.short_name }} - {{ comp.name }} ({{ comp.season.name }})</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">
+            <span class="material-icons">add</span>
+            Hozzáadás
+        </button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

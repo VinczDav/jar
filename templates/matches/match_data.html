@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+
+{% block title %}Mérkőzés adatok{% endblock %}
+{% block page_title %}Mérkőzés adatok szerkesztése{% endblock %}
+
+{% block extra_css %}
+<style>
+    .data-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 1.5rem;
+    }
+    .data-section {
+        background: var(--card-bg);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .data-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        background: var(--bg-color);
+        border-bottom: 1px solid var(--border-color);
+    }
+    .data-section-title {
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .data-section-title .material-icons {
+        color: var(--accent-color);
+    }
+    .data-section-count {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        background: var(--border-color);
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+    .data-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .data-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .data-item:last-child {
+        border-bottom: none;
+    }
+    .data-item:hover {
+        background: var(--bg-color);
+    }
+    .data-item-info {
+        flex: 1;
+    }
+    .data-item-name {
+        font-weight: 500;
+    }
+    .data-item-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .data-item-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .btn-icon {
+        padding: 0.35rem;
+        background: none;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn-icon:hover {
+        background: var(--bg-color);
+        color: var(--text-primary);
+    }
+    .btn-icon.danger:hover {
+        background: #fee2e2;
+        color: var(--danger-color);
+        border-color: var(--danger-color);
+    }
+    .add-form {
+        padding: 1rem 1.25rem;
+        background: var(--bg-color);
+        border-top: 1px solid var(--border-color);
+    }
+    .add-form-row {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .add-form input,
+    .add-form select {
+        flex: 1;
+        min-width: 120px;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--card-bg);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+    .add-form input:focus,
+    .add-form select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .add-form button {
+        padding: 0.5rem 1rem;
+        white-space: nowrap;
+    }
+    .empty-list {
+        padding: 2rem;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+    .checkbox-label input {
+        width: auto;
+        min-width: auto;
+        flex: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: {% if message.tags == 'success' %}rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);{% elif message.tags == 'error' %}rgba(220, 53, 69, 0.1); border: 1px solid var(--danger-color);{% else %}rgba(23, 162, 184, 0.1); border: 1px solid var(--info-color);{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="data-grid">
+    <!-- Szezonok -->
+    <div class="data-section">
+        <div class="data-section-header">
+            <div class="data-section-title">
+                <span class="material-icons">date_range</span>
+                Szezonok
+            </div>
+            <span class="data-section-count">{{ seasons|length }}</span>
+        </div>
+        <div class="data-list">
+            {% for season in seasons %}
+            <div class="data-item">
+                <div class="data-item-info">
+                    <div class="data-item-name">
+                        {{ season.name }}
+                        {% if season.is_active %}
+                        <span class="badge badge-success" style="font-size: 0.7rem; margin-left: 0.5rem;">Aktív</span>
+                        {% endif %}
+                    </div>
+                    <div class="data-item-meta">{{ season.start_date|date:"Y.m.d" }} - {{ season.end_date|date:"Y.m.d" }}</div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-list">Nincs szezon</div>
+            {% endfor %}
+        </div>
+        <form method="post" action="{% url 'matches:add_season' %}" class="add-form">
+            {% csrf_token %}
+            <div class="add-form-row" style="margin-bottom: 0.5rem;">
+                <input type="text" name="name" placeholder="Szezon neve (pl. 2025/26)" required>
+            </div>
+            <div class="add-form-row" style="margin-bottom: 0.5rem;">
+                <input type="date" name="start_date" required>
+                <input type="date" name="end_date" required>
+            </div>
+            <div class="add-form-row">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_active">
+                    Aktív szezon
+                </label>
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                    Hozzáadás
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bajnokságok -->
+    <div class="data-section">
+        <div class="data-section-header">
+            <div class="data-section-title">
+                <span class="material-icons">emoji_events</span>
+                Bajnokságok
+            </div>
+            <span class="data-section-count">{{ competitions|length }}</span>
+        </div>
+        <div class="data-list">
+            {% for competition in competitions %}
+            <div class="data-item">
+                <div class="data-item-info">
+                    <div class="data-item-name">
+                        {% if competition.short_name %}
+                        <span class="badge" style="margin-right: 0.5rem;">{{ competition.short_name }}</span>
+                        {% endif %}
+                        {{ competition.name }}
+                    </div>
+                    <div class="data-item-meta">
+                        {{ competition.season.name }}
+                        {% if competition.phases.count > 0 %}
+                        | {{ competition.phases.count }} szakasz
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-list">Nincs bajnokság</div>
+            {% endfor %}
+        </div>
+        <form method="post" action="{% url 'matches:add_competition' %}" class="add-form">
+            {% csrf_token %}
+            <div class="add-form-row" style="margin-bottom: 0.5rem;">
+                <input type="text" name="name" placeholder="Bajnokság neve" required>
+                <input type="text" name="short_name" placeholder="Rövid név" style="max-width: 100px;">
+            </div>
+            <div class="add-form-row">
+                <select name="season" required>
+                    <option value="">Válassz szezont...</option>
+                    {% for season in seasons %}
+                    <option value="{{ season.id }}">{{ season.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                    Hozzáadás
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Szakaszok -->
+    <div class="data-section">
+        <div class="data-section-header">
+            <div class="data-section-title">
+                <span class="material-icons">format_list_numbered</span>
+                Szakaszok
+            </div>
+        </div>
+        <div class="data-list">
+            {% for competition in competitions %}
+                {% for phase in competition.phases.all %}
+                <div class="data-item">
+                    <div class="data-item-info">
+                        <div class="data-item-name">{{ phase.name }}</div>
+                        <div class="data-item-meta">{{ competition.short_name }} - {{ competition.name }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% empty %}
+            <div class="empty-list">Nincs szakasz</div>
+            {% endfor %}
+        </div>
+        <form method="post" action="{% url 'matches:add_phase' %}" class="add-form">
+            {% csrf_token %}
+            <div class="add-form-row">
+                <select name="competition" required>
+                    <option value="">Válassz bajnokságot...</option>
+                    {% for competition in competitions %}
+                    <option value="{{ competition.id }}">{{ competition.short_name }} - {{ competition.name }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="name" placeholder="Szakasz neve" required>
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Csapatok -->
+    <div class="data-section">
+        <div class="data-section-header">
+            <div class="data-section-title">
+                <span class="material-icons">groups</span>
+                Csapatok
+            </div>
+            <span class="data-section-count">{{ teams|length }}</span>
+        </div>
+        <div class="data-list">
+            {% for team in teams %}
+            <div class="data-item">
+                <div class="data-item-info">
+                    <div class="data-item-name">
+                        {{ team.name }}
+                        {% if team.short_name %}
+                        <span style="color: var(--text-secondary);">({{ team.short_name }})</span>
+                        {% endif %}
+                    </div>
+                    {% if team.city %}
+                    <div class="data-item-meta">{{ team.city }}</div>
+                    {% endif %}
+                </div>
+                <div class="data-item-actions">
+                    <form method="post" action="{% url 'matches:delete_team' team.id %}" style="margin: 0;" onsubmit="return confirm('Biztosan törlöd a csapatot?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-icon danger">
+                            <span class="material-icons" style="font-size: 1rem;">delete</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-list">Nincs csapat</div>
+            {% endfor %}
+        </div>
+        <form method="post" action="{% url 'matches:add_team' %}" class="add-form">
+            {% csrf_token %}
+            <div class="add-form-row">
+                <input type="text" name="name" placeholder="Csapat neve" required>
+                <input type="text" name="short_name" placeholder="Rövid" style="max-width: 80px;">
+                <input type="text" name="city" placeholder="Város" style="max-width: 100px;">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Helyszínek -->
+    <div class="data-section">
+        <div class="data-section-header">
+            <div class="data-section-title">
+                <span class="material-icons">location_on</span>
+                Helyszínek
+            </div>
+            <span class="data-section-count">{{ venues|length }}</span>
+        </div>
+        <div class="data-list">
+            {% for venue in venues %}
+            <div class="data-item">
+                <div class="data-item-info">
+                    <div class="data-item-name">{{ venue.name }}</div>
+                    <div class="data-item-meta">
+                        {{ venue.city }}{% if venue.address %}, {{ venue.address }}{% endif %}
+                    </div>
+                </div>
+                <div class="data-item-actions">
+                    <form method="post" action="{% url 'matches:delete_venue' venue.id %}" style="margin: 0;" onsubmit="return confirm('Biztosan törlöd a helyszínt?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-icon danger">
+                            <span class="material-icons" style="font-size: 1rem;">delete</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-list">Nincs helyszín</div>
+            {% endfor %}
+        </div>
+        <form method="post" action="{% url 'matches:add_venue' %}" class="add-form">
+            {% csrf_token %}
+            <div class="add-form-row">
+                <input type="text" name="name" placeholder="Helyszín neve" required>
+                <input type="text" name="city" placeholder="Város" required>
+            </div>
+            <div class="add-form-row" style="margin-top: 0.5rem;">
+                <input type="text" name="address" placeholder="Cím (opcionális)">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                    Hozzáadás
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

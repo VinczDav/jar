@@ -1,0 +1,865 @@
+{% extends 'base.html' %}
+
+{% block title %}EFO Bejelentés{% endblock %}
+{% block page_title %}EFO Bejelentés{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        background: var(--card-bg);
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        align-items: flex-end;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .filter-group label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    .filter-group input,
+    .filter-group select {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        min-width: 140px;
+    }
+    .filter-group input[type="date"] {
+        min-width: 130px;
+    }
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: auto;
+    }
+    @media (max-width: 768px) {
+        .filter-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .filter-group input,
+        .filter-group select {
+            width: 100%;
+        }
+        .filter-actions {
+            margin-left: 0;
+            margin-top: 0.5rem;
+        }
+    }
+
+    .declaration-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    @media (max-width: 1200px) {
+        .declaration-container {
+            grid-template-columns: 1fr;
+        }
+    }
+    .declaration-column {
+        background: var(--card-bg);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .column-header {
+        padding: 1rem 1.25rem;
+        font-weight: 600;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border-color);
+        cursor: pointer;
+    }
+    .column-header.pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .column-header.declared {
+        background: #dcfce7;
+        color: #166534;
+    }
+    .column-header.hidden {
+        background: #e5e7eb;
+        color: #374151;
+    }
+    .column-count {
+        background: rgba(0,0,0,0.1);
+        padding: 0.25rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+    }
+    .declaration-list {
+        padding: 0.5rem;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    .declaration-item {
+        background: var(--bg-color);
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        overflow: hidden;
+    }
+    .declaration-item.modified {
+        border: 2px solid #ef4444;
+    }
+    .declaration-item.urgent {
+        border: 2px solid #eab308;
+        background: #fefce8;
+    }
+    .declaration-item.modified.urgent {
+        border: 2px solid #ef4444;
+        background: #fef2f2;
+    }
+    .item-header {
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+    }
+    .item-header:hover {
+        background: var(--card-bg);
+    }
+    .match-info {
+        flex: 1;
+    }
+    .match-teams {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+    .match-meta {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .referee-name {
+        font-size: 0.85rem;
+        color: var(--primary-color);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .referee-name:hover {
+        text-decoration: underline;
+    }
+    .fee-amount {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        padding: 0.2rem 0.5rem;
+        background: var(--bg-color);
+        border-radius: 4px;
+        white-space: nowrap;
+    }
+    .item-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .btn-arrow {
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    .btn-arrow.to-declared {
+        background: #10b981;
+        color: white;
+    }
+    .btn-arrow.to-declared:hover {
+        background: #059669;
+    }
+    .btn-arrow.to-pending {
+        background: #f59e0b;
+        color: white;
+    }
+    .btn-arrow.to-pending:hover {
+        background: #d97706;
+    }
+    .btn-arrow.to-hide {
+        background: #6b7280;
+        color: white;
+    }
+    .btn-arrow.to-hide:hover {
+        background: #4b5563;
+    }
+    .btn-arrow.to-delete {
+        background: #ef4444;
+        color: white;
+    }
+    .btn-arrow.to-delete:hover {
+        background: #dc2626;
+    }
+    .btn-arrow .material-icons {
+        font-size: 1.1rem;
+    }
+    .changes-badge {
+        background: #ef4444;
+        color: white;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    .changes-badge.resigned {
+        background: #8b5cf6;
+    }
+    .urgent-badge {
+        background: #eab308;
+        color: white;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    .changes-detail {
+        padding: 0.75rem 1rem;
+        background: #fef2f2;
+        border-top: 1px solid #fecaca;
+        font-size: 0.8rem;
+        color: #991b1b;
+    }
+    .changes-detail strong {
+        font-weight: 600;
+        display: block;
+        margin-bottom: 0.35rem;
+    }
+    .change-line {
+        margin-bottom: 0.25rem;
+    }
+    .change-line:last-child {
+        margin-bottom: 0;
+    }
+    .change-item {
+        display: block;
+        padding-left: 0.5rem;
+    }
+    .change-item.removed {
+        color: #dc2626;
+    }
+    .change-item.added {
+        color: #059669;
+    }
+    .empty-column {
+        padding: 2rem;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+    .empty-column .material-icons {
+        font-size: 2.5rem;
+        opacity: 0.5;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Hidden section - collapsible */
+    .hidden-section {
+        margin-top: 1.5rem;
+    }
+    .hidden-section .declaration-column {
+        margin-bottom: 0;
+    }
+    .hidden-section .declaration-list {
+        display: none;
+    }
+    .hidden-section.expanded .declaration-list {
+        display: block;
+    }
+    .column-header .toggle-icon {
+        transition: transform 0.2s;
+    }
+    .hidden-section.expanded .column-header .toggle-icon {
+        transform: rotate(180deg);
+    }
+
+    /* User details modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal.active {
+        display: flex;
+    }
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .modal-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-secondary);
+    }
+    .user-data-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .user-data-row:last-child {
+        border-bottom: none;
+    }
+    .user-data-label {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+    .user-data-value {
+        font-weight: 500;
+    }
+
+    /* Dark mode styles */
+    [data-theme="dark"] .column-header.pending {
+        background: #78350f;
+        color: #fef3c7;
+    }
+    [data-theme="dark"] .column-header.declared {
+        background: #14532d;
+        color: #dcfce7;
+    }
+    [data-theme="dark"] .column-header.hidden {
+        background: #374151;
+        color: #e5e7eb;
+    }
+    [data-theme="dark"] .column-count {
+        background: rgba(255,255,255,0.15);
+    }
+    [data-theme="dark"] .declaration-item {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+    }
+    [data-theme="dark"] .declaration-item.urgent {
+        background: #422006;
+        border-color: #a16207;
+    }
+    [data-theme="dark"] .declaration-item.modified {
+        border-color: #dc2626;
+    }
+    [data-theme="dark"] .declaration-item.modified.urgent {
+        background: #450a0a;
+        border-color: #dc2626;
+    }
+    [data-theme="dark"] .item-header:hover {
+        background: rgba(255,255,255,0.05);
+    }
+    [data-theme="dark"] .match-teams {
+        color: var(--text-primary);
+    }
+    [data-theme="dark"] .referee-name {
+        color: var(--accent-color);
+    }
+    [data-theme="dark"] .fee-amount {
+        background: var(--bg-color);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+    }
+    [data-theme="dark"] .changes-detail {
+        background: #450a0a;
+        border-color: #7f1d1d;
+        color: #fca5a5;
+    }
+    [data-theme="dark"] .changes-detail strong {
+        color: #fecaca;
+    }
+    [data-theme="dark"] .change-item.removed {
+        color: #f87171;
+    }
+    [data-theme="dark"] .change-item.added {
+        color: #4ade80;
+    }
+    [data-theme="dark"] .urgent-badge {
+        background: #a16207;
+        color: #fef3c7;
+    }
+    [data-theme="dark"] .changes-badge {
+        background: #b91c1c;
+        color: #fef2f2;
+    }
+    [data-theme="dark"] .changes-badge.resigned {
+        background: #6d28d9;
+        color: #ede9fe;
+    }
+    [data-theme="dark"] .empty-column {
+        color: var(--text-secondary);
+    }
+    [data-theme="dark"] .filter-group select option {
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Filter Bar -->
+<form class="filter-bar" method="get">
+    <div class="filter-group">
+        <label for="date_from">Dátum (tól)</label>
+        <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+    </div>
+    <div class="filter-group">
+        <label for="date_to">Dátum (ig)</label>
+        <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+    </div>
+    <div class="filter-group">
+        <label for="venue">Helyszín</label>
+        <select id="venue" name="venue">
+            <option value="">Mind</option>
+            {% for venue in venues %}
+            <option value="{{ venue.id }}" {% if selected_venue == venue.id|stringformat:"s" %}selected{% endif %}>{{ venue.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="user">Játékvezető</label>
+        <select id="user" name="user">
+            <option value="">Mind</option>
+            {% for u in users_with_type %}
+            <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"s" %}selected{% endif %}>{{ u.last_name }} {{ u.first_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-actions">
+        <button type="submit" class="btn btn-primary btn-sm">
+            <span class="material-icons">filter_list</span>
+            Szűrés
+        </button>
+        <a href="{% if declaration_type == 'efo' %}{% url 'billing:efo' %}{% else %}{% url 'billing:ekho' %}{% endif %}" class="btn btn-secondary btn-sm">
+            <span class="material-icons">clear</span>
+            Törlés
+        </a>
+    </div>
+</form>
+
+<div class="declaration-container">
+    <!-- Pending Column (including modified) -->
+    <div class="declaration-column">
+        <div class="column-header pending">
+            <span>
+                <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">pending_actions</span>
+                Bejelentésre vár
+            </span>
+            <span class="column-count">{{ pending_total_count }}</span>
+        </div>
+        <div class="declaration-list">
+            {% for item in modified_items %}
+            {% with match=item.assignment.match|default:item.declaration.match user=item.assignment.user|default:item.declaration.user %}
+            <div class="declaration-item modified {% if item.is_urgent %}urgent{% endif %}" data-declaration-id="{{ item.declaration.id }}">
+                <div class="item-header">
+                    <div class="match-info">
+                        <div class="match-teams">
+                            {{ match.home_team.name|default:"TBD" }} - {{ match.away_team.name|default:"TBD" }}
+                        </div>
+                        <div class="match-meta">
+                            <span>{{ match.date|date:"Y.m.d" }}</span>
+                            {% if match.time %}<span>{{ match.time|time:"H:i" }}{% if match.calculated_duration_minutes %}, {{ match.calculated_duration_minutes }} perc{% endif %}</span>{% endif %}
+                            <span>{{ match.venue.name|default:"-" }}</span>
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        {% if item.is_urgent %}<span class="urgent-badge">5 NAPON BELÜL</span>{% endif %}
+                        <span class="changes-badge {% if item.is_resigned %}resigned{% endif %}">{% if item.is_orphaned %}TÖRÖLVE{% elif item.is_resigned %}LEMONDTA{% else %}MÓDOSÍTVA{% endif %}</span>
+                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">{{ item.gross_amount|floatformat:0 }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">{{ item.fee_amount|floatformat:0 }} Ft</span>{% endif %}
+                        <span class="referee-name" onclick="showUserDetails({{ user.id }})">
+                            {{ user.last_name }} {{ user.first_name }}
+                            <span class="material-icons" style="font-size: 0.9rem;">info</span>
+                        </span>
+                        {% if not item.is_orphaned and not item.is_resigned %}
+                        <button type="button" class="btn-arrow to-declared" onclick="declareSingle({{ item.declaration.id }})" title="Bejelentés">
+                            <span class="material-icons">arrow_forward</span>
+                        </button>
+                        {% endif %}
+                        <button type="button" class="btn-arrow to-hide" onclick="hideDeclaration({{ item.declaration.id }})" title="Elrejtés">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+                </div>
+                {% if item.declaration.changes_detected %}
+                <div class="changes-detail">
+                    <strong>VÁLTOZÁS:</strong>
+                    {% for change in item.declaration.changes_detected %}
+                    <div class="change-line">
+                        {% if change.referee_changes %}
+                            {% for rc in change.referee_changes %}
+                            <span class="change-item {% if rc.type == 'removed' %}removed{% else %}added{% endif %}">
+                                {{ rc.display }}
+                            </span>
+                            {% endfor %}
+                        {% elif change.type == 'removed' or change.type == 'resigned' %}
+                            <span class="change-item removed">{{ change.display }}</span>
+                        {% else %}
+                            <span class="change-item">{{ change.display }}</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endwith %}
+            {% endfor %}
+            {% for item in pending_items %}
+            <div class="declaration-item {% if item.is_urgent %}urgent{% endif %}" data-declaration-id="{{ item.declaration.id }}">
+                <div class="item-header">
+                    <div class="match-info">
+                        <div class="match-teams">
+                            {{ item.assignment.match.home_team.name|default:"TBD" }} - {{ item.assignment.match.away_team.name|default:"TBD" }}
+                        </div>
+                        <div class="match-meta">
+                            <span>{{ item.assignment.match.date|date:"Y.m.d" }}</span>
+                            {% if item.assignment.match.time %}<span>{{ item.assignment.match.time|time:"H:i" }}{% if item.assignment.match.calculated_duration_minutes %}, {{ item.assignment.match.calculated_duration_minutes }} perc{% endif %}</span>{% endif %}
+                            <span>{{ item.assignment.match.venue.name|default:"-" }}</span>
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        {% if item.is_urgent %}<span class="urgent-badge">5 NAPON BELÜL</span>{% endif %}
+                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">{{ item.gross_amount|floatformat:0 }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">{{ item.fee_amount|floatformat:0 }} Ft</span>{% endif %}
+                        <span class="referee-name" onclick="showUserDetails({{ item.assignment.user.id }})">
+                            {{ item.assignment.user.last_name }} {{ item.assignment.user.first_name }}
+                            <span class="material-icons" style="font-size: 0.9rem;">info</span>
+                        </span>
+                        <button type="button" class="btn-arrow to-declared" onclick="declareSingle({{ item.declaration.id }})" title="Bejelentés">
+                            <span class="material-icons">arrow_forward</span>
+                        </button>
+                        <button type="button" class="btn-arrow to-hide" onclick="hideDeclaration({{ item.declaration.id }})" title="Elrejtés">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            {% if not modified_items %}
+            <div class="empty-column">
+                <span class="material-icons">check_circle</span>
+                <p>Nincs bejelentésre váró tétel</p>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Declared Column -->
+    <div class="declaration-column">
+        <div class="column-header declared">
+            <span>
+                <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">task_alt</span>
+                Bejelentett
+            </span>
+            <span class="column-count">{{ declared_items|length }}</span>
+        </div>
+        <div class="declaration-list">
+            {% for item in declared_items %}
+            {% with match=item.assignment.match|default:item.declaration.match user=item.assignment.user|default:item.declaration.user %}
+            <div class="declaration-item" data-declaration-id="{{ item.declaration.id }}">
+                <div class="item-header">
+                    <div class="match-info">
+                        <div class="match-teams">
+                            {{ match.home_team.name|default:"TBD" }} - {{ match.away_team.name|default:"TBD" }}
+                        </div>
+                        <div class="match-meta">
+                            <span>{{ match.date|date:"Y.m.d" }}</span>
+                            {% if match.time %}<span>{{ match.time|time:"H:i" }}{% if match.calculated_duration_minutes %}, {{ match.calculated_duration_minutes }} perc{% endif %}</span>{% endif %}
+                            <span>{{ match.venue.name|default:"-" }}</span>
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">{{ item.gross_amount|floatformat:0 }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">{{ item.fee_amount|floatformat:0 }} Ft</span>{% endif %}
+                        <span class="referee-name" onclick="showUserDetails({{ user.id }})">
+                            {{ user.last_name }} {{ user.first_name }}
+                            <span class="material-icons" style="font-size: 0.9rem;">info</span>
+                        </span>
+                        <button type="button" class="btn-arrow to-pending" onclick="undeclareSingle({{ item.declaration.id }})" title="Visszavonás">
+                            <span class="material-icons">arrow_back</span>
+                        </button>
+                        <button type="button" class="btn-arrow to-hide" onclick="hideDeclaration({{ item.declaration.id }})" title="Elrejtés">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endwith %}
+            {% empty %}
+            <div class="empty-column">
+                <span class="material-icons">pending</span>
+                <p>Még nincs bejelentett tétel</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Section (collapsible) -->
+{% if hidden_items %}
+<div class="hidden-section" id="hiddenSection">
+    <div class="declaration-column">
+        <div class="column-header hidden" onclick="toggleHiddenSection()">
+            <span>
+                <span class="material-icons" style="vertical-align: middle; margin-right: 0.5rem;">visibility_off</span>
+                Elrejtett
+            </span>
+            <span style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="column-count">{{ hidden_items|length }}</span>
+                <span class="material-icons toggle-icon">expand_more</span>
+            </span>
+        </div>
+        <div class="declaration-list">
+            {% for item in hidden_items %}
+            {% with match=item.assignment.match|default:item.declaration.match user=item.assignment.user|default:item.declaration.user %}
+            <div class="declaration-item {% if item.declaration.status == 'modified' %}modified{% endif %}" data-declaration-id="{{ item.declaration.id }}">
+                <div class="item-header">
+                    <div class="match-info">
+                        <div class="match-teams">
+                            {{ match.home_team.name|default:"TBD" }} - {{ match.away_team.name|default:"TBD" }}
+                        </div>
+                        <div class="match-meta">
+                            <span>{{ match.date|date:"Y.m.d" }}</span>
+                            {% if match.time %}<span>{{ match.time|time:"H:i" }}{% if match.calculated_duration_minutes %}, {{ match.calculated_duration_minutes }} perc{% endif %}</span>{% endif %}
+                            <span>{{ match.venue.name|default:"-" }}</span>
+                        </div>
+                    </div>
+                    <div class="item-actions">
+                        {% if item.declaration.status == 'modified' %}<span class="changes-badge">MÓDOSÍTVA</span>{% endif %}
+                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">{{ item.gross_amount|floatformat:0 }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">{{ item.fee_amount|floatformat:0 }} Ft</span>{% endif %}
+                        <span class="referee-name" onclick="showUserDetails({{ user.id }})">
+                            {{ user.last_name }} {{ user.first_name }}
+                            <span class="material-icons" style="font-size: 0.9rem;">info</span>
+                        </span>
+                        <button type="button" class="btn-arrow to-pending" onclick="unhideDeclaration({{ item.declaration.id }})" title="Visszaállítás">
+                            <span class="material-icons">undo</span>
+                        </button>
+                        {% if item.assignment %}
+                        <button type="button" class="btn-arrow to-declared" onclick="declareSingle({{ item.declaration.id }})" title="Bejelentés">
+                            <span class="material-icons">arrow_forward</span>
+                        </button>
+                        {% endif %}
+                        <button type="button" class="btn-arrow to-delete" onclick="deleteDeclaration({{ item.declaration.id }})" title="Végleges törlés">
+                            <span class="material-icons">delete_forever</span>
+                        </button>
+                    </div>
+                </div>
+                {% if item.declaration.changes_detected %}
+                <div class="changes-detail">
+                    <strong>VÁLTOZÁS:</strong>
+                    {% for change in item.declaration.changes_detected %}
+                    <div class="change-line">
+                        {% if change.referee_changes %}
+                            {% for rc in change.referee_changes %}
+                            <span class="change-item {% if rc.type == 'removed' %}removed{% else %}added{% endif %}">
+                                {{ rc.display }}
+                            </span>
+                            {% endfor %}
+                        {% elif change.type == 'removed' or change.type == 'resigned' %}
+                            <span class="change-item removed">{{ change.display }}</span>
+                        {% else %}
+                            <span class="change-item">{{ change.display }}</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endwith %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- User Details Modal -->
+<div class="modal" id="userModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-title" id="userModalTitle">Felhasználó adatai</span>
+            <button class="modal-close" onclick="closeModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div id="userModalContent">
+            <!-- Content loaded dynamically -->
+        </div>
+    </div>
+</div>
+
+<script>
+// User data for modal
+const usersData = {
+    {% for user in users_with_type %}
+    {{ user.id }}: {
+        name: "{{ user.last_name }} {{ user.first_name }}",
+        email: "{{ user.email|default:'-' }}",
+        phone: "{{ user.phone|default:'-' }}",
+        taj: "{{ user.taj_number|default:'-' }}",
+        tax_id: "{{ user.tax_id|default:'-' }}",
+        bank_account: "{{ user.bank_account|default:'-' }}",
+        birth_date: "{{ user.birth_date|date:'Y.m.d'|default:'-' }}",
+        birth_place: "{{ user.birth_place|default:'-' }}",
+        mother_name: "{{ user.mother_maiden_name|default:'-' }}",
+        address: "{{ user.postal_code }} {{ user.city }}, {{ user.address }}".trim() || "-"
+    },
+    {% endfor %}
+};
+
+function showUserDetails(userId) {
+    const user = usersData[userId];
+    if (!user) return;
+
+    document.getElementById('userModalTitle').textContent = user.name + ' adatai';
+    document.getElementById('userModalContent').innerHTML = `
+        <div class="user-data-row"><span class="user-data-label">E-mail</span><span class="user-data-value">${user.email}</span></div>
+        <div class="user-data-row"><span class="user-data-label">Telefon</span><span class="user-data-value">${user.phone}</span></div>
+        <div class="user-data-row"><span class="user-data-label">TAJ szám</span><span class="user-data-value">${user.taj}</span></div>
+        <div class="user-data-row"><span class="user-data-label">Adószám</span><span class="user-data-value">${user.tax_id}</span></div>
+        <div class="user-data-row"><span class="user-data-label">Bankszámla</span><span class="user-data-value">${user.bank_account}</span></div>
+        <div class="user-data-row"><span class="user-data-label">Születési dátum</span><span class="user-data-value">${user.birth_date}</span></div>
+        <div class="user-data-row"><span class="user-data-label">Születési hely</span><span class="user-data-value">${user.birth_place}</span></div>
+        <div class="user-data-row"><span class="user-data-label">Anyja neve</span><span class="user-data-value">${user.mother_name}</span></div>
+        <div class="user-data-row"><span class="user-data-label">Lakcím</span><span class="user-data-value">${user.address}</span></div>
+    `;
+    document.getElementById('userModal').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('userModal').classList.remove('active');
+}
+
+function toggleHiddenSection() {
+    document.getElementById('hiddenSection').classList.toggle('expanded');
+}
+
+function declareSingle(declarationId) {
+    fetch(`/billing/api/declaration/${declarationId}/declare/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Hiba: ' + data.error);
+        }
+    });
+}
+
+function undeclareSingle(declarationId) {
+    fetch(`/billing/api/declaration/${declarationId}/undeclare/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Hiba: ' + data.error);
+        }
+    });
+}
+
+function hideDeclaration(declarationId) {
+    fetch(`/billing/api/declaration/${declarationId}/hide/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Hiba: ' + data.error);
+        }
+    });
+}
+
+function unhideDeclaration(declarationId) {
+    fetch(`/billing/api/declaration/${declarationId}/unhide/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Hiba: ' + data.error);
+        }
+    });
+}
+
+function deleteDeclaration(declarationId) {
+    if (!confirm('Biztosan véglegesen törölni szeretnéd ezt a bejelentést? Ez a művelet nem vonható vissza.')) {
+        return;
+    }
+    fetch(`/billing/api/declaration/${declarationId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Hiba: ' + data.error);
+        }
+    });
+}
+</script>
+{% endblock %}

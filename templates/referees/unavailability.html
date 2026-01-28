@@ -1,0 +1,543 @@
+{% extends 'base.html' %}
+
+{% block title %}Szabadságaim{% endblock %}
+{% block page_title %}Szabadságaim{% endblock %}
+
+{% block extra_css %}
+<style>
+    .unavailability-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        align-items: stretch;
+        overflow: hidden;
+    }
+    .unavailability-grid > .card {
+        height: 100%;
+        overflow: hidden;
+    }
+    .calendar-wrapper {
+        padding: 0.75rem;
+    }
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    .calendar-header h4 {
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    .calendar-nav {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 1px;
+    }
+    .calendar-day-header {
+        text-align: center;
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.35rem;
+        color: var(--text-secondary);
+    }
+    .calendar-day {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        border-radius: 0.25rem;
+        position: relative;
+    }
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: auto;
+    }
+    .pagination-btn {
+        padding: 0.35rem 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: var(--card-bg);
+        color: var(--text-color);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .pagination-btn:hover:not(:disabled) {
+        background: var(--bg-color);
+    }
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .pagination-btn .material-icons {
+        font-size: 1rem;
+    }
+    .pagination-info {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        min-width: 60px;
+        text-align: center;
+    }
+    .calendar-day.other-month {
+        color: var(--text-secondary);
+        opacity: 0.5;
+    }
+    .calendar-day.today {
+        font-weight: 700;
+        border: 2px solid var(--primary-color);
+    }
+    .calendar-day.unavailable {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .unavailability-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 100%;
+        overflow: hidden;
+    }
+    .unavailability-list {
+        padding: 1rem;
+        flex: 1 1 auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    .unavailability-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: var(--bg-color);
+        border-radius: 0.5rem;
+        margin-bottom: 0.5rem;
+        gap: 0.5rem;
+        overflow: hidden;
+    }
+    .unavailability-item:last-child {
+        margin-bottom: 0;
+    }
+    .unavailability-info {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+    }
+    .unavailability-dates {
+        font-size: 0.875rem;
+    }
+    .unavailability-reason {
+        font-size: 0.75rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+        color: var(--text-secondary);
+    }
+    .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+    }
+    .modal-content {
+        position: relative;
+        background: var(--card-bg);
+        border-radius: 0.75rem;
+        width: 100%;
+        max-width: 400px;
+        padding: 1.5rem;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    .form-group label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+    .form-control {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        background: var(--card-bg);
+        color: var(--text-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="unavailability-grid">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Naptár</h3>
+            <button class="btn btn-primary" onclick="openAddModal()">
+                <span class="material-icons">add</span>
+                Szabadság felvétele
+            </button>
+        </div>
+
+        <div class="calendar-wrapper">
+            <div class="calendar-header">
+                <button class="btn btn-secondary btn-sm" onclick="changeMonth(-1)">
+                    <span class="material-icons">chevron_left</span>
+                </button>
+                <h4 id="calendar-title"></h4>
+                <button class="btn btn-secondary btn-sm" onclick="changeMonth(1)">
+                    <span class="material-icons">chevron_right</span>
+                </button>
+            </div>
+            <div class="calendar-grid" id="calendar-grid">
+                <!-- Days will be rendered by JS -->
+            </div>
+        </div>
+    </div>
+
+    <div class="card unavailability-card">
+        <div class="card-header">
+            <h3 class="card-title">Bejelentett szabadságok</h3>
+        </div>
+
+        <div class="unavailability-list" id="unavailability-list">
+            {% if unavailabilities %}
+            {% for unavail in unavailabilities %}
+            <div class="unavailability-item" id="unavail-{{ unavail.id }}" data-id="{{ unavail.id }}">
+                <div class="unavailability-info">
+                    <div class="unavailability-dates">
+                        {{ unavail.start_date|date:"Y. m. d." }} 00:00 - {{ unavail.end_date|date:"Y. m. d." }} 23:59
+                    </div>
+                    {% if unavail.reason %}
+                    <div class="unavailability-reason">| {{ unavail.reason }}</div>
+                    {% endif %}
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="deleteUnavailability({{ unavail.id }})" title="Törlés">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--text-secondary);" id="no-unavailabilities">
+                <span class="material-icons" style="font-size: 2rem; opacity: 0.5;">event_busy</span>
+                <p>Nincs bejelentett szabadság</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="pagination" id="pagination">
+            <button class="pagination-btn" onclick="prevPage()" id="prev-btn">
+                <span class="material-icons">chevron_left</span>
+            </button>
+            <span class="pagination-info" id="page-info">1 / 1</span>
+            <button class="pagination-btn" onclick="nextPage()" id="next-btn">
+                <span class="material-icons">chevron_right</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Unavailability Modal -->
+<div id="add-modal" class="modal" style="display: none;">
+    <div class="modal-backdrop" onclick="closeAddModal()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Szabadság felvétele</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeAddModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <form id="add-form" onsubmit="submitUnavailability(event)">
+            <div class="form-group">
+                <label for="start-date">Kezdő dátum</label>
+                <input type="date" id="start-date" name="start_date" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="end-date">Záró dátum</label>
+                <input type="date" id="end-date" name="end_date" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="reason">Megjegyzés (opcionális)</label>
+                <input type="text" id="reason" name="reason" class="form-control" placeholder="pl. Nyaralás">
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Mégse</button>
+                <button type="submit" class="btn btn-primary">Mentés</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const MONTH_NAMES = [
+    'Január', 'Február', 'Március', 'Április', 'Május', 'Június',
+    'Július', 'Augusztus', 'Szeptember', 'Október', 'November', 'December'
+];
+const DAY_NAMES = ['H', 'K', 'Sze', 'Cs', 'P', 'Szo', 'V'];
+
+let currentYear = {{ current_year }};
+let currentMonth = {{ current_month }};
+
+// Unavailability data from server - parse as local dates to avoid timezone issues
+const unavailabilities = [
+    {% for unavail in unavailabilities %}
+    {
+        id: {{ unavail.id }},
+        start: new Date({{ unavail.start_date|date:"Y" }}, {{ unavail.start_date|date:"n" }} - 1, {{ unavail.start_date|date:"j" }}),
+        end: new Date({{ unavail.end_date|date:"Y" }}, {{ unavail.end_date|date:"n" }} - 1, {{ unavail.end_date|date:"j" }})
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+function renderCalendar() {
+    const grid = document.getElementById('calendar-grid');
+    const title = document.getElementById('calendar-title');
+
+    title.textContent = `${currentYear}. ${MONTH_NAMES[currentMonth - 1]}`;
+
+    // Clear grid
+    grid.innerHTML = '';
+
+    // Add day headers (Monday first)
+    DAY_NAMES.forEach(day => {
+        const header = document.createElement('div');
+        header.className = 'calendar-day-header';
+        header.textContent = day;
+        grid.appendChild(header);
+    });
+
+    // Get first day of month
+    const firstDay = new Date(currentYear, currentMonth - 1, 1);
+    // Adjust to Monday-first week (0=Mon, 6=Sun)
+    let startDay = firstDay.getDay() - 1;
+    if (startDay < 0) startDay = 6;
+
+    // Get days in month
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+    // Get today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Fill in previous month days
+    const prevMonthDays = new Date(currentYear, currentMonth - 1, 0).getDate();
+    for (let i = startDay - 1; i >= 0; i--) {
+        const day = document.createElement('div');
+        day.className = 'calendar-day other-month';
+        day.textContent = prevMonthDays - i;
+        grid.appendChild(day);
+    }
+
+    // Fill in current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+        const day = document.createElement('div');
+        day.className = 'calendar-day';
+
+        const date = new Date(currentYear, currentMonth - 1, d);
+
+        // Check if today
+        if (date.getTime() === today.getTime()) {
+            day.classList.add('today');
+        }
+
+        // Check if unavailable
+        for (const unavail of unavailabilities) {
+            if (date >= unavail.start && date <= unavail.end) {
+                day.classList.add('unavailable');
+                break;
+            }
+        }
+
+        day.textContent = d;
+        grid.appendChild(day);
+    }
+
+    // Fill in next month days
+    const totalCells = grid.children.length;
+    const remainingCells = 42 - totalCells; // 6 weeks
+    for (let i = 1; i <= remainingCells && i <= 14; i++) {
+        const day = document.createElement('div');
+        day.className = 'calendar-day other-month';
+        day.textContent = i;
+        grid.appendChild(day);
+    }
+}
+
+function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 12) {
+        currentMonth = 1;
+        currentYear++;
+    } else if (currentMonth < 1) {
+        currentMonth = 12;
+        currentYear--;
+    }
+    renderCalendar();
+}
+
+function openAddModal() {
+    document.getElementById('add-modal').style.display = 'flex';
+}
+
+function closeAddModal() {
+    document.getElementById('add-modal').style.display = 'none';
+}
+
+async function submitUnavailability(event) {
+    event.preventDefault();
+
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    const reason = document.getElementById('reason').value;
+
+    try {
+        const response = await fetch('{% url "referees:add_unavailability" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                start_date: startDate,
+                end_date: endDate,
+                reason: reason
+            })
+        });
+
+        if (response.ok) {
+            location.reload();
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Hiba történt');
+        }
+    } catch (error) {
+        alert('Hiba történt: ' + error.message);
+    }
+}
+
+async function deleteUnavailability(id) {
+    if (!confirm('Biztosan törölni szeretnéd ezt a szabadságot?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/referees/unavailability/${id}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+
+        if (response.ok) {
+            document.getElementById(`unavail-${id}`).remove();
+            // Check if list is empty
+            const list = document.querySelector('.unavailability-list');
+            if (!list.querySelector('.unavailability-item')) {
+                list.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);" id="no-unavailabilities">
+                        <span class="material-icons" style="font-size: 2rem; opacity: 0.5;">event_busy</span>
+                        <p>Nincs bejelentett szabadság</p>
+                    </div>
+                `;
+            }
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Hiba történt');
+        }
+    } catch (error) {
+        alert('Hiba történt: ' + error.message);
+    }
+}
+
+// Initialize calendar
+renderCalendar();
+
+// Pagination for unavailabilities
+const ITEMS_PER_PAGE = 10;
+let currentPage = 1;
+let allItems = [];
+
+function initPagination() {
+    allItems = Array.from(document.querySelectorAll('.unavailability-item'));
+    if (allItems.length === 0) return;
+
+    updatePagination();
+}
+
+function updatePagination() {
+    const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
+    const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIdx = startIdx + ITEMS_PER_PAGE;
+
+    // Show/hide items
+    allItems.forEach((item, idx) => {
+        item.style.display = (idx >= startIdx && idx < endIdx) ? '' : 'none';
+    });
+
+    // Update pagination info
+    const pageInfo = document.getElementById('page-info');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const pagination = document.getElementById('pagination');
+
+    if (pageInfo) {
+        pageInfo.textContent = `${currentPage} / ${totalPages || 1}`;
+    }
+    if (prevBtn) {
+        prevBtn.disabled = currentPage <= 1;
+    }
+    if (nextBtn) {
+        nextBtn.disabled = currentPage >= totalPages;
+    }
+
+    // Hide pagination if only one page
+    if (pagination && totalPages <= 1) {
+        pagination.style.display = 'none';
+    } else if (pagination) {
+        pagination.style.display = 'flex';
+    }
+}
+
+function prevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        updatePagination();
+    }
+}
+
+function nextPage() {
+    const totalPages = Math.ceil(allItems.length / ITEMS_PER_PAGE);
+    if (currentPage < totalPages) {
+        currentPage++;
+        updatePagination();
+    }
+}
+
+// Initialize pagination
+initPagination();
+</script>
+{% endblock %}

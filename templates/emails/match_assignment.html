@@ -1,0 +1,113 @@
+{% extends "emails/base_email.html" %}
+{% load tz %}
+
+{% block title %}Mérkőzés kiírás - JAR{% endblock %}
+
+{% block header_title %}
+{% if notify_type == 'new' %}Új mérkőzés kiírás{% elif notify_type == 'removed' %}Törölt kiírás{% else %}Kiírás módosítva{% endif %}
+{% endblock %}
+
+{% block content %}
+<p style="font-size: 16px; color: #1e293b;">Kedves {{ user.get_full_name|default:user.first_name }}!</p>
+
+{% if notify_type == 'new' %}
+<div style="background: #1a365d; color: white; padding: 12px 16px; border-radius: 8px; margin: 16px 0;">
+    Az MFSZ felkér, hogy a levélben található mérkőzésen részt vegyél.
+</div>
+{% elif notify_type == 'removed' %}
+<div style="background: #dc2626; color: white; padding: 12px 16px; border-radius: 8px; margin: 16px 0;">
+    Az adminisztrátorod törölt a kiírásból az alábbi mérkőzésről.
+</div>
+{% elif notify_type == 'modified' %}
+<div style="background: #f59e0b; color: white; padding: 12px 16px; border-radius: 8px; margin: 16px 0;">
+    Egy meglévő mérkőzésed kiírásában módosítás történt. Kérlek figyelmesen olvasd el a frissített kiírást!
+</div>
+{% endif %}
+
+<table class="data-table">
+    <tr{% if changes and 'date' in changes or changes and 'time' in changes %} class="highlight"{% endif %}>
+        <th>Mérkőzés időpontja</th>
+        <td>{{ match.date|date:"Y.m.d" }} ({{ match.date|date:"l" }}) {{ match.time|time:"H:i" }}</td>
+    </tr>
+    <tr{% if changes and 'venue' in changes %} class="highlight"{% endif %}>
+        <th>Helyszín</th>
+        <td>{{ match.venue.name }}{% if match.venue.city %}, {{ match.venue.city }}{% endif %}</td>
+    </tr>
+    {% if match.phase and match.phase.competition %}
+    <tr{% if changes and 'competition' in changes %} class="highlight"{% endif %}>
+        <th>Bajnokság</th>
+        <td>{{ match.phase.competition.name }}</td>
+    </tr>
+    {% endif %}
+    {% if not match.is_tournament %}
+    <tr{% if changes and 'home_team' in changes %} class="highlight"{% endif %}>
+        <th>Hazai csapat</th>
+        <td>{{ match.home_team.name|default:"TBD" }}</td>
+    </tr>
+    <tr{% if changes and 'away_team' in changes %} class="highlight"{% endif %}>
+        <th>Vendég csapat</th>
+        <td>{{ match.away_team.name|default:"TBD" }}</td>
+    </tr>
+    {% else %}
+    <tr>
+        <th>Esemény típus</th>
+        <td style="color: #7c3aed; font-weight: 600;">Torna</td>
+    </tr>
+    <tr>
+        <th>Mérkőzések száma</th>
+        <td>{{ match.tournament_match_count }}</td>
+    </tr>
+    {% if match.tournament_court_count %}
+    <tr>
+        <th>Pályák száma</th>
+        <td>{{ match.tournament_court_count }}</td>
+    </tr>
+    {% endif %}
+    {% endif %}
+
+    <!-- Only show referee info for new/modified, not for removed -->
+    {% if notify_type != 'removed' %}
+    <tr class="section-divider">
+        <th colspan="2" style="background: #1a365d; color: white; text-align: center; font-size: 13px; padding: 8px;">Játékvezetők</th>
+    </tr>
+    {% if all_assignments %}
+    {% for assign in all_assignments %}
+    <tr{% if assign.user.id == user.id and notify_type == 'new' %} class="highlight"{% elif assign.user.id in new_user_ids %} class="highlight"{% endif %}>
+        <th>{{ assign.get_role_display }}</th>
+        <td>{{ assign.user.get_full_name }}</td>
+    </tr>
+    {% endfor %}
+    {% else %}
+    <tr{% if notify_type == 'new' %} class="highlight"{% endif %}>
+        <th>{{ assignment.get_role_display }}</th>
+        <td>{{ user.get_full_name }}</td>
+    </tr>
+    {% endif %}
+    {% endif %}
+</table>
+
+{% if assignment.meeting_time %}
+<p style="margin-top: 16px;"><strong>Találkozó időpont:</strong> {{ assignment.meeting_time|time:"H:i" }}</p>
+{% endif %}
+
+{% if assignment.note %}
+<div class="alert alert-warning" style="margin-top: 16px;">
+    <strong>Megjegyzés:</strong> {{ assignment.note }}
+</div>
+{% endif %}
+
+{% if notify_type == 'new' %}
+<div style="background: #1a365d; color: white; padding: 12px 16px; border-radius: 8px; margin-top: 24px; font-weight: 600; font-size: 15px;">
+    Kérlek, jelezz vissza minél hamarabb!
+</div>
+{% elif notify_type == 'modified' %}
+<div style="background: #1a365d; color: white; padding: 12px 16px; border-radius: 8px; margin-top: 24px; font-weight: 600; font-size: 15px;">
+    Ha az új kiírás számodra nem megfelelő, kérlek jelezz vissza minél hamarabb!
+</div>
+{% elif notify_type == 'removed' %}
+<div style="background: #1a365d; color: white; padding: 12px 16px; border-radius: 8px; margin-top: 24px; font-weight: 600; font-size: 15px;">
+    Ha kérdésed van, keresd az adminisztrátorodat!
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Biztonsági figyelmeztetés - JAR{% endblock %}
+
+{% block header_title %}Biztonsági észlelés{% endblock %}
+
+{% block content %}
+<p style="font-size: 16px; color: #1e293b;">Tisztelt Admin!</p>
+
+<p style="color: #dc2626; font-weight: 600;">Felhasználó {{ user.failed_login_count }}x rosszul adta meg a jelszavát.</p>
+
+<table class="data-table">
+    <tr>
+        <th>Felhasználó</th>
+        <td>{{ user.get_full_name }}</td>
+    </tr>
+    <tr>
+        <th>Email</th>
+        <td>{{ user.email }}</td>
+    </tr>
+    {% if ip_address %}
+    <tr>
+        <th>IP cím</th>
+        <td>{{ ip_address }}</td>
+    </tr>
+    {% endif %}
+    <tr>
+        <th>Utolsó kísérlet</th>
+        <td>{% now "Y.m.d H:i:s" %}</td>
+    </tr>
+</table>
+
+<p style="margin-top: 16px;">Az alábbi IP címről többször próbált sikertelenül belépni.</p>
+
+<p style="margin-top: 24px;">Üdvözlettel,<br>JAR rendszer</p>
+{% endblock %}

@@ -1,0 +1,582 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if news %}Hír szerkesztése{% else %}Új hír{% endif %}{% endblock %}
+{% block page_title %}{% if news %}Hír szerkesztése{% else %}Új hír{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        max-width: 800px;
+    }
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+    .form-input {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--card-bg);
+        font-size: 0.9rem;
+    }
+    .form-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .form-hint {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    .alert-error {
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+    }
+    .checkbox-group {
+        display: flex;
+        gap: 2rem;
+    }
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+    }
+    .checkbox-label input {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Rich Text Editor - Word-like */
+    .editor-container {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .editor-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        padding: 0.5rem 0.75rem;
+        background: linear-gradient(to bottom, var(--bg-color), var(--card-bg));
+        border-bottom: 1px solid var(--border-color);
+        align-items: center;
+    }
+    .toolbar-group {
+        display: flex;
+        gap: 2px;
+        padding-right: 0.75rem;
+        border-right: 1px solid var(--border-color);
+        margin-right: 0.5rem;
+        align-items: center;
+    }
+    .toolbar-group:last-child {
+        border-right: none;
+        padding-right: 0;
+        margin-right: 0;
+    }
+    .toolbar-btn {
+        width: 30px;
+        height: 30px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        transition: all 0.15s;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .toolbar-btn:hover {
+        background: var(--card-bg);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+    .toolbar-btn.active {
+        background: var(--accent-color);
+        border-color: var(--accent-color);
+        color: white;
+    }
+    .toolbar-btn .material-icons {
+        font-size: 1.1rem;
+    }
+    .toolbar-select {
+        height: 30px;
+        padding: 0 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: var(--card-bg);
+        color: var(--text-primary);
+        font-size: 0.8rem;
+        cursor: pointer;
+        min-width: 100px;
+    }
+    .toolbar-select:hover {
+        border-color: var(--accent-color);
+    }
+    .toolbar-select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .editor-content {
+        min-height: 300px;
+        padding: 1.25rem 1.5rem;
+        background: var(--card-bg);
+        outline: none;
+        font-size: 1rem;
+        line-height: 1.7;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    .editor-content:focus {
+        outline: none;
+    }
+    .editor-content h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0.75rem 0 0.5rem 0;
+        color: var(--text-primary);
+    }
+    .editor-content h2 {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin: 0.75rem 0 0.5rem 0;
+        color: var(--text-primary);
+    }
+    .editor-content h3 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin: 0.5rem 0 0.5rem 0;
+        color: var(--text-primary);
+    }
+    .editor-content blockquote {
+        border-left: 4px solid var(--accent-color);
+        margin: 1rem 0;
+        padding: 0.5rem 1rem;
+        background: rgba(var(--accent-rgb, 59, 130, 246), 0.05);
+        color: var(--text-secondary);
+        border-radius: 0 4px 4px 0;
+    }
+    .editor-content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+        margin: 0.5rem 0;
+    }
+    .editor-content small {
+        font-size: 0.85em;
+    }
+    .editor-content hr {
+        border: none;
+        border-top: 2px solid var(--border-color);
+        margin: 1.5rem 0;
+    }
+    .editor-content ul, .editor-content ol {
+        margin: 0.5rem 0;
+        padding-left: 1.5rem;
+    }
+    .editor-content li {
+        margin: 0.25rem 0;
+    }
+    .editor-content a {
+        color: var(--accent-color);
+        text-decoration: underline;
+    }
+    .editor-status {
+        display: flex;
+        justify-content: flex-end;
+        padding: 0.35rem 0.75rem;
+        background: var(--bg-color);
+        border-top: 1px solid var(--border-color);
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card form-card">
+    {% if error %}
+    <div class="alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" onsubmit="prepareContent()">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <label class="form-label">Cím *</label>
+            <input type="text" name="title" class="form-input" value="{{ news.title|default:'' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Tartalom *</label>
+            <div class="editor-container">
+                <div class="editor-toolbar">
+                    <!-- Heading dropdown -->
+                    <div class="toolbar-group">
+                        <select class="toolbar-select" onchange="formatHeading(this.value); this.value='';" title="Bekezdés stílus">
+                            <option value="">Stílus...</option>
+                            <option value="p">Normál szöveg</option>
+                            <option value="h1">Címsor 1</option>
+                            <option value="h2">Címsor 2</option>
+                            <option value="h3">Címsor 3</option>
+                        </select>
+                    </div>
+                    <!-- Text formatting -->
+                    <div class="toolbar-group">
+                        <button type="button" class="toolbar-btn" onclick="execCmd('bold')" title="Félkövér (Ctrl+B)">
+                            <strong>B</strong>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="execCmd('italic')" title="Dőlt (Ctrl+I)">
+                            <em>I</em>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="execCmd('underline')" title="Aláhúzott (Ctrl+U)">
+                            <u>U</u>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="execCmd('strikeThrough')" title="Áthúzott">
+                            <s>S</s>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="wrapSelection('small')" title="Kis méret">
+                            <small style="font-size: 0.7rem;">A</small>
+                        </button>
+                    </div>
+                    <!-- Text alignment -->
+                    <div class="toolbar-group">
+                        <button type="button" class="toolbar-btn" onclick="execCmd('justifyLeft')" title="Balra igazítás">
+                            <span class="material-icons">format_align_left</span>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="execCmd('justifyCenter')" title="Középre igazítás">
+                            <span class="material-icons">format_align_center</span>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="execCmd('justifyRight')" title="Jobbra igazítás">
+                            <span class="material-icons">format_align_right</span>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="execCmd('justifyFull')" title="Sorkizárt">
+                            <span class="material-icons">format_align_justify</span>
+                        </button>
+                    </div>
+                    <!-- Lists and indent -->
+                    <div class="toolbar-group">
+                        <button type="button" class="toolbar-btn" onclick="execCmd('insertUnorderedList')" title="Felsorolás">
+                            <span class="material-icons">format_list_bulleted</span>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="execCmd('insertOrderedList')" title="Számozott lista">
+                            <span class="material-icons">format_list_numbered</span>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="indentText()" title="Behúzás">
+                            <span class="material-icons">format_indent_increase</span>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="outdentText()" title="Behúzás csökkentése">
+                            <span class="material-icons">format_indent_decrease</span>
+                        </button>
+                    </div>
+                    <!-- Block elements -->
+                    <div class="toolbar-group">
+                        <button type="button" class="toolbar-btn" onclick="execCmd('formatBlock', 'blockquote')" title="Idézet">
+                            <span class="material-icons">format_quote</span>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="insertHR()" title="Elválasztó vonal">
+                            <span class="material-icons">horizontal_rule</span>
+                        </button>
+                    </div>
+                    <!-- Insert -->
+                    <div class="toolbar-group">
+                        <button type="button" class="toolbar-btn" onclick="insertLink()" title="Link (Ctrl+K)">
+                            <span class="material-icons">link</span>
+                        </button>
+                        <button type="button" class="toolbar-btn" onclick="insertImage()" title="Kép">
+                            <span class="material-icons">image</span>
+                        </button>
+                    </div>
+                    <!-- Clear formatting -->
+                    <div class="toolbar-group">
+                        <button type="button" class="toolbar-btn" onclick="clearFormatting()" title="Formázás törlése">
+                            <span class="material-icons">format_clear</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="editor-content" id="editor" contenteditable="true">{{ news.content|default:''|safe }}</div>
+                <div class="editor-status">
+                    <span id="charCount">0 karakter</span>
+                </div>
+            </div>
+            <textarea name="content" id="content-hidden" style="display: none;" required>{{ news.content|default:'' }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Borítókép</label>
+            {% if news and news.image %}
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                Jelenlegi kép beállítva
+            </p>
+            {% endif %}
+            <input type="file" name="image" class="form-input" accept="image/*">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Beállítások</label>
+            <div class="checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_published" id="is_published" {% if news and news.is_published %}checked{% endif %} onchange="toggleScheduling()">
+                    <span>Azonnali közzététel</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_pinned" {% if news and news.is_pinned %}checked{% endif %}>
+                    <span>Kitűzés</span>
+                </label>
+                {% if user.is_admin_user %}
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_system_news" {% if news and news.is_system_news %}checked{% endif %}>
+                    <span title="A hír szerzője 'JAR Rendszer'-ként jelenik meg">
+                        <span class="material-icons" style="font-size: 0.9rem; vertical-align: -2px; color: var(--accent-color);">settings</span>
+                        Rendszerhír
+                    </span>
+                </label>
+                {% endif %}
+            </div>
+            <div class="form-hint">A kitűzött hírek a lista tetején jelennek meg.{% if user.is_admin_user %} Rendszerhír esetén a szerző "JAR Rendszer"-ként jelenik meg.{% endif %}</div>
+        </div>
+
+        {% if user.is_admin_user %}
+        <div class="form-group">
+            <label class="form-label">
+                <span class="material-icons" style="vertical-align: middle; font-size: 1.1rem; margin-right: 0.25rem;">history</span>
+                Közzététel dátuma (Admin)
+            </label>
+            <div style="display: flex; gap: 1rem;">
+                <input type="date" name="published_date" id="published_date" class="form-input" style="flex: 1;"
+                    value="{% if news and news.published_at %}{{ news.published_at|date:'Y-m-d' }}{% endif %}">
+                <input type="time" name="published_time" id="published_time" class="form-input" style="width: 120px;"
+                    value="{% if news and news.published_at %}{{ news.published_at|time:'H:i' }}{% endif %}">
+            </div>
+            <div class="form-hint">Admin felületen a közzététel dátuma szabadon módosítható (akár múltbeli dátumra is).</div>
+        </div>
+        {% endif %}
+
+        <div class="form-group" id="scheduling-group" {% if news and news.is_published %}style="display: none;"{% endif %}>
+            <label class="form-label">
+                <span class="material-icons" style="vertical-align: middle; font-size: 1.1rem; margin-right: 0.25rem;">schedule</span>
+                Időzített közzététel
+            </label>
+            <div style="display: flex; gap: 1rem;">
+                <input type="date" name="scheduled_date" id="scheduled_date" class="form-input" style="flex: 1;"
+                    value="{% if news and news.scheduled_at %}{{ news.scheduled_at|date:'Y-m-d' }}{% endif %}">
+                <input type="time" name="scheduled_time" id="scheduled_time" class="form-input" style="width: 120px;"
+                    value="{% if news and news.scheduled_at %}{{ news.scheduled_at|time:'H:i' }}{% endif %}">
+            </div>
+            <div class="form-hint">Ha beállítod, a hír automatikusan közzé lesz téve a megadott időpontban.</div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">save</span>
+                Mentés
+            </button>
+            <a href="{% url 'accounts:dashboard' %}" class="btn btn-secondary">Mégse</a>
+        </div>
+    </form>
+</div>
+
+<script>
+const editor = document.getElementById('editor');
+const hiddenContent = document.getElementById('content-hidden');
+const charCount = document.getElementById('charCount');
+
+function execCmd(command, value = null) {
+    document.execCommand(command, false, value);
+    editor.focus();
+    updateCharCount();
+}
+
+function formatHeading(tag) {
+    if (tag) {
+        execCmd('formatBlock', tag);
+    }
+    editor.focus();
+}
+
+function wrapSelection(tag) {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const selectedText = range.toString();
+        if (selectedText) {
+            const wrapper = document.createElement(tag);
+            range.surroundContents(wrapper);
+        }
+    }
+    editor.focus();
+}
+
+function insertLink() {
+    const selection = window.getSelection();
+    const selectedText = selection.toString();
+    const url = prompt('Add meg a link URL-jét:', 'https://');
+    if (url) {
+        if (selectedText) {
+            execCmd('createLink', url);
+        } else {
+            const linkText = prompt('Add meg a link szövegét:', 'Link');
+            if (linkText) {
+                const link = `<a href="${url}" target="_blank">${linkText}</a>`;
+                execCmd('insertHTML', link);
+            }
+        }
+    }
+}
+
+function insertImage() {
+    const url = prompt('Add meg a kép URL-jét:', 'https://');
+    if (url) {
+        execCmd('insertImage', url);
+    }
+}
+
+function insertHR() {
+    execCmd('insertHTML', '<hr>');
+}
+
+function clearFormatting() {
+    execCmd('removeFormat');
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        execCmd('formatBlock', 'p');
+    }
+}
+
+function indentText() {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        let node = range.commonAncestorContainer;
+        if (node.nodeType === 3) node = node.parentNode;
+
+        while (node && node !== editor && !['DIV', 'P', 'LI', 'H1', 'H2', 'H3'].includes(node.nodeName)) {
+            node = node.parentNode;
+        }
+
+        if (node && node !== editor) {
+            const currentMargin = parseInt(node.style.marginLeft) || 0;
+            node.style.marginLeft = (currentMargin + 32) + 'px';
+        } else {
+            const wrapper = document.createElement('div');
+            wrapper.style.marginLeft = '32px';
+            range.surroundContents(wrapper);
+        }
+    }
+    editor.focus();
+}
+
+function outdentText() {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        let node = range.commonAncestorContainer;
+        if (node.nodeType === 3) node = node.parentNode;
+
+        while (node && node !== editor && !['DIV', 'P', 'LI', 'H1', 'H2', 'H3'].includes(node.nodeName)) {
+            node = node.parentNode;
+        }
+
+        if (node && node !== editor) {
+            const currentMargin = parseInt(node.style.marginLeft) || 0;
+            const newMargin = Math.max(0, currentMargin - 32);
+            if (newMargin === 0) {
+                node.style.marginLeft = '';
+            } else {
+                node.style.marginLeft = newMargin + 'px';
+            }
+        }
+    }
+    editor.focus();
+}
+
+function updateCharCount() {
+    const text = editor.innerText || '';
+    const count = text.length;
+    charCount.textContent = count + ' karakter';
+}
+
+function prepareContent() {
+    hiddenContent.value = editor.innerHTML;
+    if (!editor.textContent.trim()) {
+        alert('A tartalom megadása kötelező.');
+        return false;
+    }
+    return true;
+}
+
+// Sync content on input
+editor.addEventListener('input', function() {
+    hiddenContent.value = editor.innerHTML;
+    updateCharCount();
+});
+
+// Keyboard shortcuts
+editor.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key.toLowerCase()) {
+            case 'b':
+                e.preventDefault();
+                execCmd('bold');
+                break;
+            case 'i':
+                e.preventDefault();
+                execCmd('italic');
+                break;
+            case 'u':
+                e.preventDefault();
+                execCmd('underline');
+                break;
+            case 'k':
+                e.preventDefault();
+                insertLink();
+                break;
+        }
+    }
+});
+
+// Set initial content
+if (hiddenContent.value) {
+    editor.innerHTML = hiddenContent.value;
+}
+
+// Initial char count
+updateCharCount();
+
+// Toggle scheduling section based on publish checkbox
+function toggleScheduling() {
+    const isPublished = document.getElementById('is_published').checked;
+    const schedulingGroup = document.getElementById('scheduling-group');
+
+    if (isPublished) {
+        schedulingGroup.style.display = 'none';
+        // Clear scheduling fields when publishing immediately
+        document.getElementById('scheduled_date').value = '';
+        document.getElementById('scheduled_time').value = '';
+    } else {
+        schedulingGroup.style.display = 'block';
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', toggleScheduling);
+</script>
+{% endblock %}

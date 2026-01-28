@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if venue %}Helyszín szerkesztése{% else %}Új helyszín{% endif %}{% endblock %}
+{% block page_title %}{% if venue %}{{ venue.name }} szerkesztése{% else %}Új helyszín{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        background: var(--card-bg);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        max-width: 600px;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+    }
+    .form-group label {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    .form-group input {
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .checkbox-group input {
+        width: auto;
+    }
+    .button-group {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="name">Helyszín neve *</label>
+        <input type="text" id="name" name="name" value="{{ venue.name|default:'' }}" required placeholder="pl. Batthyány Sportcsarnok">
+    </div>
+
+    <div class="form-group">
+        <label for="city">Város *</label>
+        <input type="text" id="city" name="city" value="{{ venue.city|default:'' }}" required placeholder="pl. Budapest">
+    </div>
+
+    <div class="form-group">
+        <label for="address">Cím</label>
+        <input type="text" id="address" name="address" value="{{ venue.address|default:'' }}" placeholder="pl. Batthyány tér 5.">
+    </div>
+
+    <div class="form-group">
+        <label class="checkbox-group">
+            <input type="checkbox" name="is_active" {% if venue.is_active or not venue %}checked{% endif %}>
+            Aktív helyszín
+        </label>
+    </div>
+
+    <div class="button-group">
+        <a href="{% url 'matches:venues_list' %}" class="btn btn-secondary">
+            <span class="material-icons">arrow_back</span>
+            Vissza
+        </a>
+        <button type="submit" class="btn btn-primary">
+            <span class="material-icons">save</span>
+            {% if venue %}Mentés{% else %}Létrehozás{% endif %}
+        </button>
+    </div>
+</form>
+{% endblock %}

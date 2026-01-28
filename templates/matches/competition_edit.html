@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}Bajnokság szerkesztése{% endblock %}
+{% block page_title %}Bajnokság szerkesztése{% endblock %}
+
+{% block extra_css %}
+<style>
+    .edit-form {
+        background: var(--card-bg);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        max-width: 600px;
+    }
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    .form-group label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.95rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .form-row {
+        display: flex;
+        gap: 1rem;
+    }
+    .form-row .form-group {
+        flex: 1;
+    }
+    .form-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+    .btn-danger {
+        background: var(--danger-color);
+        color: white;
+    }
+    .btn-danger:hover {
+        background: #dc2626;
+    }
+    .color-input-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .color-input-wrapper input[type="color"] {
+        width: auto;
+        flex-shrink: 0;
+    }
+    .color-input-wrapper input[type="text"] {
+        flex: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-form">
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="name">Bajnokság neve</label>
+                <input type="text" id="name" name="name" value="{{ competition.name }}" required>
+            </div>
+            <div class="form-group" style="max-width: 120px;">
+                <label for="short_name">Rövid név</label>
+                <input type="text" id="short_name" name="short_name" value="{{ competition.short_name }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="season">Szezon</label>
+            <select id="season" name="season" required>
+                {% for season in seasons %}
+                <option value="{{ season.id }}" {% if season.id == competition.season_id %}selected{% endif %}>
+                    {{ season.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Szín</label>
+            <div class="color-input-wrapper">
+                <input type="color" name="color" value="{{ competition.color }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="match_duration">Meccs időtartam (perc)</label>
+            <input type="number" id="match_duration" name="match_duration"
+                   value="{{ competition.match_duration|default:60 }}"
+                   min="1" max="300"
+                   placeholder="60">
+            <small style="color: var(--text-secondary); font-size: 0.85rem;">
+                Egy mérkőzés átlagos időtartama percben
+            </small>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">save</span>
+                Mentés
+            </button>
+            <a href="{% url 'matches:competitions_list' %}" class="btn btn-secondary">
+                <span class="material-icons">arrow_back</span>
+                Vissza
+            </a>
+            <form method="post" action="{% url 'matches:delete_competition' competition.id %}" style="margin-left: auto;" onsubmit="return confirm('Biztosan törölni szeretnéd a {{ competition.short_name }} bajnokságot?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <span class="material-icons">delete</span>
+                    Törlés
+                </button>
+            </form>
+        </div>
+    </form>
+</div>
+{% endblock %}

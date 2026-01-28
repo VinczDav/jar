@@ -1,0 +1,1460 @@
+{% extends 'base.html' %}
+
+{% block title %}Mérkőzéseim{% endblock %}
+{% block page_title %}Mérkőzéseim{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Tabs */
+    .tabs-wrapper {
+        display: flex;
+        gap: 0.5rem;
+        background: var(--card-bg);
+        padding: 0.5rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 1rem;
+    }
+    .tab-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        text-decoration: none;
+        color: var(--text-secondary);
+        font-weight: 500;
+        transition: all 0.15s ease;
+    }
+    .tab-btn:hover {
+        background: var(--bg-color);
+        color: var(--text-primary);
+    }
+    .tab-btn.active {
+        background: var(--primary-color);
+        color: white;
+    }
+    .tab-btn .material-icons {
+        font-size: 1.25rem;
+    }
+
+    /* Filters */
+    .filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        align-items: flex-end;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .filter-group label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    .filter-group select,
+    .filter-group input {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        min-width: 150px;
+    }
+    .filter-buttons {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+    }
+
+    /* Match Cards - same style as assignments page */
+    .match-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        border-left: 4px solid var(--text-secondary);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .match-card.status-pending {
+        border-left-color: var(--warning-color);
+        background: linear-gradient(to right, rgba(255, 193, 7, 0.05), transparent);
+    }
+    .match-card.status-accepted {
+        border-left-color: var(--success-color);
+        background: linear-gradient(to right, rgba(40, 167, 69, 0.05), transparent);
+    }
+
+    .match-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+    .match-card-teams {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex: 1;
+    }
+    .team-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .team-logo {
+        width: 44px;
+        height: 44px;
+        object-fit: contain;
+        border-radius: 6px;
+        background: var(--bg-color);
+    }
+    .team-logo-placeholder {
+        width: 44px;
+        height: 44px;
+        border-radius: 6px;
+        background: var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+    .team-name {
+        font-weight: 600;
+        font-size: 1.15rem;
+    }
+    .vs-separator {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        padding: 0 0.5rem;
+        font-weight: 600;
+    }
+    .match-card-meta {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        flex-shrink: 0;
+    }
+    .match-datetime {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.1rem;
+        white-space: nowrap;
+    }
+    .match-date {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+    .match-time {
+        font-weight: 700;
+        color: var(--text-primary);
+        font-size: 1.25rem;
+    }
+    .match-competition {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .competition-badge {
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: white;
+        white-space: nowrap;
+    }
+    .match-venue {
+        font-size: 1rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-weight: 500;
+    }
+    .match-venue .material-icons {
+        font-size: 1.1rem;
+        color: var(--accent-color);
+    }
+
+    .match-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: 0.75rem;
+    }
+    .match-referees-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 2.5rem;
+        font-size: 1rem;
+    }
+    .referee-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0;
+    }
+    .referee-role {
+        color: var(--text-secondary);
+        font-weight: 500;
+        min-width: 90px;
+    }
+    .referee-name {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+    .referee-name.current-user {
+        color: var(--accent-color);
+    }
+
+    /* Response status icons */
+    .response-status-icon {
+        font-size: 1.25rem;
+    }
+    .response-status-icon.response-accepted {
+        color: var(--success-color);
+    }
+    .response-status-icon.response-pending {
+        color: var(--warning-color);
+    }
+    .response-status-icon.response-declined {
+        color: var(--danger-color);
+    }
+
+    .match-status-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.8rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+    .match-status-badge.pending {
+        background: rgba(255, 193, 7, 0.15);
+        color: #b38600;
+    }
+    .match-status-badge.accepted {
+        background: rgba(40, 167, 69, 0.15);
+        color: var(--success-color);
+    }
+
+    /* Response form */
+    .response-form {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .decline-wrapper {
+        display: none;
+        min-width: 200px;
+    }
+    .decline-wrapper.show {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .decline-wrapper textarea {
+        width: 250px;
+        padding: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        resize: none;
+        height: 36px;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 2rem 0 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+    .section-header:first-of-type {
+        margin-top: 0;
+    }
+    .section-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    .section-header .material-icons {
+        font-size: 1.5rem;
+    }
+    .section-count {
+        background: var(--bg-color);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+        background: var(--card-bg);
+        border-radius: 12px;
+    }
+    .empty-state .material-icons {
+        font-size: 3rem;
+        opacity: 0.5;
+        margin-bottom: 1rem;
+    }
+
+    /* Action buttons row */
+    .match-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    /* Coordinator Contact Modal */
+    .coordinator-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .coordinator-modal.show {
+        display: flex;
+    }
+
+    .coordinator-modal-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .coordinator-modal-content h4 {
+        margin: 0 0 0.5rem 0;
+        color: var(--warning-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .coordinator-modal-content .info-text {
+        color: var(--text-secondary);
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .coordinator-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .coordinator-card {
+        background: var(--bg-color);
+        border-radius: 8px;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid var(--border-color);
+    }
+
+    .coordinator-card-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+
+    .coordinator-card-phone {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(var(--primary-rgb, 59, 130, 246), 0.1);
+        border-radius: 6px;
+        transition: all 0.15s ease;
+    }
+
+    .coordinator-card-phone:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .coordinator-card-phone .material-icons {
+        font-size: 1.1rem;
+    }
+
+    .coordinator-modal-buttons {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 0.5rem;
+    }
+
+    .btn-close-modal {
+        background: var(--text-secondary);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    /* Pagination styles */
+    .pagination-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 1.5rem 0;
+        gap: 0.5rem;
+    }
+    .pagination-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--card-bg);
+        color: var(--text-primary);
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: all 0.15s;
+        min-width: 36px;
+    }
+    .pagination-btn:hover:not(.disabled):not(.active) {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+    }
+    .pagination-btn.active {
+        background: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
+    .pagination-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .pagination-info {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        margin: 0 1rem;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .filter-form {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .filter-group {
+            width: 100%;
+        }
+        .filter-group select,
+        .filter-group input {
+            width: 100%;
+            min-width: unset;
+        }
+        .filter-buttons {
+            width: 100%;
+            justify-content: stretch;
+        }
+        .filter-buttons .btn {
+            flex: 1;
+        }
+        .tabs-wrapper {
+            width: 100%;
+        }
+        .tab-btn {
+            flex: 1;
+            justify-content: center;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.85rem;
+        }
+        .tab-btn .material-icons {
+            font-size: 1.1rem;
+        }
+        .section-header {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1.5rem 0 0.75rem;
+        }
+        .section-header h3 {
+            font-size: 1rem;
+        }
+        .section-header .material-icons {
+            font-size: 1.25rem;
+        }
+
+        /* Match card mobile layout */
+        .match-card {
+            padding: 0.75rem 1rem;
+        }
+        .match-card-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .match-card-teams {
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+        .team-info {
+            gap: 0.35rem;
+        }
+        .team-logo, .team-logo-placeholder {
+            width: 32px;
+            height: 32px;
+            font-size: 0.65rem;
+        }
+        .team-name {
+            font-size: 0.95rem;
+        }
+        .vs-separator {
+            padding: 0 0.25rem;
+            font-size: 0.9rem;
+        }
+        .match-card-meta {
+            flex-wrap: wrap;
+            gap: 0.5rem 0.75rem;
+        }
+        .match-datetime {
+            font-size: 0.9rem;
+            gap: 0.35rem;
+        }
+        .match-date {
+            font-size: 0.9rem;
+        }
+        .match-time {
+            font-size: 1rem;
+        }
+        .match-venue {
+            font-size: 0.85rem;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .competition-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.4rem;
+        }
+
+        /* Match card footer mobile */
+        .match-card-footer {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+            padding-top: 0.75rem;
+        }
+        .match-referees-row {
+            gap: 0.35rem 1rem;
+        }
+        .referee-item {
+            font-size: 0.85rem;
+        }
+        .referee-role {
+            min-width: 70px;
+            font-size: 0.8rem;
+        }
+        .response-status-icon {
+            font-size: 1rem;
+        }
+
+        /* Actions mobile */
+        .match-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+            width: 100%;
+        }
+        .match-status-badge {
+            align-self: flex-start;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .response-form {
+            width: 100%;
+        }
+        .action-buttons {
+            width: 100%;
+        }
+        .action-buttons .btn {
+            flex: 1;
+            justify-content: center;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.85rem;
+        }
+        .decline-wrapper {
+            width: 100%;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .decline-wrapper.show {
+            flex-direction: row;
+        }
+        .decline-wrapper textarea {
+            flex: 1;
+            width: auto;
+            min-width: 0;
+        }
+
+        /* Pagination mobile */
+        .pagination-container {
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            padding: 1rem 0;
+        }
+        .pagination-btn {
+            padding: 0.4rem 0.6rem;
+            min-width: 32px;
+        }
+        .pagination-info {
+            width: 100%;
+            text-align: center;
+            order: -1;
+            margin: 0 0 0.5rem 0;
+        }
+
+        /* Empty state mobile */
+        .empty-state {
+            padding: 2rem 1rem;
+        }
+        .empty-state .material-icons {
+            font-size: 2.5rem;
+        }
+
+        /* Modal mobile */
+        .coordinator-modal-content {
+            width: 95%;
+            max-width: none;
+            margin: 1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .match-card-teams {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .vs-separator {
+            display: none;
+        }
+        .team-info:not(:first-child)::before {
+            content: 'vs ';
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-right: 0.25rem;
+        }
+        .match-datetime {
+            width: 100%;
+            justify-content: space-between;
+        }
+        .match-venue {
+            width: 100%;
+        }
+        .referee-role {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: {% if message.tags == 'success' %}rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);{% elif message.tags == 'error' %}rgba(220, 53, 69, 0.1); border: 1px solid var(--danger-color);{% else %}rgba(23, 162, 184, 0.1); border: 1px solid var(--info-color);{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Tabs -->
+<div class="tabs-wrapper">
+    <a href="?tab=upcoming" class="tab-btn {% if current_tab == 'upcoming' %}active{% endif %}">
+        <span class="material-icons">event_available</span>
+        Közelgő
+    </a>
+    <a href="?tab=past" class="tab-btn {% if current_tab == 'past' %}active{% endif %}">
+        <span class="material-icons">history</span>
+        Múltbéli
+    </a>
+</div>
+
+<!-- Filters -->
+<form method="get" class="filter-form">
+    <input type="hidden" name="tab" value="{{ current_tab }}">
+    <div class="filter-group">
+        <label>Szezon</label>
+        <select id="season" name="season">
+            {% for season in seasons %}
+            <option value="{{ season.id }}" {% if selected_season.id == season.id %}selected{% endif %}>
+                {{ season.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Bajnokság</label>
+        <select id="competition" name="competition">
+            <option value="">Összes bajnokság</option>
+            {% for comp in competitions %}
+            <option value="{{ comp.id }}" {% if selected_competition == comp.id|stringformat:"i" %}selected{% endif %}>
+                {{ comp.short_name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Dátumtól</label>
+        <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+    </div>
+    <div class="filter-group">
+        <label>Dátumig</label>
+        <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+    </div>
+    <div class="filter-group">
+        <label>Csapat</label>
+        <select id="team" name="team">
+            <option value="">Összes csapat</option>
+            {% for team in teams %}
+            <option value="{{ team.id }}" {% if selected_team == team.id|stringformat:"i" %}selected{% endif %}>
+                {{ team.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-buttons">
+        <button type="submit" class="btn btn-primary">
+            <span class="material-icons">search</span>
+            Szűrés
+        </button>
+        <a href="{% url 'matches:my_matches' %}?tab={{ current_tab }}" class="btn btn-secondary">
+            <span class="material-icons">clear</span>
+            Törlés
+        </a>
+    </div>
+</form>
+
+{% if current_tab == 'upcoming' %}
+<!-- Visszajelzésre váró kijelölések -->
+{% if pending_assignments %}
+<div class="section-header">
+    <span class="material-icons" style="color: var(--warning-color);">pending_actions</span>
+    <h3>Visszajelzésre vár</h3>
+    <span class="section-count" style="background: var(--warning-color); color: white;">{{ pending_assignments|length }}</span>
+</div>
+
+{% for assignment in pending_assignments %}
+<div class="match-card status-pending">
+    <div class="match-card-header">
+        <div class="match-card-teams">
+            <div class="team-info">
+                {% if assignment.match.home_team %}
+                    {% if assignment.match.home_team.logo %}
+                    <img src="{{ assignment.match.home_team.logo.url }}" alt="" class="team-logo">
+                    {% else %}
+                    <div class="team-logo-placeholder">{{ assignment.match.home_team.short_name|default:assignment.match.home_team.name|slice:":2"|upper }}</div>
+                    {% endif %}
+                    <span class="team-name">{{ assignment.match.home_team.name }}</span>
+                {% else %}
+                    <div class="team-logo-placeholder">TB</div>
+                    <span class="team-name">TBD</span>
+                {% endif %}
+            </div>
+            {% if assignment.match.is_tournament %}
+            <span style="background: #7c3aed; color: white; padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <span class="material-icons" style="font-size: 1.1rem;">emoji_events</span>
+                Torna
+            </span>
+            {% else %}
+            <span class="vs-separator">-</span>
+            <div class="team-info">
+                {% if assignment.match.away_team %}
+                    {% if assignment.match.away_team.logo %}
+                    <img src="{{ assignment.match.away_team.logo.url }}" alt="" class="team-logo">
+                    {% else %}
+                    <div class="team-logo-placeholder">{{ assignment.match.away_team.short_name|default:assignment.match.away_team.name|slice:":2"|upper }}</div>
+                    {% endif %}
+                    <span class="team-name">{{ assignment.match.away_team.name }}</span>
+                {% else %}
+                    <div class="team-logo-placeholder">TB</div>
+                    <span class="team-name">TBD</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="match-card-meta">
+            {% if assignment.match.phase %}
+            <div class="match-competition">
+                <span class="competition-badge" style="background: {{ assignment.match.phase.competition.color }};">
+                    {{ assignment.match.phase.competition.short_name }}
+                </span>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">{{ assignment.match.phase.name }}</span>
+            </div>
+            {% endif %}
+            <div class="match-datetime">
+                <span class="match-date">{{ assignment.match.date|date:"Y.m.d" }} ({{ assignment.match.date|date:"D" }})</span>
+                <span class="match-time">{{ assignment.match.time|time:"H:i" }}</span>
+            </div>
+            {% if assignment.match.venue %}
+            <div class="match-venue">
+                <span class="material-icons">location_on</span>
+                {{ assignment.match.venue.name }}{% if assignment.match.court %} ({{ assignment.match.court }}){% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="match-card-footer">
+        <div class="match-referees-row">
+            {% with referees=assignment.match.get_referees reserves=assignment.match.get_reserves inspectors=assignment.match.get_inspectors tournament_directors=assignment.match.get_tournament_directors %}
+            {% for ref in referees %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
+                </span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% for ref in reserves %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
+                </span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% for ref in inspectors %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
+                </span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% for ref in tournament_directors %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
+                </span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% endwith %}
+        </div>
+        <div class="match-actions">
+            <span class="match-status-badge pending">
+                <span class="material-icons">schedule</span>
+                {{ assignment.get_role_display }} - Várakozik
+            </span>
+            <form method="post" action="{% url 'matches:respond_to_assignment' assignment.id %}" class="response-form" id="form-{{ assignment.id }}">
+                {% csrf_token %}
+                <input type="hidden" name="response" id="response-{{ assignment.id }}" value="accepted">
+                <div class="action-buttons" id="action-buttons-{{ assignment.id }}">
+                    <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem;">
+                        <span class="material-icons">check</span>
+                        Elfogadom
+                    </button>
+                    <button type="button" class="btn" style="background: var(--danger-color); color: white; padding: 0.5rem 1rem;" onclick="showDeclineForm({{ assignment.id }})">
+                        <span class="material-icons">close</span>
+                        Elutasítom
+                    </button>
+                </div>
+                <div class="decline-wrapper" id="decline-{{ assignment.id }}">
+                    <button type="button" class="btn" style="background: var(--text-secondary); color: white; padding: 0.5rem;" onclick="hideDeclineForm({{ assignment.id }})" title="Mégsem">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    <textarea name="decline_reason" placeholder="Indoklás..."></textarea>
+                    <button type="submit" class="btn" style="background: var(--danger-color); color: white; padding: 0.5rem;" onclick="document.getElementById('response-{{ assignment.id }}').value='declined'" title="Elutasítom">
+                        <span class="material-icons">send</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- Közelgő elfogadott mérkőzések -->
+<div class="section-header">
+    <span class="material-icons" style="color: var(--success-color);">event_available</span>
+    <h3>Közelgő mérkőzéseim</h3>
+    {% if display_assignments %}
+    <span class="section-count" style="background: var(--success-color); color: white;">{{ page_obj.paginator.count }}</span>
+    {% endif %}
+</div>
+
+{% if display_assignments %}
+{% for assignment in display_assignments %}
+<div class="match-card status-accepted">
+    <div class="match-card-header">
+        <div class="match-card-teams">
+            <div class="team-info">
+                {% if assignment.match.home_team %}
+                    {% if assignment.match.home_team.logo %}
+                    <img src="{{ assignment.match.home_team.logo.url }}" alt="" class="team-logo">
+                    {% else %}
+                    <div class="team-logo-placeholder">{{ assignment.match.home_team.short_name|default:assignment.match.home_team.name|slice:":2"|upper }}</div>
+                    {% endif %}
+                    <span class="team-name">{{ assignment.match.home_team.name }}</span>
+                {% else %}
+                    <div class="team-logo-placeholder">TB</div>
+                    <span class="team-name">TBD</span>
+                {% endif %}
+            </div>
+            {% if assignment.match.is_tournament %}
+            <span style="background: #7c3aed; color: white; padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <span class="material-icons" style="font-size: 1.1rem;">emoji_events</span>
+                Torna
+            </span>
+            {% else %}
+            <span class="vs-separator">-</span>
+            <div class="team-info">
+                {% if assignment.match.away_team %}
+                    {% if assignment.match.away_team.logo %}
+                    <img src="{{ assignment.match.away_team.logo.url }}" alt="" class="team-logo">
+                    {% else %}
+                    <div class="team-logo-placeholder">{{ assignment.match.away_team.short_name|default:assignment.match.away_team.name|slice:":2"|upper }}</div>
+                    {% endif %}
+                    <span class="team-name">{{ assignment.match.away_team.name }}</span>
+                {% else %}
+                    <div class="team-logo-placeholder">TB</div>
+                    <span class="team-name">TBD</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="match-card-meta">
+            {% if assignment.match.phase %}
+            <div class="match-competition">
+                <span class="competition-badge" style="background: {{ assignment.match.phase.competition.color }};">
+                    {{ assignment.match.phase.competition.short_name }}
+                </span>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">{{ assignment.match.phase.name }}</span>
+            </div>
+            {% endif %}
+            <div class="match-datetime">
+                <span class="match-date">{{ assignment.match.date|date:"Y.m.d" }} ({{ assignment.match.date|date:"D" }})</span>
+                <span class="match-time">{{ assignment.match.time|time:"H:i" }}</span>
+            </div>
+            {% if assignment.match.venue %}
+            <div class="match-venue">
+                <span class="material-icons">location_on</span>
+                {{ assignment.match.venue.name }}{% if assignment.match.court %} ({{ assignment.match.court }}){% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="match-card-footer">
+        <div class="match-referees-row">
+            {% with referees=assignment.match.get_referees reserves=assignment.match.get_reserves inspectors=assignment.match.get_inspectors tournament_directors=assignment.match.get_tournament_directors %}
+            {% for ref in referees %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
+                </span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% for ref in reserves %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
+                </span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% for ref in inspectors %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
+                </span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% for ref in tournament_directors %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
+                </span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% endwith %}
+        </div>
+        <div class="match-actions">
+            <span class="match-status-badge accepted">
+                <span class="material-icons">check_circle</span>
+                {{ assignment.get_role_display }} - Elfogadva
+            </span>
+            <form method="post" action="{% url 'matches:decline_accepted_assignment' assignment.id %}" class="response-form" id="form-accepted-{{ assignment.id }}">
+                {% csrf_token %}
+                <div class="action-buttons" id="action-buttons-accepted-{{ assignment.id }}">
+                    <button type="button" class="btn" style="background: transparent; color: var(--danger-color); padding: 0.5rem 1rem; border: 1px solid var(--danger-color);" onclick="showDeclineFormAccepted({{ assignment.id }})" title="Mégsem tudok menni">
+                        <span class="material-icons">cancel</span>
+                        Lemondás
+                    </button>
+                </div>
+                <div class="decline-wrapper" id="decline-accepted-{{ assignment.id }}">
+                    <button type="button" class="btn" style="background: var(--text-secondary); color: white; padding: 0.5rem;" onclick="hideDeclineFormAccepted({{ assignment.id }})" title="Mégsem">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    <textarea name="decline_reason" placeholder="Indoklás (kötelező)..." required></textarea>
+                    <button type="submit" class="btn" style="background: var(--danger-color); color: white; padding: 0.5rem;" title="Lemondás">
+                        <span class="material-icons">send</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Pagination for upcoming -->
+{% if page_obj.has_other_pages %}
+<div class="pagination-container">
+    {% if page_obj.has_previous %}
+    <a href="?tab={{ current_tab }}&page=1{% if selected_season %}&season={{ selected_season.id }}{% endif %}{% if selected_competition %}&competition={{ selected_competition }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="pagination-btn" title="Első oldal">
+        <span class="material-icons">first_page</span>
+    </a>
+    <a href="?tab={{ current_tab }}&page={{ page_obj.previous_page_number }}{% if selected_season %}&season={{ selected_season.id }}{% endif %}{% if selected_competition %}&competition={{ selected_competition }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="pagination-btn" title="Előző">
+        <span class="material-icons">chevron_left</span>
+    </a>
+    {% else %}
+    <span class="pagination-btn disabled"><span class="material-icons">first_page</span></span>
+    <span class="pagination-btn disabled"><span class="material-icons">chevron_left</span></span>
+    {% endif %}
+
+    <span class="pagination-info">
+        {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} oldal
+    </span>
+
+    {% if page_obj.has_next %}
+    <a href="?tab={{ current_tab }}&page={{ page_obj.next_page_number }}{% if selected_season %}&season={{ selected_season.id }}{% endif %}{% if selected_competition %}&competition={{ selected_competition }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="pagination-btn" title="Következő">
+        <span class="material-icons">chevron_right</span>
+    </a>
+    <a href="?tab={{ current_tab }}&page={{ page_obj.paginator.num_pages }}{% if selected_season %}&season={{ selected_season.id }}{% endif %}{% if selected_competition %}&competition={{ selected_competition }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="pagination-btn" title="Utolsó oldal">
+        <span class="material-icons">last_page</span>
+    </a>
+    {% else %}
+    <span class="pagination-btn disabled"><span class="material-icons">chevron_right</span></span>
+    <span class="pagination-btn disabled"><span class="material-icons">last_page</span></span>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <span class="material-icons">event_busy</span>
+    <p>Nincs közelgő mérkőzésed</p>
+</div>
+{% endif %}
+
+{% else %}
+<!-- Múltbéli mérkőzések -->
+<div class="section-header">
+    <span class="material-icons" style="color: var(--text-secondary);">history</span>
+    <h3>Korábbi mérkőzések</h3>
+    {% if display_assignments %}
+    <span class="section-count">{{ page_obj.paginator.count }}</span>
+    {% endif %}
+</div>
+
+{% if display_assignments %}
+{% for assignment in display_assignments %}
+<div class="match-card" style="opacity: 0.7;">
+    <div class="match-card-header">
+        <div class="match-card-teams">
+            <div class="team-info">
+                {% if assignment.match.home_team %}
+                    {% if assignment.match.home_team.logo %}
+                    <img src="{{ assignment.match.home_team.logo.url }}" alt="" class="team-logo">
+                    {% else %}
+                    <div class="team-logo-placeholder">{{ assignment.match.home_team.short_name|default:assignment.match.home_team.name|slice:":2"|upper }}</div>
+                    {% endif %}
+                    <span class="team-name">{{ assignment.match.home_team.name }}</span>
+                {% else %}
+                    <div class="team-logo-placeholder">TB</div>
+                    <span class="team-name">TBD</span>
+                {% endif %}
+            </div>
+            {% if assignment.match.is_tournament %}
+            <span style="background: #7c3aed; color: white; padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <span class="material-icons" style="font-size: 1.1rem;">emoji_events</span>
+                Torna
+            </span>
+            {% else %}
+            <span class="vs-separator">-</span>
+            <div class="team-info">
+                {% if assignment.match.away_team %}
+                    {% if assignment.match.away_team.logo %}
+                    <img src="{{ assignment.match.away_team.logo.url }}" alt="" class="team-logo">
+                    {% else %}
+                    <div class="team-logo-placeholder">{{ assignment.match.away_team.short_name|default:assignment.match.away_team.name|slice:":2"|upper }}</div>
+                    {% endif %}
+                    <span class="team-name">{{ assignment.match.away_team.name }}</span>
+                {% else %}
+                    <div class="team-logo-placeholder">TB</div>
+                    <span class="team-name">TBD</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="match-card-meta">
+            {% if assignment.match.phase %}
+            <div class="match-competition">
+                <span class="competition-badge" style="background: {{ assignment.match.phase.competition.color }};">
+                    {{ assignment.match.phase.competition.short_name }}
+                </span>
+            </div>
+            {% endif %}
+            <div class="match-datetime">
+                <span class="match-date">{{ assignment.match.date|date:"Y.m.d" }}</span>
+                <span class="match-time">{{ assignment.match.time|time:"H:i" }}</span>
+            </div>
+            {% if assignment.match.venue %}
+            <div class="match-venue">
+                <span class="material-icons">location_on</span>
+                {{ assignment.match.venue.name }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="match-card-footer">
+        <div class="match-referees-row">
+            {% with referees=assignment.match.get_referees reserves=assignment.match.get_reserves inspectors=assignment.match.get_inspectors tournament_directors=assignment.match.get_tournament_directors %}
+            {% for ref in referees %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'declined' %}cancel{% else %}check_circle{% endif %}
+                </span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% for ref in reserves %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'declined' %}cancel{% else %}check_circle{% endif %}
+                </span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% for ref in inspectors %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'declined' %}cancel{% else %}check_circle{% endif %}
+                </span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% for ref in tournament_directors %}
+            <div class="referee-item">
+                {% if ref.placeholder_type == 'nincs' %}
+                <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
+                {% else %}
+                <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
+                    {% if ref.response_status == 'declined' %}cancel{% else %}check_circle{% endif %}
+                </span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% endwith %}
+        </div>
+        <div class="match-actions">
+            <span class="badge" style="background: var(--text-secondary); color: white; padding: 0.25rem 0.6rem; border-radius: 20px; font-size: 0.8rem;">{{ assignment.get_role_display }}</span>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Pagination for past -->
+{% if page_obj.has_other_pages %}
+<div class="pagination-container">
+    {% if page_obj.has_previous %}
+    <a href="?tab={{ current_tab }}&page=1{% if selected_season %}&season={{ selected_season.id }}{% endif %}{% if selected_competition %}&competition={{ selected_competition }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="pagination-btn" title="Első oldal">
+        <span class="material-icons">first_page</span>
+    </a>
+    <a href="?tab={{ current_tab }}&page={{ page_obj.previous_page_number }}{% if selected_season %}&season={{ selected_season.id }}{% endif %}{% if selected_competition %}&competition={{ selected_competition }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="pagination-btn" title="Előző">
+        <span class="material-icons">chevron_left</span>
+    </a>
+    {% else %}
+    <span class="pagination-btn disabled"><span class="material-icons">first_page</span></span>
+    <span class="pagination-btn disabled"><span class="material-icons">chevron_left</span></span>
+    {% endif %}
+
+    <span class="pagination-info">
+        {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} oldal
+    </span>
+
+    {% if page_obj.has_next %}
+    <a href="?tab={{ current_tab }}&page={{ page_obj.next_page_number }}{% if selected_season %}&season={{ selected_season.id }}{% endif %}{% if selected_competition %}&competition={{ selected_competition }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="pagination-btn" title="Következő">
+        <span class="material-icons">chevron_right</span>
+    </a>
+    <a href="?tab={{ current_tab }}&page={{ page_obj.paginator.num_pages }}{% if selected_season %}&season={{ selected_season.id }}{% endif %}{% if selected_competition %}&competition={{ selected_competition }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}{% if selected_team %}&team={{ selected_team }}{% endif %}" class="pagination-btn" title="Utolsó oldal">
+        <span class="material-icons">last_page</span>
+    </a>
+    {% else %}
+    <span class="pagination-btn disabled"><span class="material-icons">chevron_right</span></span>
+    <span class="pagination-btn disabled"><span class="material-icons">last_page</span></span>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <span class="material-icons">history</span>
+    <p>Nincs korábbi mérkőzésed</p>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Coordinator Contact Modal -->
+<div id="coordinatorModal" class="coordinator-modal">
+    <div class="coordinator-modal-content">
+        <h4>
+            <span class="material-icons">phone_in_talk</span>
+            Lemondás telefonon
+        </h4>
+        <p class="info-text">
+            Mérkőzés kezdetét megelőző {{ min_cancellation_hours }} órán belül csak telefonon tudod lemondani a mérkőzést!
+            Vedd fel a kapcsolatot a játékvezető adminisztrátorokkal!
+        </p>
+        {% if coordinators %}
+        <div class="coordinator-cards">
+            {% for coordinator in coordinators %}
+            <div class="coordinator-card">
+                <div class="coordinator-card-name">{{ coordinator.name }}</div>
+                <a href="tel:{{ coordinator.phone|cut:' ' }}" class="coordinator-card-phone">
+                    <span class="material-icons">phone</span>
+                    {{ coordinator.phone }}
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: var(--danger-color);">Nincs elérhető koordinátor. Kérlek jelezd az adminisztrátornak!</p>
+        {% endif %}
+        <div class="coordinator-modal-buttons">
+            <button type="button" class="btn-close-modal" onclick="hideCoordinatorModal()">Bezárás</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Match datetime data for cancellation check (both pending and accepted assignments)
+const matchData = {
+    {% for assignment in pending_assignments %}
+    {{ assignment.id }}: {
+        date: '{{ assignment.match.date|date:"Y-m-d" }}',
+        time: '{{ assignment.match.time|time:"H:i"|default:"00:00" }}'
+    },
+    {% endfor %}
+    {% for assignment in display_assignments %}
+    {{ assignment.id }}: {
+        date: '{{ assignment.match.date|date:"Y-m-d" }}',
+        time: '{{ assignment.match.time|time:"H:i"|default:"00:00" }}'
+    },
+    {% endfor %}
+};
+
+const minCancellationHours = {{ min_cancellation_hours }};
+
+// Check if match is within cancellation window
+function isWithinCancellationWindow(assignmentId) {
+    const data = matchData[assignmentId];
+    if (!data) return false;
+
+    const matchDatetime = new Date(data.date + 'T' + data.time);
+    const now = new Date();
+    const diffMs = matchDatetime - now;
+    const diffHours = diffMs / (1000 * 60 * 60);
+
+    return diffHours <= minCancellationHours && diffHours > 0;
+}
+
+// Show coordinator modal
+function showCoordinatorModal() {
+    document.getElementById('coordinatorModal').classList.add('show');
+}
+
+// Hide coordinator modal
+function hideCoordinatorModal() {
+    document.getElementById('coordinatorModal').classList.remove('show');
+}
+
+// For pending assignments
+function showDeclineForm(id) {
+    // Check if within cancellation window
+    if (isWithinCancellationWindow(id)) {
+        showCoordinatorModal();
+        return;
+    }
+
+    const buttons = document.getElementById('action-buttons-' + id);
+    const wrapper = document.getElementById('decline-' + id);
+    buttons.style.display = 'none';
+    wrapper.classList.add('show');
+    wrapper.querySelector('textarea').focus();
+}
+
+function hideDeclineForm(id) {
+    const buttons = document.getElementById('action-buttons-' + id);
+    const wrapper = document.getElementById('decline-' + id);
+    wrapper.classList.remove('show');
+    buttons.style.display = 'flex';
+}
+
+// For accepted assignments
+function showDeclineFormAccepted(id) {
+    // Check if within cancellation window
+    if (isWithinCancellationWindow(id)) {
+        showCoordinatorModal();
+        return;
+    }
+
+    const buttons = document.getElementById('action-buttons-accepted-' + id);
+    const wrapper = document.getElementById('decline-accepted-' + id);
+    buttons.style.display = 'none';
+    wrapper.classList.add('show');
+    wrapper.querySelector('textarea').focus();
+}
+
+function hideDeclineFormAccepted(id) {
+    const buttons = document.getElementById('action-buttons-accepted-' + id);
+    const wrapper = document.getElementById('decline-accepted-' + id);
+    wrapper.classList.remove('show');
+    buttons.style.display = 'flex';
+}
+
+// Close modal on ESC key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        hideCoordinatorModal();
+    }
+});
+
+// Close modal on background click
+document.getElementById('coordinatorModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideCoordinatorModal();
+    }
+});
+</script>
+{% endblock %}

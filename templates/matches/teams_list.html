@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+
+{% block title %}Csapatok{% endblock %}
+{% block page_title %}Csapatok kezelése{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .page-stats {
+        display: flex;
+        gap: 1rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    .filter-bar {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    .team-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        transition: all 0.2s;
+    }
+    .team-card:hover {
+        border-color: var(--accent-color);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .team-card.inactive {
+        opacity: 0.6;
+        background: var(--bg-color);
+    }
+    .team-logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        background: var(--bg-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .team-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    .team-logo .material-icons {
+        font-size: 1.5rem;
+        color: var(--text-secondary);
+    }
+    .team-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .team-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .team-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .team-alternatives {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .team-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+    .btn-icon {
+        padding: 0.5rem;
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+    }
+    .btn-icon:hover {
+        background: var(--border-color);
+        color: var(--text-primary);
+    }
+    .btn-icon.active {
+        color: var(--success-color);
+    }
+    .btn-icon.inactive {
+        color: var(--danger-color);
+    }
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+    .empty-state .material-icons {
+        font-size: 3rem;
+        opacity: 0.5;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: {% if message.tags == 'success' %}rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);{% else %}rgba(23, 162, 184, 0.1); border: 1px solid var(--info-color);{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="page-header">
+    <div class="page-stats">
+        <span>Összes: <strong>{{ total_count }}</strong></span>
+        <span>Aktív: <strong>{{ active_count }}</strong></span>
+    </div>
+    <div class="filter-bar">
+        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" {% if show_inactive %}checked{% endif %} onchange="window.location.href='?show_inactive=' + (this.checked ? '1' : '0')">
+            Inaktívak mutatása
+        </label>
+        <a href="{% url 'matches:team_new' %}" class="btn btn-primary">
+            <span class="material-icons">add</span>
+            Új csapat
+        </a>
+    </div>
+</div>
+
+{% if teams %}
+    {% for team in teams %}
+    <div class="team-card {% if not team.is_active %}inactive{% endif %}">
+        <div class="team-logo">
+            {% if team.logo %}
+            <img src="{{ team.logo.url }}" alt="{{ team.name }}">
+            {% else %}
+            <span class="material-icons">shield</span>
+            {% endif %}
+        </div>
+        <div class="team-info">
+            <div class="team-name">
+                {{ team.name }}
+                {% if team.short_name %}
+                <span class="badge" style="font-size: 0.75rem;">{{ team.short_name }}</span>
+                {% endif %}
+                {% if not team.is_active %}
+                <span class="badge badge-danger" style="font-size: 0.7rem;">Inaktív</span>
+                {% endif %}
+            </div>
+            {% if team.city %}
+            <div class="team-meta">{{ team.city }}</div>
+            {% endif %}
+            {% if team.alternative_names.exists %}
+            <div class="team-alternatives">
+                Alternatívák: {{ team.alternative_names.all|join:", " }}
+            </div>
+            {% endif %}
+        </div>
+        <div class="team-actions">
+            <a href="{% url 'matches:team_edit' team.id %}" class="btn-icon" title="Szerkesztés">
+                <span class="material-icons">edit</span>
+            </a>
+            <form method="post" action="{% url 'matches:team_toggle_active' team.id %}" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="btn-icon {% if team.is_active %}active{% else %}inactive{% endif %}" title="{% if team.is_active %}Deaktiválás{% else %}Aktiválás{% endif %}">
+                    <span class="material-icons">{% if team.is_active %}toggle_on{% else %}toggle_off{% endif %}</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="empty-state">
+    <span class="material-icons">groups</span>
+    <h3>Nincs csapat</h3>
+    <p>Adj hozzá csapatokat a rendszerhez.</p>
+    <a href="{% url 'matches:team_new' %}" class="btn btn-primary" style="margin-top: 1rem;">
+        <span class="material-icons">add</span>
+        Új csapat
+    </a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% block title %}Törlések{% endblock %}
+{% block page_title %}Törölt elemek{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Törölt mérkőzések</h3>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Dátum</th>
+                    <th>Időpont</th>
+                    <th>Bajnokság</th>
+                    <th>Hazai</th>
+                    <th>Vendég</th>
+                    <th>Helyszín</th>
+                    <th>Törölve</th>
+                    <th style="text-align: right;">Műveletek</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if deleted_matches %}
+                {% for match in deleted_matches %}
+                <tr id="row-{{ match.id }}">
+                    <td>{{ match.date|date:"Y.m.d" }}</td>
+                    <td>{% if match.time %}{{ match.time|time:"H:i" }}{% else %}-{% endif %}</td>
+                    <td>
+                        {% if match.phase %}
+                        <span class="badge" style="background-color: {{ match.phase.competition.color }}; color: white;">
+                            {{ match.phase.competition.short_name }}
+                        </span>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td>{{ match.home_team.name|default:"TBD" }}</td>
+                    <td>{{ match.away_team.name|default:"TBD" }}</td>
+                    <td>{{ match.venue.name|default:"-" }}</td>
+                    <td>{{ match.deleted_at|date:"Y.m.d H:i" }}</td>
+                    <td style="text-align: right;">
+                        <button class="btn btn-secondary btn-sm" onclick="restoreMatch({{ match.id }})" title="Visszaállítás">
+                            <span class="material-icons">restore</span>
+                        </button>
+                        <button class="btn btn-sm" style="background: var(--danger-color); color: white;" onclick="permanentlyDeleteMatch({{ match.id }})" title="Végleges törlés">
+                            <span class="material-icons">delete_forever</span>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">delete_outline</span>
+                        <p>Nincs törölt elem</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Törölt felhasználók -->
+<div class="card" style="margin-top: 2rem;">
+    <div class="card-header">
+        <h3 class="card-title">Törölt felhasználók</h3>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Név</th>
+                    <th>E-mail</th>
+                    <th>Telefonszám</th>
+                    <th>Szerepkör</th>
+                    <th>Törölve</th>
+                    <th style="text-align: right;">Műveletek</th>
+                </tr>
+            </thead>
+            <tbody id="users-tbody">
+                {% if deleted_users %}
+                {% for user in deleted_users %}
+                <tr id="user-row-{{ user.id }}">
+                    <td>{{ user.get_full_name|default:user.username }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.phone|default:"-" }}</td>
+                    <td>{{ user.get_role_display }}</td>
+                    <td>{{ user.deleted_at|date:"Y.m.d H:i" }}</td>
+                    <td style="text-align: right;">
+                        <button class="btn btn-secondary btn-sm" onclick="restoreUser({{ user.id }})" title="Visszaállítás">
+                            <span class="material-icons">restore</span>
+                        </button>
+                        {% if request.user.is_admin_user %}
+                        <button class="btn btn-sm" style="background: var(--danger-color); color: white;" onclick="permanentlyDeleteUser({{ user.id }}, '{{ user.get_full_name|escapejs }}')" title="Végleges törlés">
+                            <span class="material-icons">delete_forever</span>
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr class="empty-row">
+                    <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">person_off</span>
+                        <p>Nincs törölt felhasználó</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+</style>
+
+<script>
+function restoreMatch(matchId) {
+    if (!confirm('Biztosan vissza szeretnéd állítani a mérkőzést?')) return;
+
+    fetch(`/matches/api/match/${matchId}/restore/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            document.getElementById('row-' + matchId).remove();
+            // Check if table is now empty
+            const tbody = document.querySelector('tbody');
+            if (!tbody.querySelector('tr')) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                            <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">delete_outline</span>
+                            <p>Nincs törölt elem</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        } else {
+            alert(result.error || 'Hiba történt.');
+        }
+    });
+}
+
+function permanentlyDeleteMatch(matchId) {
+    if (!confirm('FIGYELEM: A mérkőzés véglegesen törlődik és nem lehet visszaállítani!\n\nBiztosan folytatod?')) return;
+
+    fetch(`/matches/api/match/${matchId}/permanently-delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            document.getElementById('row-' + matchId).remove();
+            // Check if table is now empty
+            const tbody = document.querySelector('tbody');
+            if (!tbody.querySelector('tr')) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                            <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">delete_outline</span>
+                            <p>Nincs törölt elem</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        } else {
+            alert(result.error || 'Hiba történt.');
+        }
+    });
+}
+
+function restoreUser(userId) {
+    if (!confirm('Biztosan vissza szeretnéd állítani a felhasználót?')) return;
+
+    fetch(`/matches/api/user/${userId}/restore/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            document.getElementById('user-row-' + userId).remove();
+            // Check if table is now empty
+            const tbody = document.getElementById('users-tbody');
+            if (!tbody.querySelector('tr:not(.empty-row)') || tbody.querySelectorAll('tr').length === 0) {
+                tbody.innerHTML = `
+                    <tr class="empty-row">
+                        <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                            <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">person_off</span>
+                            <p>Nincs törölt felhasználó</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        } else {
+            alert(result.error || 'Hiba történt.');
+        }
+    });
+}
+
+function permanentlyDeleteUser(userId, userName) {
+    if (!confirm(`FIGYELEM: "${userName}" felhasználó véglegesen törlődik és nem lehet visszaállítani!\n\nBiztosan folytatod?`)) return;
+
+    fetch(`/matches/api/user/${userId}/permanently-delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            document.getElementById('user-row-' + userId).remove();
+            // Check if table is now empty
+            const tbody = document.getElementById('users-tbody');
+            if (!tbody.querySelector('tr:not(.empty-row)') || tbody.querySelectorAll('tr').length === 0) {
+                tbody.innerHTML = `
+                    <tr class="empty-row">
+                        <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                            <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">person_off</span>
+                            <p>Nincs törölt felhasználó</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        } else {
+            alert(result.error || 'Hiba történt.');
+        }
+    });
+}
+</script>
+{% endblock %}

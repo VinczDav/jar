@@ -1,0 +1,49 @@
+{% extends "emails/base_email.html" %}
+{% load tz %}
+
+{% block title %}El nem fogadott mérkőzés - JAR{% endblock %}
+
+{% block header_title %}El nem fogadott mérkőzés!{% endblock %}
+
+{% block content %}
+<p style="font-size: 16px; color: #1e293b;">Kedves {{ user.get_full_name|default:user.first_name }}!</p>
+
+<p style="color: #dc2626; font-weight: 600; font-size: 15px;">
+    El nem fogadott mérkőzésed van {{ days_until }} nap múlva! Fogadd el még ma!
+</p>
+
+<table class="data-table">
+    <tr>
+        <th>Mérkőzés időpontja</th>
+        <td>{{ match.date|date:"Y.m.d" }} ({{ match.date|date:"l" }}) {{ match.time|time:"H:i" }}</td>
+    </tr>
+    <tr>
+        <th>Helyszín</th>
+        <td>{{ match.venue.name }}{% if match.venue.city %}, {{ match.venue.city }}{% endif %}</td>
+    </tr>
+    <tr>
+        <th>Bajnokság</th>
+        <td>{{ match.phase.competition.name|default:match.competition.name }}</td>
+    </tr>
+    {% if not match.is_tournament %}
+    <tr>
+        <th>Hazai csapat</th>
+        <td>{{ match.home_team.name|default:"TBD" }}</td>
+    </tr>
+    <tr>
+        <th>Vendég csapat</th>
+        <td>{{ match.away_team.name|default:"TBD" }}</td>
+    </tr>
+    {% else %}
+    <tr>
+        <th>Esemény típus</th>
+        <td style="color: #7c3aed; font-weight: 600;">Torna</td>
+    </tr>
+    {% endif %}
+    <tr class="section-divider highlight">
+        <th>Pozíciód</th>
+        <td>{{ assignment.get_role_display }}</td>
+    </tr>
+</table>
+
+{% endblock %}

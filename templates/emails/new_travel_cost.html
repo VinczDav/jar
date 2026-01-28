@@ -1,0 +1,26 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Új útiköltség - JAR{% endblock %}
+
+{% block header_title %}Új útiköltség{% endblock %}
+
+{% block content %}
+<p style="font-size: 16px; color: #1e293b;">Új útiköltséget rögzítettek.</p>
+
+<table class="data-table">
+    <tr>
+        <th>Beküldő</th>
+        <td>{{ user.get_full_name }}</td>
+    </tr>
+    <tr>
+        <th>Elszámolás típusa</th>
+        <td>{{ travel_cost.get_expense_type_display }}</td>
+    </tr>
+    <tr>
+        <th>Összeg</th>
+        <td><strong>{{ travel_cost.amount|floatformat:0 }} Ft</strong></td>
+    </tr>
+</table>
+
+<p style="margin-top: 24px;">Üdvözlettel,<br>JAR rendszer</p>
+{% endblock %}

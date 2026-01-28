@@ -1,0 +1,854 @@
+{% extends 'base.html' %}
+
+{% block title %}Bajnokságok{% endblock %}
+{% block page_title %}Bajnokságok és szezonok{% endblock %}
+
+{% block extra_css %}
+<style>
+    .data-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+        gap: 1.5rem;
+    }
+    .data-section {
+        background: var(--card-bg);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .data-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        background: var(--bg-color);
+        border-bottom: 1px solid var(--border-color);
+    }
+    .data-section-title {
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .data-section-title .material-icons {
+        color: var(--accent-color);
+    }
+    .data-section-count {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        background: var(--border-color);
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+    }
+    .data-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .data-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .data-item:last-child {
+        border-bottom: none;
+    }
+    .data-item:hover {
+        background: var(--bg-color);
+    }
+    .data-item-info {
+        flex: 1;
+    }
+    .data-item-name {
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .data-item-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .add-form {
+        padding: 1rem 1.25rem;
+        background: var(--bg-color);
+        border-top: 1px solid var(--border-color);
+    }
+    .add-form-row {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .add-form input,
+    .add-form select {
+        flex: 1;
+        min-width: 120px;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--card-bg);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+    .add-form input:focus,
+    .add-form select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .add-form button {
+        padding: 0.5rem 1rem;
+        white-space: nowrap;
+    }
+    .empty-list {
+        padding: 2rem;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+    .checkbox-label input {
+        width: auto;
+        min-width: auto;
+        flex: none;
+    }
+    .phase-list {
+        margin-left: 1.5rem;
+        margin-top: 0.25rem;
+    }
+    .phase-item {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        padding: 0.25rem 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .phase-payment {
+        font-size: 0.8rem;
+        color: var(--success-color);
+        font-weight: 500;
+    }
+    .date-field-group {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex: 1;
+        min-width: 140px;
+    }
+    .date-field-group label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+    .date-field-group input {
+        flex: 1;
+    }
+    .payment-input-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .payment-input-group input[type="number"] {
+        width: 100px;
+        min-width: 100px;
+    }
+    .payment-input-group select {
+        min-width: 140px;
+    }
+    /* Allow color picker popup to overflow */
+    .data-section {
+        overflow: visible !important;
+    }
+    .data-list {
+        overflow: visible !important;
+        max-height: none !important;
+    }
+    .data-item {
+        overflow: visible !important;
+    }
+    .data-item-name {
+        position: relative;
+    }
+    .color-badge {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        margin-right: 0.5rem;
+        vertical-align: middle;
+    }
+    .btn-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 6px;
+        background: var(--bg-color);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    .btn-icon:hover {
+        background: var(--border-color);
+        color: var(--text-primary);
+    }
+    .btn-icon .material-icons {
+        font-size: 1rem;
+    }
+    .btn-icon-danger:hover {
+        background: #fee2e2;
+        color: var(--danger-color);
+    }
+    /* Inline edit popup */
+    .edit-popup-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+    .edit-popup-overlay.show {
+        display: flex;
+    }
+    .edit-popup {
+        background: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        width: 100%;
+        max-width: 450px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .edit-popup-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .edit-popup-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .edit-popup-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+        line-height: 1;
+    }
+    .edit-popup-body {
+        padding: 1.25rem;
+    }
+    .edit-popup .form-group {
+        margin-bottom: 1rem;
+    }
+    .edit-popup .form-group label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 0.4rem;
+        font-size: 0.9rem;
+    }
+    .edit-popup .form-group input,
+    .edit-popup .form-group select {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.9rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+    .edit-popup .form-row {
+        display: flex;
+        gap: 0.75rem;
+    }
+    .edit-popup .form-row .form-group {
+        flex: 1;
+    }
+    .edit-popup-actions {
+        display: flex;
+        gap: 0.5rem;
+        padding: 1rem 1.25rem;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-color);
+        border-radius: 0 0 12px 12px;
+    }
+    .edit-popup-actions .btn-danger {
+        margin-left: auto;
+        background: var(--danger-color);
+        color: white;
+    }
+    .edit-popup-actions .btn-danger:hover {
+        background: #dc2626;
+    }
+    /* Phase items in popup */
+    .phase-edit-item {
+        background: var(--bg-color);
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    .phase-edit-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    .phase-edit-name {
+        font-weight: 500;
+        flex: 1;
+    }
+    .phase-edit-name input {
+        width: 100%;
+        padding: 0.35rem 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.9rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+    .phase-edit-fields {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .phase-edit-fields label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        display: block;
+        margin-bottom: 0.15rem;
+    }
+    .phase-edit-fields input,
+    .phase-edit-fields select {
+        width: 100%;
+        padding: 0.35rem 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.85rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+    }
+    .phase-payment-row {
+        display: flex;
+        gap: 0.5rem;
+        grid-column: span 3;
+        margin-top: 0.25rem;
+    }
+    .phase-payment-row > div:first-child {
+        flex: 1;
+    }
+    .phase-payment-row > div:last-child {
+        flex: 1.2;
+    }
+    .empty-phases {
+        text-align: center;
+        padding: 1rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    .phase-delete-btn {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+    .phase-delete-btn:hover {
+        background: #fee2e2;
+        color: var(--danger-color);
+    }
+    .phase-status {
+        font-size: 0.75rem;
+        color: var(--success-color);
+        margin-left: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="data-grid">
+    <!-- Szezonok -->
+    <div class="data-section">
+        <div class="data-section-header">
+            <div class="data-section-title">
+                <span class="material-icons">date_range</span>
+                Szezonok
+            </div>
+            <span class="data-section-count">{{ seasons|length }}</span>
+        </div>
+        <div class="data-list">
+            {% for season in seasons %}
+            <div class="data-item">
+                <div class="data-item-info">
+                    <div class="data-item-name">
+                        {{ season.name }}
+                        {% if season.is_active %}
+                        <span class="badge badge-success" style="font-size: 0.7rem;">Aktív</span>
+                        {% endif %}
+                    </div>
+                    <div class="data-item-meta">{{ season.start_date|date:"Y.m.d" }} - {{ season.end_date|date:"Y.m.d" }}</div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-list">Nincs szezon</div>
+            {% endfor %}
+        </div>
+        <form method="post" action="{% url 'matches:add_season' %}" class="add-form">
+            {% csrf_token %}
+            <div class="add-form-row" style="margin-bottom: 0.5rem;">
+                <input type="text" name="name" placeholder="Szezon neve (pl. 2025/26)" required>
+            </div>
+            <div class="add-form-row" style="margin-bottom: 0.5rem;">
+                <div class="date-field-group">
+                    <label>Tól:</label>
+                    <input type="date" name="start_date" required>
+                </div>
+                <div class="date-field-group">
+                    <label>Ig:</label>
+                    <input type="date" name="end_date" required>
+                </div>
+            </div>
+            <div class="add-form-row">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_active">
+                    Aktív szezon
+                </label>
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                    Hozzáadás
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bajnokságok -->
+    <div class="data-section">
+        <div class="data-section-header">
+            <div class="data-section-title">
+                <span class="material-icons">emoji_events</span>
+                Bajnokságok
+            </div>
+            <span class="data-section-count">{{ competitions|length }}</span>
+        </div>
+        <div class="data-list">
+            {% for competition in competitions %}
+            <div class="data-item" style="flex-direction: column; align-items: flex-start;">
+                <div class="data-item-info" style="width: 100%;">
+                    <div class="data-item-name" style="justify-content: space-between; width: 100%;">
+                        <div>
+                            {% if competition.short_name %}
+                            <span class="badge" style="background: {{ competition.color }}; color: white;">{{ competition.short_name }}</span>
+                            {% endif %}
+                            {{ competition.name }}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.25rem;">
+                            <form method="post" action="{% url 'matches:update_competition_color' competition.id %}" style="margin: 0;">
+                                {% csrf_token %}
+                                <input type="color" name="color" value="{{ competition.color }}" data-autosubmit title="Szín módosítása">
+                            </form>
+                            <button type="button" class="btn-icon" title="Szerkesztés" onclick="openEditPopup({{ competition.id }}, '{{ competition.name|escapejs }}', '{{ competition.short_name|escapejs }}', {{ competition.season_id }}, '{{ competition.color }}', {{ competition.match_duration|default:60 }})">
+                                <span class="material-icons">edit</span>
+                            </button>
+                            <form method="post" action="{% url 'matches:delete_competition' competition.id %}" style="margin: 0;" onsubmit="return confirm('Biztosan törölni szeretnéd a {{ competition.short_name|default:competition.name }} bajnokságot?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-icon btn-icon-danger" title="Törlés">
+                                    <span class="material-icons">delete</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="data-item-meta">{{ competition.season.name }}</div>
+                    {% if competition.phases.exists %}
+                    <div class="phase-list">
+                        {% for phase in competition.phases.all %}
+                        <div class="phase-item">
+                            <span>- {{ phase.name }} <span style="font-size: 0.75rem; color: var(--text-secondary);">({{ phase.get_composition_display }})</span></span>
+                            <span class="phase-payment">{{ phase.get_payment_display }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-list">Nincs bajnokság</div>
+            {% endfor %}
+        </div>
+        <form method="post" action="{% url 'matches:add_competition' %}" class="add-form">
+            {% csrf_token %}
+            <div class="add-form-row" style="margin-bottom: 0.5rem;">
+                <input type="text" name="name" placeholder="Bajnokság neve" required>
+                <input type="text" name="short_name" placeholder="Rövid" style="max-width: 80px;">
+                <div class="color-picker-wrapper">
+                    <input type="color" name="color" value="#6366f1" class="color-picker" title="Bajnokság színe">
+                </div>
+            </div>
+            <div class="add-form-row">
+                <select name="season" required>
+                    <option value="">Válassz szezont...</option>
+                    {% for season in seasons %}
+                    <option value="{{ season.id }}">{{ season.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                    Hozzáadás
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Szakaszok -->
+    <div class="data-section" style="grid-column: 1 / -1;">
+        <div class="data-section-header">
+            <div class="data-section-title">
+                <span class="material-icons">format_list_numbered</span>
+                Szakaszok hozzáadása
+            </div>
+        </div>
+        <form method="post" action="{% url 'matches:add_phase' %}" class="add-form">
+            {% csrf_token %}
+            <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+                Adj hozzá szakaszt egy bajnoksághoz (pl. Alapszakasz, Rájátszás, Középszakasz).
+            </p>
+            <div class="add-form-row" style="margin-bottom: 0.5rem;">
+                <select name="competition" required>
+                    <option value="">Válassz bajnokságot...</option>
+                    {% for competition in competitions %}
+                    <option value="{{ competition.id }}">{{ competition.short_name }} - {{ competition.name }} ({{ competition.season.name }})</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="name" placeholder="Szakasz neve" required>
+            </div>
+            <div class="add-form-row">
+                <div class="payment-input-group">
+                    <label style="font-size: 0.85rem; color: var(--text-secondary);">Díjazás:</label>
+                    <input type="number" name="payment_amount" value="0" min="0" step="100" placeholder="Ft">
+                    <select name="payment_type">
+                        <option value="per_person">Ft / fő</option>
+                        <option value="total">Ft összesen</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">add</span>
+                    Hozzáadás
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Competition Popup -->
+<div class="edit-popup-overlay" id="editPopup">
+    <div class="edit-popup" style="max-width: 550px;">
+        <div class="edit-popup-header">
+            <span class="edit-popup-title">Bajnokság szerkesztése</span>
+            <button type="button" class="edit-popup-close" onclick="closeEditPopup()">&times;</button>
+        </div>
+        <form method="post" id="editForm">
+            {% csrf_token %}
+            <div class="edit-popup-body">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label for="edit_name">Bajnokság neve</label>
+                        <input type="text" id="edit_name" name="name" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label for="edit_short_name">Rövid név</label>
+                        <input type="text" id="edit_short_name" name="short_name">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label for="edit_season">Szezon</label>
+                        <select id="edit_season" name="season" required>
+                            {% for season in seasons %}
+                            <option value="{{ season.id }}">{{ season.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Szín</label>
+                        <input type="color" id="edit_color" name="color" style="width: 100%; height: 38px;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="edit_match_duration">Meccs időtartam (perc)</label>
+                    <input type="number" id="edit_match_duration" name="match_duration" min="1" max="300" placeholder="60">
+                    <small style="color: var(--text-secondary); font-size: 0.8rem;">Egy mérkőzés átlagos időtartama - megjelenik az EFO/EKHO-nál</small>
+                </div>
+
+                <!-- Phases Section -->
+                <div class="phases-section" style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <label style="font-weight: 600; font-size: 0.95rem;">Szakaszok</label>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="addNewPhase()" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                            <span class="material-icons" style="font-size: 1rem;">add</span>
+                            Új szakasz
+                        </button>
+                    </div>
+                    <div id="phasesContainer">
+                        <!-- Phases will be loaded dynamically -->
+                        <div class="loading-phases" style="text-align: center; padding: 1rem; color: var(--text-secondary);">
+                            Betöltés...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="edit-popup-actions">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons">save</span>
+                    Mentés
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeEditPopup()">
+                    Mégse
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentCompetitionId = null;
+
+function openEditPopup(id, name, shortName, seasonId, color, matchDuration) {
+    currentCompetitionId = id;
+    document.getElementById('editForm').action = '/matches/admin/competition/' + id + '/';
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_short_name').value = shortName;
+    document.getElementById('edit_season').value = seasonId;
+    document.getElementById('edit_color').value = color;
+    document.getElementById('edit_match_duration').value = matchDuration || 60;
+    document.getElementById('editPopup').classList.add('show');
+    document.getElementById('edit_name').focus();
+
+    // Load phases
+    loadPhases(id);
+}
+
+function closeEditPopup() {
+    document.getElementById('editPopup').classList.remove('show');
+    currentCompetitionId = null;
+}
+
+function loadPhases(competitionId) {
+    const container = document.getElementById('phasesContainer');
+    container.innerHTML = '<div class="loading-phases" style="text-align: center; padding: 1rem; color: var(--text-secondary);">Betöltés...</div>';
+
+    fetch('/matches/api/competition/' + competitionId + '/phases/')
+        .then(response => response.json())
+        .then(data => {
+            renderPhases(data.phases);
+        })
+        .catch(error => {
+            container.innerHTML = '<div class="empty-phases">Hiba történt a betöltés során.</div>';
+        });
+}
+
+function renderPhases(phases) {
+    const container = document.getElementById('phasesContainer');
+
+    if (phases.length === 0) {
+        container.innerHTML = '<div class="empty-phases">Nincs szakasz hozzáadva.</div>';
+        return;
+    }
+
+    let html = '';
+    phases.forEach(phase => {
+        html += createPhaseHTML(phase);
+    });
+    container.innerHTML = html;
+}
+
+function createPhaseHTML(phase) {
+    return `
+        <div class="phase-edit-item" data-phase-id="${phase.id}">
+            <div class="phase-edit-header">
+                <div class="phase-edit-name">
+                    <input type="text" value="${escapeHtml(phase.name)}" placeholder="Szakasz neve" onchange="updatePhase(${phase.id}, 'name', this.value)">
+                </div>
+                <span class="phase-status" id="status-${phase.id}"></span>
+                <button type="button" class="phase-delete-btn" onclick="deletePhase(${phase.id})" title="Törlés">
+                    <span class="material-icons" style="font-size: 1rem;">close</span>
+                </button>
+            </div>
+            <div class="phase-edit-fields">
+                <div>
+                    <label>Játékvezetők</label>
+                    <input type="number" min="0" max="10" value="${phase.referee_count}" onchange="updatePhase(${phase.id}, 'referee_count', this.value)">
+                </div>
+                <div>
+                    <label>Tartalékok</label>
+                    <input type="number" min="0" max="10" value="${phase.reserve_count}" onchange="updatePhase(${phase.id}, 'reserve_count', this.value)">
+                </div>
+                <div>
+                    <label>Ellenőrök</label>
+                    <input type="number" min="0" max="10" value="${phase.inspector_count}" onchange="updatePhase(${phase.id}, 'inspector_count', this.value)">
+                </div>
+                <div class="phase-payment-row">
+                    <div>
+                        <label>Díjazás (Ft)</label>
+                        <input type="number" min="0" step="100" value="${phase.payment_amount}" onchange="updatePhase(${phase.id}, 'payment_amount', this.value)">
+                    </div>
+                    <div>
+                        <label>Díjazás típusa</label>
+                        <select onchange="updatePhase(${phase.id}, 'payment_type', this.value)">
+                            <option value="per_person" ${phase.payment_type === 'per_person' ? 'selected' : ''}>Ft / fő</option>
+                            <option value="total" ${phase.payment_type === 'total' ? 'selected' : ''}>Ft összesen</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="grid-column: span 3; margin-top: 0.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" ${phase.requires_mfsz_declaration ? 'checked' : ''} onchange="updatePhase(${phase.id}, 'requires_mfsz_declaration', this.checked)">
+                        MFSZ bejelentés szükséges
+                    </label>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function updatePhase(phaseId, field, value) {
+    const statusEl = document.getElementById('status-' + phaseId);
+    statusEl.textContent = 'Mentés...';
+
+    const data = {};
+    data[field] = field.includes('count') || field === 'payment_amount' ? parseInt(value) || 0 : value;
+
+    fetch('/matches/api/phase/' + phaseId + '/update/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            statusEl.textContent = 'Hiba!';
+            statusEl.style.color = 'var(--danger-color)';
+        } else {
+            statusEl.textContent = 'Mentve';
+            setTimeout(() => { statusEl.textContent = ''; }, 1500);
+        }
+    })
+    .catch(error => {
+        statusEl.textContent = 'Hiba!';
+        statusEl.style.color = 'var(--danger-color)';
+    });
+}
+
+function addNewPhase() {
+    if (!currentCompetitionId) return;
+
+    const container = document.getElementById('phasesContainer');
+    const emptyMsg = container.querySelector('.empty-phases');
+    if (emptyMsg) emptyMsg.remove();
+
+    fetch('/matches/api/competition/' + currentCompetitionId + '/phase/add/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            name: 'Új szakasz',
+            referee_count: 2,
+            reserve_count: 0,
+            inspector_count: 0,
+            payment_amount: 0,
+            payment_type: 'per_person'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            container.insertAdjacentHTML('beforeend', createPhaseHTML(data));
+            // Focus the name input of the new phase
+            const newItem = container.querySelector(`[data-phase-id="${data.id}"] input`);
+            if (newItem) {
+                newItem.select();
+                newItem.focus();
+            }
+        }
+    });
+}
+
+function deletePhase(phaseId) {
+    if (!confirm('Biztosan törölni szeretnéd ezt a szakaszt?')) return;
+
+    fetch('/matches/api/phase/' + phaseId + '/delete/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const item = document.querySelector(`[data-phase-id="${phaseId}"]`);
+            if (item) item.remove();
+
+            // Show empty message if no phases left
+            const container = document.getElementById('phasesContainer');
+            if (!container.querySelector('.phase-edit-item')) {
+                container.innerHTML = '<div class="empty-phases">Nincs szakasz hozzáadva.</div>';
+            }
+        }
+    });
+}
+
+// Close on overlay click
+document.getElementById('editPopup').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeEditPopup();
+    }
+});
+
+// Close on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeEditPopup();
+    }
+});
+</script>
+{% endblock %}

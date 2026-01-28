@@ -1,0 +1,879 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if user_obj %}Profil szerkesztése{% else %}Új felhasználó{% endif %}{% endblock %}
+{% block page_title %}{% if user_obj %}{{ user_obj.get_full_name|default:user_obj.email }} szerkesztése{% else %}Új felhasználó{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        background: var(--card-bg);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .form-card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .form-card-title .material-icons {
+        color: var(--accent-color);
+    }
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+    .form-grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+    .form-grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+    .form-group.span-2 {
+        grid-column: span 2;
+    }
+    .form-group label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+    .form-group input,
+    .form-group select {
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .form-group input[type="checkbox"] {
+        width: auto;
+    }
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 0;
+    }
+    .checkbox-label {
+        font-weight: normal;
+        color: var(--text-primary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .avatar-section {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+    .avatar-preview {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--accent-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        font-weight: 600;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .avatar-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .avatar-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .button-group {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1.5rem;
+    }
+    .admin-card {
+        background: rgba(220, 53, 69, 0.05);
+        border: 1px solid rgba(220, 53, 69, 0.2);
+    }
+    .admin-card .form-card-title {
+        color: #dc3545;
+    }
+    .admin-card .form-card-title .material-icons {
+        color: #dc3545;
+    }
+    .help-text {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .deleted-banner {
+        background: rgba(220, 53, 69, 0.1);
+        border: 1px solid var(--danger-color);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--danger-color);
+    }
+    .login-disabled-banner {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: #856404;
+    }
+
+    /* Toggle switch styles */
+    .toggle-switch {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-weight: normal;
+        font-size: 0.85rem;
+    }
+    .toggle-switch input {
+        display: none;
+    }
+    .toggle-slider {
+        width: 44px;
+        height: 24px;
+        background: var(--border-color);
+        border-radius: 12px;
+        position: relative;
+        transition: background 0.2s;
+    }
+    .toggle-slider::before {
+        content: '';
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        background: white;
+        border-radius: 50%;
+        top: 3px;
+        left: 3px;
+        transition: transform 0.2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-switch input:checked + .toggle-slider {
+        background: var(--success-color);
+    }
+    .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(20px);
+    }
+    .toggle-label {
+        color: var(--text-secondary);
+    }
+    .toggle-switch input:checked ~ .toggle-label {
+        color: var(--success-color);
+        font-weight: 500;
+    }
+
+    @media (max-width: 768px) {
+        .form-grid,
+        .form-grid-2,
+        .form-grid-4 {
+            grid-template-columns: 1fr;
+        }
+        .form-group.span-2 {
+            grid-column: span 1;
+        }
+    }
+
+    /* Dual list selector for roles */
+    .dual-list-selector {
+        display: flex;
+        gap: 1rem;
+        align-items: stretch;
+    }
+    .dual-list-box {
+        flex: 1;
+        min-width: 0;
+    }
+    .dual-list-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    .dual-list {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        min-height: 200px;
+        max-height: 250px;
+        overflow-y: auto;
+    }
+    .dual-list-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: background 0.15s;
+        user-select: none;
+    }
+    .dual-list-item:last-child {
+        border-bottom: none;
+    }
+    .dual-list-item:hover {
+        background: var(--card-bg);
+    }
+    .dual-list-item.selected {
+        background: rgba(59, 130, 246, 0.1);
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+    .dual-list-item .material-icons {
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+    }
+    .dual-list-item.selected .material-icons {
+        color: var(--accent-color);
+    }
+    .dual-list-item-text {
+        flex: 1;
+        font-size: 0.9rem;
+    }
+    .dual-list-item-desc {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+    .dual-list-arrows {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .dual-list-btn {
+        width: 40px;
+        height: 40px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--card-bg);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        transition: all 0.15s;
+    }
+    .dual-list-btn:hover:not(:disabled) {
+        background: var(--accent-color);
+        border-color: var(--accent-color);
+        color: white;
+    }
+    .dual-list-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+    .dual-list-btn .material-icons {
+        font-size: 1.25rem;
+    }
+    .assigned-roles-list {
+        border-color: var(--success-color);
+    }
+    .assigned-roles-list .dual-list-item {
+        border-color: rgba(16, 185, 129, 0.2);
+    }
+
+    @media (max-width: 768px) {
+        .dual-list-selector {
+            flex-direction: column;
+        }
+        .dual-list-arrows {
+            flex-direction: row;
+            justify-content: center;
+        }
+        .dual-list-arrows .dual-list-btn .material-icons {
+            transform: rotate(90deg);
+        }
+        .dual-list {
+            min-height: 150px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: {% if message.tags == 'success' %}rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);{% elif message.tags == 'error' %}rgba(220, 53, 69, 0.1); border: 1px solid var(--danger-color);{% else %}rgba(23, 162, 184, 0.1); border: 1px solid var(--info-color);{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if user_obj and user_obj.is_deleted %}
+<div class="deleted-banner">
+    <span class="material-icons">warning</span>
+    <span>Ez a felhasználó törölve lett {{ user_obj.deleted_at|date:"Y.m.d H:i" }}-kor.</span>
+</div>
+{% endif %}
+
+{% if user_obj and user_obj.is_login_disabled %}
+<div class="login-disabled-banner">
+    <span class="material-icons">lock</span>
+    <span>A bejelentkezés le van tiltva erre a felhasználóra.</span>
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Alapadatok -->
+    <div class="form-card">
+        <div class="form-card-title">
+            <span class="material-icons">person</span>
+            Alapadatok
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="last_name">Vezetéknév</label>
+                <input type="text" id="last_name" name="last_name" value="{{ user_obj.last_name|default:'' }}">
+            </div>
+            <div class="form-group">
+                <label for="first_name">Keresztnév</label>
+                <input type="text" id="first_name" name="first_name" value="{{ user_obj.first_name|default:'' }}">
+            </div>
+            <div class="form-group">
+                <label for="phone">Telefonszám</label>
+                <input type="tel" id="phone" name="phone" value="{{ user_obj.phone|default:'' }}" placeholder="+36 30 123 4567">
+            </div>
+            <div class="form-group span-2">
+                <label for="email">E-mail cím *</label>
+                <input type="email" id="email" name="email" value="{{ user_obj.email|default:'' }}" required>
+            </div>
+            <div class="form-group">
+                <label for="password">{% if user_obj %}Új jelszó{% else %}Jelszó{% endif %}</label>
+                <input type="password" id="password" name="password" placeholder="{% if user_obj %}Hagyd üresen ha nem akarod módosítani{% else %}Automatikus ha üres{% endif %}">
+                <span class="help-text">{% if user_obj %}Csak akkor töltsd ki, ha meg akarod változtatni a jelszót.{% else %}Ha üresen hagyod, a rendszer automatikusan generál egyet.{% endif %}</span>
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; padding-top: 1.5rem;">
+                <label class="checkbox-label" style="margin: 0;">
+                    <input type="checkbox" name="send_password_email" id="send_password_email" {% if not user_obj %}checked{% endif %}>
+                    {% if user_obj %}Új jelszó küldése emailben{% else %}Üdvözlő email küldése a belépési adatokkal{% endif %}
+                </label>
+                <span class="help-text" style="margin-left: 0.5rem; margin-bottom: 0;">{% if user_obj %}(Generál egy új jelszót és elküldi a felhasználónak){% else %}(A rendszer elküldi a belépési adatokat emailben){% endif %}</span>
+            </div>
+        </div>
+
+        {% if user_obj %}
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+            <label style="font-weight: 500; margin-bottom: 0.75rem; display: block;">Profilkép</label>
+            <div class="avatar-section">
+                <div class="avatar-preview">
+                    {% if user_obj.profile_picture %}
+                    <img src="{{ user_obj.profile_picture.url }}" alt="">
+                    {% else %}
+                    {{ user_obj.first_name|slice:":1"|upper }}{{ user_obj.last_name|slice:":1"|upper }}
+                    {% endif %}
+                </div>
+                <div class="avatar-actions">
+                    <input type="file" id="profile_picture" name="profile_picture" accept="image/*">
+                    {% if user_obj.profile_picture %}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="remove_profile_picture" value="1">
+                        Profilkép eltávolítása
+                    </label>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Lakcím -->
+    <div class="form-card">
+        <div class="form-card-title">
+            <span class="material-icons">home</span>
+            Lakcím
+        </div>
+
+        <div class="form-grid-4">
+            <div class="form-group">
+                <label for="country">Ország</label>
+                <input type="text" id="country" name="country" value="{{ user_obj.country|default:'Magyarország' }}">
+            </div>
+            <div class="form-group">
+                <label for="postal_code">Irányítószám</label>
+                <input type="text" id="postal_code" name="postal_code" value="{{ user_obj.postal_code|default:'' }}">
+            </div>
+            <div class="form-group">
+                <label for="city">Város</label>
+                <input type="text" id="city" name="city" value="{{ user_obj.city|default:'' }}">
+            </div>
+            <div class="form-group">
+                <label for="address">Cím</label>
+                <input type="text" id="address" name="address" value="{{ user_obj.address|default:'' }}" placeholder="Utca, házszám">
+            </div>
+        </div>
+    </div>
+
+    <!-- Születési adatok -->
+    <div class="form-card">
+        <div class="form-card-title">
+            <span class="material-icons">cake</span>
+            Születési adatok
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="mother_maiden_name">Anyja leánykori neve</label>
+                <input type="text" id="mother_maiden_name" name="mother_maiden_name" value="{{ user_obj.mother_maiden_name|default:'' }}">
+            </div>
+            <div class="form-group">
+                <label for="birth_date">Születési idő</label>
+                <input type="date" id="birth_date" name="birth_date" value="{% if user_obj.birth_date %}{{ user_obj.birth_date|date:'Y-m-d' }}{% endif %}">
+            </div>
+            <div class="form-group">
+                <label for="birth_place">Születési hely</label>
+                <input type="text" id="birth_place" name="birth_place" value="{{ user_obj.birth_place|default:'' }}">
+            </div>
+        </div>
+    </div>
+
+    <!-- Gépjármű adatok -->
+    <div class="form-card">
+        <div class="form-card-title" style="justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="material-icons">directions_car</span>
+                Gépjármű adatok
+            </span>
+            <label class="toggle-switch" title="Ha be van kapcsolva, a felhasználó feltölthet autós útiköltséget">
+                <input type="checkbox" name="vehicle_reimbursement_enabled" {% if user_obj.vehicle_reimbursement_enabled %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">Elszámolás engedélyezve</span>
+            </label>
+        </div>
+
+        <div class="form-grid-4">
+            <div class="form-group span-2">
+                <label for="vehicle_owner">Tulajdonos neve</label>
+                <input type="text" id="vehicle_owner" name="vehicle_owner" value="{{ user_obj.vehicle_owner|default:'' }}">
+                <span class="help-text">Ha nem a játékvezető a tulajdonos</span>
+            </div>
+            <div class="form-group span-2">
+                <label class="checkbox-label" style="padding-top: 1.5rem;">
+                    <input type="checkbox" name="vehicle_authorization" {% if user_obj.vehicle_authorization %}checked{% endif %}>
+                    Van meghatalmazás a gépjármű használatára
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="vehicle_make">Gyártó</label>
+                <input type="text" id="vehicle_make" name="vehicle_make" value="{{ user_obj.vehicle_make|default:'' }}" placeholder="pl. Toyota">
+            </div>
+            <div class="form-group">
+                <label for="vehicle_model">Modell</label>
+                <input type="text" id="vehicle_model" name="vehicle_model" value="{{ user_obj.vehicle_model|default:'' }}" placeholder="pl. Corolla">
+            </div>
+            <div class="form-group">
+                <label for="vehicle_year">Gyártás éve</label>
+                <input type="number" id="vehicle_year" name="vehicle_year" value="{{ user_obj.vehicle_year|default:'' }}" min="1990" max="2030">
+            </div>
+            <div class="form-group">
+                <label for="vehicle_engine_cc">Motor (cm³)</label>
+                <input type="number" id="vehicle_engine_cc" name="vehicle_engine_cc" value="{{ user_obj.vehicle_engine_cc|default:'' }}" placeholder="pl. 1600">
+            </div>
+            <div class="form-group">
+                <label for="vehicle_license_plate">Rendszám</label>
+                <input type="text" id="vehicle_license_plate" name="vehicle_license_plate" value="{{ user_obj.vehicle_license_plate|default:'' }}" placeholder="ABC-123">
+            </div>
+            <div class="form-group">
+                <label for="vehicle_engine_type">Motor típusa</label>
+                <select id="vehicle_engine_type" name="vehicle_engine_type">
+                    <option value="">-- Válassz --</option>
+                    <option value="benzin" {% if user_obj.vehicle_engine_type == 'benzin' %}selected{% endif %}>Benzin</option>
+                    <option value="diesel" {% if user_obj.vehicle_engine_type == 'diesel' %}selected{% endif %}>Dízel</option>
+                    <option value="elektromos" {% if user_obj.vehicle_engine_type == 'elektromos' %}selected{% endif %}>Elektromos</option>
+                    <option value="hibrid" {% if user_obj.vehicle_engine_type == 'hibrid' %}selected{% endif %}>Hibrid</option>
+                    <option value="lpg" {% if user_obj.vehicle_engine_type == 'lpg' %}selected{% endif %}>LPG</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Szerződési adatok -->
+    <div class="form-card">
+        <div class="form-card-title">
+            <span class="material-icons">description</span>
+            Szerződési adatok
+        </div>
+
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label for="taj_number">TAJ szám</label>
+                <input type="text" id="taj_number" name="taj_number" value="{{ user_obj.taj_number|default:'' }}" placeholder="123-456-789">
+            </div>
+        </div>
+    </div>
+
+    <!-- Elszámolási adatok -->
+    <div class="form-card">
+        <div class="form-card-title">
+            <span class="material-icons">payments</span>
+            Elszámolási adatok
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="billing_type">Elszámolás típusa</label>
+                <select id="billing_type" name="billing_type">
+                    <option value="nincs" {% if not user_obj or user_obj.billing_type == 'nincs' %}selected{% endif %}>Nincs</option>
+                    <option value="efo" {% if user_obj.billing_type == 'efo' %}selected{% endif %}>EFO</option>
+                    <option value="ekho" {% if user_obj.billing_type == 'ekho' %}selected{% endif %}>EKHO</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="tax_id">Adóazonosító jel</label>
+                <input type="text" id="tax_id" name="tax_id" value="{{ user_obj.tax_id|default:'' }}" placeholder="8012345678">
+            </div>
+            <div class="form-group">
+                <label for="bank_account">Bankszámlaszám</label>
+                <input type="text" id="bank_account" name="bank_account" value="{{ user_obj.bank_account|default:'' }}" placeholder="12345678-12345678-12345678">
+            </div>
+        </div>
+    </div>
+
+    <!-- Sportorvosi -->
+    <div class="form-card">
+        <div class="form-card-title">
+            <span class="material-icons">medical_services</span>
+            Sportorvosi
+        </div>
+
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label for="medical_valid_until">Érvényesség dátuma</label>
+                <input type="date" id="medical_valid_until" name="medical_valid_until" value="{% if user_obj.medical_valid_until %}{{ user_obj.medical_valid_until|date:'Y-m-d' }}{% endif %}">
+            </div>
+            <div class="form-group">
+                <label>Státusz</label>
+                <div style="padding: 0.75rem; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;">
+                    {% if not user_obj.medical_valid_until %}
+                        <span style="color: var(--text-secondary);">Nincs megadva</span>
+                    {% elif user_obj.medical_valid_until < today %}
+                        <span style="color: var(--danger-color);">Lejárt</span>
+                    {% elif user_obj.medical_days_until_expiry <= 7 %}
+                        <span style="color: var(--danger-color);">{{ user_obj.medical_days_until_expiry }} nap múlva lejár</span>
+                    {% elif user_obj.medical_days_until_expiry <= 30 %}
+                        <span style="color: var(--warning-color);">{{ user_obj.medical_days_until_expiry }} nap múlva lejár</span>
+                    {% else %}
+                        <span style="color: var(--success-color);">Érvényes</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin beállítások (csak adminoknak) -->
+    {% if request.user.is_admin_user %}
+    <div class="form-card admin-card">
+        <div class="form-card-title">
+            <span class="material-icons">admin_panel_settings</span>
+            Admin beállítások
+        </div>
+
+        <div class="form-grid-2">
+            <div class="form-group">
+                <label for="role">Elsődleges szerepkör</label>
+                <select id="role" name="role">
+                    <option value="referee" {% if not user_obj or user_obj.role == 'referee' %}selected{% endif %}>Játékvezető</option>
+                    <option value="jt_admin" {% if user_obj.role == 'jt_admin' %}selected{% endif %}>JT Admin / Koordinátor</option>
+                    <option value="vb" {% if user_obj.role == 'vb' %}selected{% endif %}>VB tag</option>
+                    <option value="inspector" {% if user_obj.role == 'inspector' %}selected{% endif %}>Ellenőr</option>
+                    <option value="accountant" {% if user_obj.role == 'accountant' %}selected{% endif %}>Könyvelő</option>
+                    <option value="admin" {% if user_obj.role == 'admin' %}selected{% endif %}>Adminisztrátor</option>
+                </select>
+                <span class="help-text">A megjelenítéshez és listázáshoz használt fő szerepkör</span>
+            </div>
+        </div>
+
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(220, 53, 69, 0.2);">
+            <label style="font-weight: 500; margin-bottom: 0.75rem; display: block;">További jogosultságok</label>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">A felhasználó az elsődleges szerepkörön kívül ezekkel a jogosultságokkal is rendelkezhet:</p>
+
+            <!-- Hidden checkboxes for form submission -->
+            <div style="display: none;">
+                <input type="checkbox" name="is_referee_flag" id="flag_referee" {% if user_obj.is_referee_flag %}checked{% endif %}>
+                <input type="checkbox" name="is_jt_admin_flag" id="flag_jt_admin" {% if user_obj.is_jt_admin_flag %}checked{% endif %}>
+                <input type="checkbox" name="is_vb_flag" id="flag_vb" {% if user_obj.is_vb_flag %}checked{% endif %}>
+                <input type="checkbox" name="is_inspector_flag" id="flag_inspector" {% if user_obj.is_inspector_flag %}checked{% endif %}>
+                <input type="checkbox" name="is_accountant_flag" id="flag_accountant" {% if user_obj.is_accountant_flag %}checked{% endif %}>
+                <input type="checkbox" name="is_admin_flag" id="flag_admin" {% if user_obj.is_admin_flag %}checked{% endif %}{% if user_obj.id == request.user.id %} data-protected="true"{% endif %}>
+            </div>
+
+            <!-- Dual list selector -->
+            <div class="dual-list-selector">
+                <div class="dual-list-box">
+                    <span class="dual-list-label">Elérhető jogosultságok</span>
+                    <div class="dual-list" id="availableRoles">
+                        <!-- Available roles will be populated by JS -->
+                    </div>
+                </div>
+                <div class="dual-list-arrows">
+                    <button type="button" class="dual-list-btn" id="addRoleBtn" title="Hozzáadás" disabled>
+                        <span class="material-icons">chevron_right</span>
+                    </button>
+                    <button type="button" class="dual-list-btn" id="removeRoleBtn" title="Eltávolítás" disabled>
+                        <span class="material-icons">chevron_left</span>
+                    </button>
+                </div>
+                <div class="dual-list-box">
+                    <span class="dual-list-label">Hozzárendelt jogosultságok</span>
+                    <div class="dual-list assigned-roles-list" id="assignedRoles">
+                        <!-- Assigned roles will be populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            {% if user_obj.id == request.user.id %}
+            <p style="font-size: 0.8rem; color: var(--warning-color); margin-top: 0.75rem;">
+                <span class="material-icons" style="font-size: 1rem; vertical-align: middle;">info</span>
+                Az Admin jogosultságot nem veheted el saját magadtól.
+            </p>
+            {% endif %}
+        </div>
+
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(220, 53, 69, 0.2);">
+            <label style="font-weight: 500; margin-bottom: 0.75rem; display: block;">Egyéb beállítások</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="has_content_module" {% if user_obj.has_content_module %}checked{% endif %}>
+                    Tartalomgyártó modul
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_hidden_from_colleagues" {% if user_obj.is_hidden_from_colleagues %}checked{% endif %}>
+                    Rejtett a kollégák között
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_login_disabled" {% if user_obj.is_login_disabled %}checked{% endif %}>
+                    Bejelentkezés letiltva
+                </label>
+            </div>
+        </div>
+    </div>
+    {% elif request.user.is_jt_admin %}
+    <!-- JT Admin beállítások (korlátozott) -->
+    <div class="form-card" style="border: 1px solid var(--accent-color);">
+        <div class="form-card-title">
+            <span class="material-icons" style="color: var(--accent-color);">settings</span>
+            Beállítások
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_inspector_flag" {% if user_obj.is_inspector_flag %}checked{% endif %}>
+                Ellenőr jogosultság
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_hidden_from_colleagues" {% if user_obj.is_hidden_from_colleagues %}checked{% endif %}>
+                Rejtett a kollégák között
+            </label>
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_login_disabled" {% if user_obj.is_login_disabled %}checked{% endif %}>
+                Bejelentkezés letiltva
+            </label>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="button-group">
+        <a href="{% url 'matches:users_list' %}" class="btn btn-secondary">
+            <span class="material-icons">arrow_back</span>
+            Vissza
+        </a>
+        <button type="submit" class="btn btn-primary">
+            <span class="material-icons">save</span>
+            {% if user_obj %}Mentés{% else %}Létrehozás{% endif %}
+        </button>
+    </div>
+</form>
+
+{% if request.user.is_admin_user %}
+<script>
+// Dual list selector for roles
+(function() {
+    const allRoles = [
+        { id: 'referee', name: 'Játékvezető', desc: 'Megjelenik a kollégák között', icon: 'sports' },
+        { id: 'jt_admin', name: 'JT Admin', desc: 'Kiírás kezelése, mérkőzés admin', icon: 'edit_calendar' },
+        { id: 'vb', name: 'VB tag', desc: 'Elszámolások kezelése', icon: 'groups' },
+        { id: 'inspector', name: 'Ellenőr', desc: 'Jelentések készítése', icon: 'assignment' },
+        { id: 'accountant', name: 'Könyvelő', desc: 'EFO/EKHO bejelentések', icon: 'calculate' },
+        { id: 'admin', name: 'Adminisztrátor', desc: 'Teljes hozzáférés', icon: 'admin_panel_settings', protected: {{ user_obj.id|default:0 }} === {{ request.user.id }} }
+    ];
+
+    const availableList = document.getElementById('availableRoles');
+    const assignedList = document.getElementById('assignedRoles');
+    const addBtn = document.getElementById('addRoleBtn');
+    const removeBtn = document.getElementById('removeRoleBtn');
+
+    let selectedAvailable = null;
+    let selectedAssigned = null;
+
+    function getCheckbox(roleId) {
+        return document.getElementById('flag_' + roleId);
+    }
+
+    function isAssigned(roleId) {
+        const cb = getCheckbox(roleId);
+        return cb && cb.checked;
+    }
+
+    function setAssigned(roleId, value) {
+        const cb = getCheckbox(roleId);
+        if (cb) cb.checked = value;
+    }
+
+    function createRoleItem(role, isAssignedRole) {
+        const div = document.createElement('div');
+        div.className = 'dual-list-item';
+        div.dataset.roleId = role.id;
+        if (role.protected && isAssignedRole) {
+            div.dataset.protected = 'true';
+            div.title = 'Nem veheted el saját admin jogodat';
+            div.style.opacity = '0.6';
+        }
+        div.innerHTML = `
+            <span class="material-icons">${role.icon}</span>
+            <div class="dual-list-item-text">
+                <div>${role.name}</div>
+                <div class="dual-list-item-desc">${role.desc}</div>
+            </div>
+        `;
+        div.addEventListener('click', function() {
+            if (role.protected && isAssignedRole) return;
+            if (isAssignedRole) {
+                selectAssigned(div);
+            } else {
+                selectAvailable(div);
+            }
+        });
+        div.addEventListener('dblclick', function() {
+            if (role.protected && isAssignedRole) return;
+            if (isAssignedRole) {
+                moveToAvailable(role.id);
+            } else {
+                moveToAssigned(role.id);
+            }
+        });
+        return div;
+    }
+
+    function selectAvailable(item) {
+        if (selectedAvailable) selectedAvailable.classList.remove('selected');
+        if (selectedAssigned) selectedAssigned.classList.remove('selected');
+        selectedAssigned = null;
+        selectedAvailable = item;
+        item.classList.add('selected');
+        updateButtons();
+    }
+
+    function selectAssigned(item) {
+        if (selectedAvailable) selectedAvailable.classList.remove('selected');
+        if (selectedAssigned) selectedAssigned.classList.remove('selected');
+        selectedAvailable = null;
+        selectedAssigned = item;
+        item.classList.add('selected');
+        updateButtons();
+    }
+
+    function updateButtons() {
+        addBtn.disabled = !selectedAvailable;
+        removeBtn.disabled = !selectedAssigned || (selectedAssigned && selectedAssigned.dataset.protected === 'true');
+    }
+
+    function moveToAssigned(roleId) {
+        setAssigned(roleId, true);
+        render();
+    }
+
+    function moveToAvailable(roleId) {
+        const role = allRoles.find(r => r.id === roleId);
+        if (role && role.protected) return;
+        setAssigned(roleId, false);
+        render();
+    }
+
+    function render() {
+        availableList.innerHTML = '';
+        assignedList.innerHTML = '';
+        selectedAvailable = null;
+        selectedAssigned = null;
+
+        allRoles.forEach(role => {
+            if (isAssigned(role.id)) {
+                assignedList.appendChild(createRoleItem(role, true));
+            } else {
+                availableList.appendChild(createRoleItem(role, false));
+            }
+        });
+
+        if (availableList.children.length === 0) {
+            availableList.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">Nincs elérhető jogosultság</div>';
+        }
+        if (assignedList.children.length === 0) {
+            assignedList.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary); font-size: 0.85rem;">Nincs hozzárendelt jogosultság</div>';
+        }
+
+        updateButtons();
+    }
+
+    addBtn.addEventListener('click', function() {
+        if (selectedAvailable) {
+            moveToAssigned(selectedAvailable.dataset.roleId);
+        }
+    });
+
+    removeBtn.addEventListener('click', function() {
+        if (selectedAssigned && selectedAssigned.dataset.protected !== 'true') {
+            moveToAvailable(selectedAssigned.dataset.roleId);
+        }
+    });
+
+    // Initial render
+    render();
+})();
+</script>
+{% endif %}
+{% endblock %}

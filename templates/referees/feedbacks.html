@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}Visszajelzéseim{% endblock %}
+{% block page_title %}Ellenőri visszajelzések{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        align-items: flex-end;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    .filter-group label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    .filter-group select,
+    .filter-group input {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        min-width: 150px;
+    }
+    .filter-buttons {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
+    }
+    .match-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .team-name {
+        font-weight: 500;
+    }
+    .view-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.8rem;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .view-btn:hover {
+        opacity: 0.9;
+    }
+    .badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<form method="get" class="filter-form">
+    <div class="filter-group">
+        <label>Szezon</label>
+        <select id="season" name="season">
+            {% for season in seasons %}
+            <option value="{{ season.id }}" {% if selected_season.id == season.id %}selected{% endif %}>
+                {{ season.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Dátumtól</label>
+        <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+    </div>
+    <div class="filter-group">
+        <label>Dátumig</label>
+        <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+    </div>
+    <div class="filter-group">
+        <label>Bajnokság</label>
+        <select id="competition" name="competition">
+            <option value="">Összes bajnokság</option>
+            {% for comp in competitions %}
+            <option value="{{ comp.id }}" {% if selected_competition == comp.id|stringformat:"i" %}selected{% endif %}>
+                {{ comp.short_name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Ellenőr</label>
+        <select id="inspector" name="inspector">
+            <option value="">Összes ellenőr</option>
+            {% for inspector in inspectors %}
+            <option value="{{ inspector.id }}" {% if selected_inspector == inspector.id|stringformat:"i" %}selected{% endif %}>
+                {{ inspector.last_name }} {{ inspector.first_name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-buttons">
+        <button type="submit" class="btn btn-primary">
+            <span class="material-icons">search</span>
+            Szűrés
+        </button>
+        <a href="{% url 'referees:feedbacks' %}" class="btn btn-secondary">
+            <span class="material-icons">clear</span>
+            Törlés
+        </a>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Visszajelzések</h3>
+        <span style="color: var(--text-secondary); font-size: 0.9rem;">{{ feedbacks|length }} visszajelzés</span>
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Dátum</th>
+                    <th>Mérkőzés</th>
+                    <th>Bajnokság</th>
+                    <th>Értékelés</th>
+                    <th>Ellenőr</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if feedbacks %}
+                {% for item in feedbacks %}
+                <tr>
+                    <td>{{ item.match.date|date:"Y.m.d" }}</td>
+                    <td>
+                        <div class="match-cell">
+                            <span class="team-name">{{ item.match.home_team.name|default:"TBD" }}</span>
+                            <span style="color: var(--text-secondary);">-</span>
+                            <span class="team-name">{{ item.match.away_team.name|default:"TBD" }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if item.match.phase %}
+                        <span class="badge" style="background-color: {{ item.match.phase.competition.color }}; color: white;">
+                            {{ item.match.phase.competition.short_name }}
+                        </span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span style="color: #ffc107; font-size: 1.1rem;">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= item.evaluation.overall_rating %}★{% else %}☆{% endif %}
+                            {% endfor %}
+                        </span>
+                    </td>
+                    <td>{{ item.inspector.get_full_name }}</td>
+                    <td style="text-align: right;">
+                        <a href="{% url 'referees:view_report' item.evaluation.report.id %}" class="view-btn" title="Megtekintés">
+                            <span class="material-icons" style="font-size: 1rem;">visibility</span>
+                            Megtekintés
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">rate_review</span>
+                        <p>Nincs visszajelzésed</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

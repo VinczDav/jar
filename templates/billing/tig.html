@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+
+{% block title %}Teljesítési Igazolás{% endblock %}
+{% block page_title %}Teljesítési Igazolás (TIG){% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Havi elszámolás</h3>
+    </div>
+
+    <!-- Month/Year Selector and Filters -->
+    <div class="filter-container">
+        <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+            <!-- Year selector -->
+            <div class="year-selector" style="display: flex; align-items: center; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="changeYear(-1)">
+                    <span class="material-icons">chevron_left</span>
+                </button>
+                <span id="current-year" style="font-weight: 600; min-width: 50px; text-align: center;">{{ selected_year }}</span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="changeYear(1)">
+                    <span class="material-icons">chevron_right</span>
+                </button>
+            </div>
+
+            <!-- Month grid -->
+            <div class="month-grid" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem;">
+                {% for month_name in month_names %}
+                <button type="button"
+                        class="month-btn {% if forloop.counter == selected_month %}active{% endif %}"
+                        data-month="{{ forloop.counter }}"
+                        onclick="selectMonth({{ forloop.counter }})">
+                    {{ month_name|slice:":3" }}
+                </button>
+                {% endfor %}
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-divider"></div>
+            <div class="filter-group">
+                <label for="competition">Bajnokság</label>
+                <select id="competition" name="competition" class="form-control" onchange="applyFilters()">
+                    <option value="">Összes bajnokság</option>
+                    {% for comp in competitions %}
+                    <option value="{{ comp.id }}" {% if selected_competition == comp.id|stringformat:"i" %}selected{% endif %}>
+                        {{ comp.short_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if is_admin_view %}
+            <div class="filter-group">
+                <label for="user">Felhasználó</label>
+                <select id="user" name="user" class="form-control" onchange="applyFilters()">
+                    <option value="">{{ request.user.get_full_name }} (én)</option>
+                    {% for u in all_users %}
+                    {% if u.id != request.user.id %}
+                    <option value="{{ u.id }}" {% if selected_user_id == u.id|stringformat:"i" %}selected{% endif %}>
+                        {{ u.last_name }} {{ u.first_name }}
+                    </option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if selected_user_id and target_user != request.user %}
+    <div style="padding: 0.75rem 1rem; background: var(--bg-color); border-bottom: 1px solid var(--border-color);">
+        <span class="material-icons" style="vertical-align: middle; font-size: 1rem;">person</span>
+        <strong>{{ target_user.get_full_name }}</strong> elszámolása
+    </div>
+    {% endif %}
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Dátum</th>
+                    <th>Időpont</th>
+                    <th>Bajnokság</th>
+                    <th>Helyszín</th>
+                    <th>Hazai csapat</th>
+                    <th>Vendég csapat</th>
+                    <th>Pozíció</th>
+                    <th style="text-align: right;">Díjazás</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if assignments_with_fees %}
+                {% for item in assignments_with_fees %}
+                <tr>
+                    <td>{{ item.assignment.match.date|date:"Y.m.d" }}</td>
+                    <td>{% if item.assignment.match.time %}{{ item.assignment.match.time|time:"H:i" }}{% else %}-{% endif %}</td>
+                    <td>
+                        {% if item.assignment.match.phase %}
+                        <span class="badge" style="background-color: {{ item.assignment.match.phase.competition.color }}; color: white;">
+                            {{ item.assignment.match.phase.competition.short_name }}
+                        </span>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{{ item.assignment.match.venue.name|default:"-" }}</td>
+                    <td>{{ item.assignment.match.home_team.name|default:"TBD" }}</td>
+                    <td>{{ item.assignment.match.away_team.name|default:"TBD" }}</td>
+                    <td>{{ item.assignment.get_role_display }}</td>
+                    <td style="text-align: right;">{% if item.fee_display %}{{ item.fee_display }} Ft{% else %}-{% endif %}</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">receipt_long</span>
+                        <p>Nincs elszámolás ebben a hónapban</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+            <tfoot>
+                <tr style="font-weight: 600; background: var(--bg-color);">
+                    <td colspan="7">Összesen</td>
+                    <td style="text-align: right;">{{ total_fee_display }} Ft</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<style>
+.filter-container {
+    padding: 1rem;
+    background: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+}
+.filter-divider {
+    width: 1px;
+    height: 40px;
+    background: var(--border-color);
+}
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+.filter-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+.filter-group .form-control {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: var(--card-bg);
+    color: var(--text-color);
+    font-size: 0.875rem;
+    min-width: 160px;
+}
+.filter-group .form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+.month-btn {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-color);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.month-btn:hover {
+    background: var(--bg-color);
+}
+.month-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+}
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+</style>
+
+<script>
+let currentYear = {{ selected_year }};
+let currentMonth = {{ selected_month }};
+
+function changeYear(delta) {
+    currentYear += delta;
+    document.getElementById('current-year').textContent = currentYear;
+    navigateToMonth();
+}
+
+function selectMonth(month) {
+    currentMonth = month;
+    // Update active state
+    document.querySelectorAll('.month-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (parseInt(btn.dataset.month) === month) {
+            btn.classList.add('active');
+        }
+    });
+    navigateToMonth();
+}
+
+function getFilterParams() {
+    const competition = document.getElementById('competition')?.value || '';
+    const user = document.getElementById('user')?.value || '';
+    let params = '';
+    if (competition) params += `&competition=${competition}`;
+    if (user) params += `&user=${user}`;
+    return params;
+}
+
+function navigateToMonth() {
+    window.location.href = `{% url 'billing:tig' %}?year=${currentYear}&month=${currentMonth}${getFilterParams()}`;
+}
+
+function applyFilters() {
+    navigateToMonth();
+}
+</script>
+{% endblock %}
