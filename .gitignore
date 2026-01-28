@@ -34,6 +34,7 @@ staticfiles/
 
 # Environment
 .env
+.env.production
 
 # IDE
 .idea/
