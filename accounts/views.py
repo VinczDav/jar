@@ -10,6 +10,7 @@ from .models import User
 from audit.utils import log_action, get_client_ip
 from core.turnstile import verify_turnstile, get_turnstile_context
 from core.email_utils import send_security_alert
+from core.validators import validate_password_complexity
 from documents.models import Notification
 
 
@@ -64,14 +65,22 @@ def login_view(request):
             context['error'] = error
             return render(request, 'accounts/login.html', context)
 
-        # First check if user exists and is not deleted/disabled
+        # First check if user exists and is not deleted/archived/disabled
         try:
             user_check = User.objects.get(email=email)
+            # Deleted users: show generic error as if user doesn't exist
             if user_check.is_deleted:
-                error = 'Ez a felhasználói fiók törölve lett.'
+                error = 'Hibás e-mail cím vagy jelszó.'
                 log_action(request, 'auth', 'login_failed', f'Bejelentkezés törölve fiókkal - {email}', extra={'email': email, 'reason': 'deleted'})
                 context['error'] = error
                 return render(request, 'accounts/login.html', context)
+            # Archived users (excluded/banned): show generic error as if user doesn't exist
+            if user_check.is_archived:
+                error = 'Hibás e-mail cím vagy jelszó.'
+                log_action(request, 'auth', 'login_failed', f'Bejelentkezés kizárt fiókkal - {email}', extra={'email': email, 'reason': 'archived'})
+                context['error'] = error
+                return render(request, 'accounts/login.html', context)
+            # Login disabled users
             if user_check.is_login_disabled:
                 error = 'A bejelentkezés letiltva erre a fiókra.'
                 log_action(request, 'auth', 'login_failed', f'Bejelentkezés tiltott fiókkal - {email}', extra={'email': email, 'reason': 'disabled'})
@@ -95,6 +104,10 @@ def login_view(request):
             # Log successful login
             log_action(request, 'auth', 'login', f'Sikeres bejelentkezés - {user.get_full_name()}', obj=user)
 
+            # Check if password change is required
+            if user.must_change_password:
+                return redirect('accounts:force_password_change')
+
             next_url = request.GET.get('next', 'accounts:dashboard')
             return redirect(next_url)
         else:
@@ -109,8 +122,12 @@ def login_view(request):
                     user_check.last_failed_login = timezone.now()
                     user_check.save(update_fields=['failed_login_count', 'last_failed_login'])
 
-                    # Notify admins after 10 failed attempts
-                    if user_check.failed_login_count == 10:
+                    # Notify admins after configured number of failed attempts
+                    from .models import SiteSettings, NotificationSettings
+                    site_settings = SiteSettings.get_settings()
+                    notif_settings = NotificationSettings.get_settings()
+                    max_attempts = site_settings.max_failed_login_attempts
+                    if user_check.failed_login_count == max_attempts and notif_settings.notify_failed_logins:
                         _notify_admins_failed_login(user_check, request)
 
                 log_action(request, 'auth', 'login_failed', f'Sikertelen bejelentkezés - {email} ({user_check.failed_login_count}. kísérlet)', obj=user_check, extra={'email': email, 'attempt': user_check.failed_login_count})
@@ -127,6 +144,272 @@ def logout_view(request):
         log_action(request, 'auth', 'logout', f'Kijelentkezés - {request.user.get_full_name()}', obj=request.user)
     logout(request)
     return redirect('accounts:login')
+
+
+@login_required
+def force_password_change(request):
+    """Force password change for users who must change their password."""
+    user = request.user
+
+    # If user doesn't need to change password, redirect to dashboard
+    if not user.must_change_password:
+        return redirect('accounts:dashboard')
+
+    error = None
+    success = None
+
+    if request.method == 'POST':
+        current_password = request.POST.get('current_password', '')
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
+        # Validate current password
+        if not user.check_password(current_password):
+            error = 'A jelenlegi jelszó hibás.'
+        elif new_password != confirm_password:
+            error = 'A két jelszó nem egyezik.'
+        elif current_password == new_password:
+            error = 'Az új jelszó nem lehet ugyanaz, mint a régi.'
+        else:
+            # Validate password complexity
+            is_valid, complexity_error = validate_password_complexity(new_password)
+            if not is_valid:
+                error = complexity_error
+
+        if not error:
+            # Change password
+            user.set_password(new_password)
+            user.must_change_password = False
+            user.save(update_fields=['password', 'must_change_password'])
+
+            # Log the action
+            log_action(request, 'auth', 'update', f'Jelszó megváltoztatva (első belépés) - {user.get_full_name()}', obj=user)
+
+            # Re-login with new password
+            login(request, user)
+
+            return redirect('accounts:dashboard')
+
+    return render(request, 'accounts/force_password_change.html', {
+        'error': error,
+    })
+
+
+def password_reset_request(request):
+    """Request password reset - sends email with reset link."""
+    from core.rate_limiter import (
+        check_rate_limit,
+        PASSWORD_RESET_MAX_ATTEMPTS,
+        PASSWORD_RESET_WINDOW,
+        PASSWORD_RESET_IP_MAX_ATTEMPTS,
+        PASSWORD_RESET_IP_WINDOW,
+    )
+
+    error = None
+    success = None
+    context = get_turnstile_context()
+
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        ip_address = get_client_ip(request)
+
+        # Rate limit check - IP based (max 10 requests per IP per hour)
+        ip_allowed, ip_remaining, ip_reset = check_rate_limit(
+            f'password_reset_ip:{ip_address}',
+            PASSWORD_RESET_IP_MAX_ATTEMPTS,
+            PASSWORD_RESET_IP_WINDOW
+        )
+
+        if not ip_allowed:
+            minutes_remaining = ip_reset // 60
+            error = f'Túl sok kérés érkezett erről az IP címről. Próbáld újra {minutes_remaining} perc múlva.'
+            log_action(request, 'auth', 'login_failed', f'Jelszó visszaállítás IP rate limit - {ip_address}', extra={'ip': ip_address, 'reason': 'ip_rate_limit'})
+            context['error'] = error
+            return render(request, 'accounts/password_reset_request.html', context)
+
+        # Turnstile verification
+        turnstile_token = request.POST.get('cf-turnstile-response', '')
+
+        if not verify_turnstile(turnstile_token, ip_address):
+            error = 'A kérés jelenleg nem lehetséges. Kérjük, próbáld újra.'
+            context['error'] = error
+            return render(request, 'accounts/password_reset_request.html', context)
+
+        if not email:
+            error = 'Kérlek add meg az e-mail címed.'
+        else:
+            # Rate limit check - Email based (max 3 requests per email per hour)
+            email_allowed, email_remaining, email_reset = check_rate_limit(
+                f'password_reset_email:{email}',
+                PASSWORD_RESET_MAX_ATTEMPTS,
+                PASSWORD_RESET_WINDOW
+            )
+
+            if not email_allowed:
+                minutes_remaining = email_reset // 60
+                # Don't reveal if rate limit is for this specific email
+                success = 'Ha a megadott e-mail cím létezik a rendszerben, küldtünk egy jelszó visszaállító linket.'
+                log_action(request, 'auth', 'login_failed', f'Jelszó visszaállítás email rate limit - {email}', extra={'email': email, 'ip': ip_address, 'reason': 'email_rate_limit'})
+            else:
+                try:
+                    user = User.objects.get(email=email, is_deleted=False)
+
+                    if user.is_login_disabled:
+                        # Don't reveal account status - show generic message
+                        success = 'Ha a megadott e-mail cím létezik a rendszerben, küldtünk egy jelszó visszaállító linket.'
+                    else:
+                        # Generate reset token using Django's built-in token generator
+                        from django.contrib.auth.tokens import default_token_generator
+                        from django.utils.http import urlsafe_base64_encode
+                        from django.utils.encoding import force_bytes
+
+                        uid = urlsafe_base64_encode(force_bytes(user.pk))
+                        token = default_token_generator.make_token(user)
+
+                        # Send email
+                        from core.email_utils import send_templated_email
+                        reset_url = f"{settings.SITE_URL}/password-reset/{uid}/{token}/"
+
+                        send_templated_email(
+                            to_email=user.email,
+                            subject='Jelszó visszaállítás - JAR',
+                            template_name='password_reset_link',
+                            context={
+                                'user': user,
+                                'reset_url': reset_url,
+                            }
+                        )
+
+                        log_action(request, 'auth', 'update', f'Jelszó visszaállítás kérve - {user.email}', obj=user, extra={'ip': ip_address})
+                        success = 'Ha a megadott e-mail cím létezik a rendszerben, küldtünk egy jelszó visszaállító linket.'
+
+                except User.DoesNotExist:
+                    # Don't reveal if email exists or not - always show same message
+                    success = 'Ha a megadott e-mail cím létezik a rendszerben, küldtünk egy jelszó visszaállító linket.'
+
+    context['error'] = error
+    context['success'] = success
+    return render(request, 'accounts/password_reset_request.html', context)
+
+
+def password_reset_confirm(request, uidb64, token):
+    """Confirm password reset with token."""
+    from django.contrib.auth.tokens import default_token_generator
+    from django.utils.http import urlsafe_base64_decode
+
+    error = None
+    success = None
+    valid_link = False
+
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+        valid_link = default_token_generator.check_token(user, token)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+        valid_link = False
+
+    if not valid_link:
+        return render(request, 'accounts/password_reset_confirm.html', {
+            'valid_link': False,
+            'error': 'Ez a link érvénytelen vagy már lejárt. Kérj új jelszó visszaállító linket.',
+        })
+
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
+        if new_password != confirm_password:
+            error = 'A két jelszó nem egyezik.'
+        else:
+            # Validate password complexity
+            is_valid, complexity_error = validate_password_complexity(new_password)
+            if not is_valid:
+                error = complexity_error
+
+        if not error:
+            # Change password
+            user.set_password(new_password)
+            user.must_change_password = False
+            user.save(update_fields=['password', 'must_change_password'])
+
+            log_action(request, 'auth', 'update', f'Jelszó visszaállítva linkkel - {user.get_full_name()}', obj=user)
+
+            success = 'A jelszavad sikeresen megváltozott! Most már bejelentkezhetsz.'
+
+            return render(request, 'accounts/password_reset_confirm.html', {
+                'valid_link': True,
+                'success': success,
+                'password_changed': True,
+            })
+
+    return render(request, 'accounts/password_reset_confirm.html', {
+        'valid_link': True,
+        'error': error,
+    })
+
+
+def initial_password_setup(request, uidb64, token):
+    """
+    Initial password setup for new users.
+    Uses 24-hour token instead of 15-minute password reset token.
+    """
+    from django.utils.http import urlsafe_base64_decode
+    from core.validators import initial_password_token_generator
+
+    error = None
+    success = None
+    valid_link = False
+
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+        valid_link = initial_password_token_generator.check_token(user, token)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+        valid_link = False
+
+    if not valid_link:
+        return render(request, 'accounts/password_reset_confirm.html', {
+            'valid_link': False,
+            'error': 'Ez a link érvénytelen vagy már lejárt. Kérd az adminisztrátortól, hogy küldjön új meghívót.',
+            'is_initial_setup': True,
+        })
+
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
+        if new_password != confirm_password:
+            error = 'A két jelszó nem egyezik.'
+        else:
+            # Validate password complexity
+            is_valid, complexity_error = validate_password_complexity(new_password)
+            if not is_valid:
+                error = complexity_error
+
+        if not error:
+            # Set password and clear the must_change_password flag
+            user.set_password(new_password)
+            user.must_change_password = False
+            user.save(update_fields=['password', 'must_change_password'])
+
+            log_action(request, 'auth', 'update', f'Jelszó beállítva (új felhasználó) - {user.get_full_name()}', obj=user)
+
+            success = 'A jelszavad sikeresen beállítva! Most már bejelentkezhetsz.'
+
+            return render(request, 'accounts/password_reset_confirm.html', {
+                'valid_link': True,
+                'success': success,
+                'password_changed': True,
+                'is_initial_setup': True,
+            })
+
+    return render(request, 'accounts/password_reset_confirm.html', {
+        'valid_link': True,
+        'error': error,
+        'is_initial_setup': True,
+    })
 
 
 @login_required
@@ -295,12 +578,13 @@ def dashboard(request):
 @login_required
 def database_redirect(request):
     """
-    Redirect to Django Admin for users with admin module access.
+    Redirect to Django Admin for super admins only.
     The user is already authenticated, so no re-login needed.
     """
-    # Check if user has permission to access admin
-    if not (request.user.is_superuser or request.user.is_admin_user):
-        return HttpResponseForbidden('Nincs jogosultságod az adatbázis eléréséhez.')
+    # Check if user has permission to access admin - only super admins
+    is_super = getattr(request.user, 'is_super_admin', False)
+    if not (request.user.is_superuser or is_super):
+        return HttpResponseForbidden('Csak Super Admin férhet hozzá az adatbázis kezeléshez.')
 
     # Check if admin is enabled
     if not settings.ADMIN_ENABLED:
@@ -407,7 +691,7 @@ def admin_settings(request):
     if not request.user.is_admin_user:
         return HttpResponseForbidden('Nincs jogosultságod.')
 
-    from matches.models import Match, MatchAssignment
+    from matches.models import Match, MatchAssignment, CompetitionPhase
     from documents.models import Notification
     from .models import SiteSettings, Coordinator
 
@@ -434,6 +718,13 @@ def admin_settings(request):
     assignment_count = MatchAssignment.objects.count()
     notification_count = Notification.objects.count()
 
+    # Count phases with applications enabled
+    application_phase_count = CompetitionPhase.objects.filter(
+        models.Q(referee_application_enabled=True) |
+        models.Q(inspector_application_enabled=True) |
+        models.Q(tournament_director_application_enabled=True)
+    ).count()
+
     context = {
         'match_count': match_count,
         'assignment_count': assignment_count,
@@ -441,6 +732,7 @@ def admin_settings(request):
         'site_settings': site_settings,
         'coordinators': coordinators,
         'jt_admin_users': jt_admin_users,
+        'application_phase_count': application_phase_count,
     }
 
     return render(request, 'accounts/admin_settings.html', context)
@@ -512,18 +804,145 @@ def api_save_site_settings(request):
                 return JsonResponse({'error': 'Az óraszám nem lehet negatív.'}, status=400)
             site_settings.min_cancellation_hours = hours
 
+        if 'require_cancellation_reason' in data:
+            site_settings.require_cancellation_reason = bool(data['require_cancellation_reason'])
+
+        # Security settings
+        if 'max_failed_login_attempts' in data:
+            attempts = int(data['max_failed_login_attempts'])
+            if attempts < 1:
+                return JsonResponse({'error': 'A próbálkozások száma minimum 1 kell legyen.'}, status=400)
+            site_settings.max_failed_login_attempts = attempts
+
+        if 'session_timeout_hours' in data:
+            hours = int(data['session_timeout_hours'])
+            if hours < 1:
+                return JsonResponse({'error': 'A session időtartam minimum 1 óra kell legyen.'}, status=400)
+            site_settings.session_timeout_hours = hours
+
+        # Application settings
+        if 'application_referees_enabled' in data:
+            site_settings.application_referees_enabled = bool(data['application_referees_enabled'])
+        if 'application_inspectors_enabled' in data:
+            site_settings.application_inspectors_enabled = bool(data['application_inspectors_enabled'])
+        if 'application_tournament_directors_enabled' in data:
+            site_settings.application_tournament_directors_enabled = bool(data['application_tournament_directors_enabled'])
+
+        # Super Admin only settings - check permission
+        is_super = getattr(request.user, 'is_super_admin', False)
+        if request.user.is_superuser or is_super:
+            if 'email_enabled' in data:
+                site_settings.email_enabled = bool(data['email_enabled'])
+            if 'admin_notification_emails' in data:
+                site_settings.admin_notification_emails = data['admin_notification_emails'].strip()
+            if 'notify_server_issues' in data:
+                site_settings.notify_server_issues = bool(data['notify_server_issues'])
+            if 'notify_security_alerts' in data:
+                site_settings.notify_security_alerts = bool(data['notify_security_alerts'])
+            if 'notify_unusual_login_countries' in data:
+                site_settings.notify_unusual_login_countries = bool(data['notify_unusual_login_countries'])
+
         site_settings.save()
 
         return JsonResponse({
             'success': True,
             'settings': {
                 'min_cancellation_hours': site_settings.min_cancellation_hours,
+                'require_cancellation_reason': site_settings.require_cancellation_reason,
+                'max_failed_login_attempts': site_settings.max_failed_login_attempts,
+                'session_timeout_hours': site_settings.session_timeout_hours,
+                'application_referees_enabled': site_settings.application_referees_enabled,
+                'application_inspectors_enabled': site_settings.application_inspectors_enabled,
+                'application_tournament_directors_enabled': site_settings.application_tournament_directors_enabled,
+                'email_enabled': site_settings.email_enabled,
             }
         })
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except ValueError as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+def notification_settings(request):
+    """Notification settings page - configure which notifications are enabled. Admin only."""
+    if not request.user.is_admin_user:
+        return HttpResponseForbidden('Nincs jogosultságod.')
+
+    from .models import NotificationSettings
+
+    # Get or create notification settings
+    notif_settings = NotificationSettings.get_settings()
+
+    context = {
+        'notif_settings': notif_settings,
+    }
+
+    return render(request, 'accounts/notification_settings.html', context)
+
+
+@login_required
+def api_save_notification_settings(request):
+    """API: Save notification settings. Admin only."""
+    from django.http import JsonResponse
+    from .models import NotificationSettings
+    import json
+
+    if not request.user.is_admin_user:
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+
+        notif_settings = NotificationSettings.get_settings()
+
+        # Update all notification toggles
+        toggle_fields = [
+            'notify_match_assignment',
+            'notify_match_reminder',
+            'notify_match_reminder_pending',
+            'notify_match_cancellation',
+            'notify_match_modification',
+            'notify_efo',
+            'notify_travel_expense',
+            'notify_news',
+            'notify_mandatory_news',
+            'notify_report',
+            'notify_medical_expiry',
+            'notify_failed_logins',
+        ]
+
+        for field in toggle_fields:
+            if field in data:
+                setattr(notif_settings, field, bool(data[field]))
+
+        # Update numeric timing fields
+        if 'match_reminder_hours' in data:
+            notif_settings.match_reminder_hours = max(1, min(168, int(data['match_reminder_hours'])))
+        if 'match_reminder_days' in data:
+            notif_settings.match_reminder_days = max(1, min(14, int(data['match_reminder_days'])))
+        if 'medical_expiry_reminder_days' in data:
+            notif_settings.medical_expiry_reminder_days = max(1, min(90, int(data['medical_expiry_reminder_days'])))
+
+        notif_settings.save()
+
+        # Log the action
+        from audit.utils import log_action
+        log_action(
+            request, 'system', 'update',
+            'Értesítés beállítások módosítva',
+            obj=notif_settings
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Beállítások mentve.'
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
 
 @login_required
@@ -654,10 +1073,11 @@ def api_profile_update(request):
             'email': 'E-mail cím',
             'phone': 'Telefonszám',
             'bank_account': 'Bankszámlaszám',
+            'facebook_link': 'Facebook/Messenger link',
         }
 
         # Only allow these fields (notified to admins)
-        allowed_fields = ['email', 'phone', 'bank_account']
+        allowed_fields = ['email', 'phone', 'bank_account', 'facebook_link']
 
         for field in allowed_fields:
             if field in data:
@@ -690,44 +1110,11 @@ def api_profile_update(request):
 
         user.save()
 
-        # Send email notification to admins if there were changes
+        # Log profile update
         if changes:
-            # Get admin users with email
-            admin_users = User.objects.filter(
-                models.Q(role=User.Role.ADMIN) |
-                models.Q(is_admin_flag=True) |
-                models.Q(role=User.Role.JT_ADMIN) |
-                models.Q(is_jt_admin_flag=True)
-            ).exclude(email='').values_list('email', flat=True).distinct()
-
-            if admin_users:
-                changes_text = '\n'.join([
-                    f"  - {c['field']}: {c['old']} → {c['new']}"
-                    for c in changes
-                ])
-
-                subject = f'JAR - Profil módosítás: {user.get_full_name()}'
-                message = f'''Kedves Adminisztrátor!
-
-{user.get_full_name()} módosította a profilját.
-
-Változások:
-{changes_text}
-
-Időpont: {timezone.localtime(timezone.now()).strftime('%Y.%m.%d %H:%M')}
-
-JAR Rendszer'''
-
-                try:
-                    send_mail(
-                        subject,
-                        message,
-                        settings.DEFAULT_FROM_EMAIL,
-                        list(admin_users),
-                        fail_silently=True,
-                    )
-                except Exception:
-                    pass  # Don't fail if email sending fails
+            log_action(request, 'user', 'update', f'Profil módosítva - {user.get_full_name()}', obj=user, changes={
+                c['field']: {'old': c['old'], 'new': c['new']} for c in changes
+            })
 
         return JsonResponse({'success': True, 'changes': len(changes)})
     except json.JSONDecodeError:
@@ -768,6 +1155,8 @@ def api_profile_picture_upload(request):
     user.profile_picture = picture
     user.save()
 
+    log_action(request, 'user', 'upload', f'Profilkép feltöltve - {user.get_full_name()}', obj=user)
+
     return JsonResponse({
         'success': True,
         'url': user.profile_picture.url
@@ -788,5 +1177,81 @@ def api_profile_picture_delete(request):
         user.profile_picture.delete(save=False)
         user.profile_picture = None
         user.save()
+        log_action(request, 'user', 'delete', f'Profilkép törölve - {user.get_full_name()}', obj=user)
 
     return JsonResponse({'success': True})
+
+
+@login_required
+def api_send_test_email(request):
+    """API: Send test email. Super Admin only."""
+    from django.http import JsonResponse
+    from django.core.mail import send_mail
+    import json
+
+    # Super Admin only
+    is_super = getattr(request.user, 'is_super_admin', False)
+    if not (request.user.is_superuser or is_super):
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        recipient = data.get('email', '').strip()
+
+        if not recipient:
+            return JsonResponse({'error': 'Kérlek add meg a címzett e-mail címét.'}, status=400)
+
+        # Validate email format
+        import re
+        if not re.match(r'^[^@]+@[^@]+\.[^@]+$', recipient):
+            return JsonResponse({'error': 'Érvénytelen e-mail cím formátum.'}, status=400)
+
+        # Check if email is enabled globally
+        from .models import SiteSettings
+        site_settings = SiteSettings.get_settings()
+        if not site_settings.email_enabled:
+            return JsonResponse({
+                'error': 'Az e-mail küldés jelenleg ki van kapcsolva a beállításokban.'
+            }, status=400)
+
+        # Send test email
+        subject = 'JAR - Teszt e-mail'
+        message = f'''Kedves Felhasználó!
+
+Ez egy teszt e-mail a JAR (Játékvezetői Adminisztrációs Rendszer) rendszerből.
+
+Ha megkaptad ezt az üzenetet, az e-mail küldés megfelelően működik!
+
+Küldés időpontja: {timezone.localtime(timezone.now()).strftime('%Y.%m.%d %H:%M:%S')}
+Küldő: {request.user.get_full_name()}
+
+---
+JAR Rendszer
+'''
+
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [recipient],
+            fail_silently=False,
+        )
+
+        log_action(
+            request, 'system', 'create',
+            f'Teszt e-mail küldve: {recipient}',
+            extra={'recipient': recipient}
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Teszt e-mail sikeresen elküldve: {recipient}'
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Hiba történt: {str(e)}'}, status=500)

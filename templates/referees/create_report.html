@@ -28,7 +28,7 @@
                             {% endif %}
                         </div>
                         <span style="color: var(--text-secondary);">
-                            {{ item.match.home_team.name|default:"TBD" }} - {{ item.match.away_team.name|default:"TBD" }}
+                            {{ item.match.home_team|default:"TBD" }} - {{ item.match.away_team|default:"TBD" }}
                         </span>
                         {% if item.match.venue %}
                         <span style="font-size: 0.75rem; color: var(--text-secondary);">

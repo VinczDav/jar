@@ -1,0 +1,675 @@
+{% extends 'base.html' %}
+
+{% block title %}Visszajelzés - {{ assignment.match }}{% endblock %}
+{% block page_title %}Mérkőzés visszajelzés{% endblock %}
+
+{% block extra_css %}
+<style>
+    .match-info-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .match-info-card h2 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.25rem;
+    }
+    .match-meta-info {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    .match-meta-info span {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .match-meta-info .material-icons {
+        font-size: 1rem;
+    }
+
+    .feedback-options {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    @media (max-width: 768px) {
+        .feedback-options {
+            grid-template-columns: 1fr;
+        }
+    }
+    .feedback-option {
+        border: 2px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: var(--card-bg);
+    }
+    .feedback-option:hover {
+        border-color: var(--primary-color);
+    }
+    .feedback-option.selected {
+        border-color: var(--primary-color);
+        background: rgba(var(--primary-rgb, 59, 130, 246), 0.05);
+    }
+    .feedback-option.ok.selected {
+        border-color: #22c55e;
+        background: rgba(34, 197, 94, 0.1);
+    }
+    .feedback-option.red-card.selected {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+    }
+    .feedback-option.issue.selected {
+        border-color: #f97316;
+        background: rgba(249, 115, 22, 0.1);
+    }
+    .feedback-option .icon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 0.75rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .feedback-option.ok .icon {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    .feedback-option.red-card .icon {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .feedback-option.issue .icon {
+        background: #ffedd5;
+        color: #ea580c;
+    }
+    .feedback-option .icon .material-icons {
+        font-size: 2rem;
+    }
+    .feedback-option .title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    .feedback-option .desc {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    /* Red Card Form */
+    .red-card-section {
+        display: none;
+        background: var(--card-bg);
+        border: 2px solid #ef4444;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .red-card-section.visible {
+        display: block;
+    }
+    .red-card-section h3 {
+        color: #dc2626;
+        margin: 0 0 1rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .red-card-entry {
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+    .red-card-entry-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .red-card-entry-title {
+        font-weight: 600;
+        color: #dc2626;
+    }
+    .btn-remove-entry {
+        background: #fee2e2;
+        color: #dc2626;
+        border: none;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn-remove-entry:hover {
+        background: #fecaca;
+    }
+    .btn-remove-entry .material-icons {
+        font-size: 1rem;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    @media (max-width: 768px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    .form-group label {
+        display: block;
+        font-weight: 500;
+        margin-bottom: 0.35rem;
+        font-size: 0.875rem;
+    }
+    .form-group label.required::after {
+        content: ' *';
+        color: #ef4444;
+    }
+    .form-control {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--card-bg);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+    textarea.form-control {
+        min-height: 80px;
+        resize: vertical;
+    }
+    select.form-control {
+        cursor: pointer;
+    }
+
+    /* Witnesses */
+    .witnesses-section {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px dashed var(--border-color);
+    }
+    .witnesses-section h4 {
+        font-size: 0.9rem;
+        margin: 0 0 0.75rem 0;
+        color: var(--text-secondary);
+    }
+    .witness-row {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+        align-items: center;
+    }
+    .witness-row input {
+        flex: 1;
+    }
+    .btn-remove-witness {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 0.25rem;
+    }
+    .btn-remove-witness:hover {
+        color: #ef4444;
+    }
+    .btn-add-witness {
+        background: var(--bg-color);
+        border: 1px dashed var(--border-color);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        transition: all 0.2s;
+    }
+    .btn-add-witness:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+
+    .btn-add-red-card {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background: #fee2e2;
+        color: #dc2626;
+        border: 2px dashed #fecaca;
+        border-radius: 8px;
+        width: 100%;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .btn-add-red-card:hover {
+        background: #fecaca;
+        border-color: #ef4444;
+    }
+
+    /* Notes section */
+    .notes-section {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .notes-section h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+    }
+
+    /* Submit */
+    .submit-section {
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+    }
+    .btn-cancel {
+        padding: 0.75rem 1.5rem;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        text-decoration: none;
+    }
+    .btn-cancel:hover {
+        background: var(--card-bg);
+    }
+    .btn-submit {
+        padding: 0.75rem 1.5rem;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .btn-submit:hover {
+        background: var(--primary-hover, #2563eb);
+    }
+    .btn-submit:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Match Info -->
+<div class="match-info-card">
+    <h2>{{ assignment.match.home_team|default:"TBD" }} - {{ assignment.match.away_team|default:"TBD" }}</h2>
+    <div class="match-meta-info">
+        <span><span class="material-icons">calendar_today</span> {{ assignment.match.date|date:"Y.m.d" }}</span>
+        {% if assignment.match.time %}
+        <span><span class="material-icons">schedule</span> {{ assignment.match.time|time:"H:i" }}</span>
+        {% endif %}
+        {% if assignment.match.venue %}
+        <span><span class="material-icons">place</span> {{ assignment.match.venue.name }}</span>
+        {% endif %}
+        {% if assignment.match.phase %}
+        <span>
+            <span class="badge" style="background-color: {{ assignment.match.phase.competition.color }}; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">
+                {{ assignment.match.phase.competition.short_name }}
+            </span>
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Feedback Options -->
+<h3 style="margin-bottom: 1rem;">Válassz visszajelzés típust</h3>
+<div class="feedback-options">
+    <div class="feedback-option ok" onclick="selectFeedbackType('ok')">
+        <div class="icon">
+            <span class="material-icons">thumb_up</span>
+        </div>
+        <div class="title">Minden rendben</div>
+        <div class="desc">Nem történt semmi különleges</div>
+    </div>
+    <div class="feedback-option red-card" onclick="selectFeedbackType('red_card')">
+        <div class="icon">
+            <span class="material-icons">sports</span>
+        </div>
+        <div class="title">Végleges kiállítás</div>
+        <div class="desc">Piros lap történt</div>
+    </div>
+    <div class="feedback-option issue" onclick="selectFeedbackType('issue')">
+        <div class="icon">
+            <span class="material-icons">thumb_down</span>
+        </div>
+        <div class="title">Egyéb probléma</div>
+        <div class="desc">Más jellegű esemény</div>
+    </div>
+</div>
+
+<!-- Red Card Section -->
+<div class="red-card-section" id="redCardSection">
+    <h3>
+        <span class="material-icons">sports</span>
+        Végleges kiállítás(ok) jelentése
+    </h3>
+    <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+        Add meg az összes piros lap adatait. Minden egyes kiállításhoz külön űrlapot kell kitölteni.
+    </p>
+
+    <div id="redCardEntries">
+        <!-- Red card entries will be added here -->
+    </div>
+
+    <button type="button" class="btn-add-red-card" onclick="addRedCardEntry()">
+        <span class="material-icons">add</span>
+        Piros lap hozzáadása
+    </button>
+</div>
+
+<!-- Notes Section -->
+<div class="notes-section">
+    <h3>Megjegyzés (opcionális)</h3>
+    <textarea id="feedbackNotes" class="form-control" placeholder="Egyéb megjegyzések..."></textarea>
+</div>
+
+<!-- Submit -->
+<div class="submit-section">
+    <a href="{% url 'matches:match_feedback_list' %}" class="btn-cancel">Mégse</a>
+    <button type="button" class="btn-submit" id="submitBtn" onclick="submitFeedback()" disabled>
+        <span class="material-icons">send</span>
+        Visszajelzés beküldése
+    </button>
+</div>
+
+<script>
+let selectedFeedbackType = null;
+let redCardCounter = 0;
+
+function selectFeedbackType(type) {
+    selectedFeedbackType = type;
+
+    // Update UI
+    document.querySelectorAll('.feedback-option').forEach(opt => opt.classList.remove('selected'));
+    document.querySelector(`.feedback-option.${type === 'red_card' ? 'red-card' : type}`).classList.add('selected');
+
+    // Show/hide red card section
+    const redCardSection = document.getElementById('redCardSection');
+    if (type === 'red_card') {
+        redCardSection.classList.add('visible');
+        if (document.querySelectorAll('.red-card-entry').length === 0) {
+            addRedCardEntry();
+        }
+    } else {
+        redCardSection.classList.remove('visible');
+    }
+
+    // Enable submit button
+    document.getElementById('submitBtn').disabled = false;
+
+    // Confirmation for OK type
+    if (type === 'ok') {
+        if (!confirm('Biztosan minden rendben volt a mérkőzésen?')) {
+            selectedFeedbackType = null;
+            document.querySelector('.feedback-option.ok').classList.remove('selected');
+            document.getElementById('submitBtn').disabled = true;
+        }
+    }
+}
+
+function addRedCardEntry() {
+    redCardCounter++;
+    const container = document.getElementById('redCardEntries');
+
+    const entryHtml = `
+        <div class="red-card-entry" id="redCard${redCardCounter}">
+            <div class="red-card-entry-header">
+                <span class="red-card-entry-title">Piros lap #${redCardCounter}</span>
+                <button type="button" class="btn-remove-entry" onclick="removeRedCardEntry(${redCardCounter})">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="required">Jegyzőkönyvi idő</label>
+                    <input type="text" class="form-control incident-time" placeholder="MM:SS (pl. 15:30)" maxlength="5" pattern="[0-9]{2}:[0-9]{2}">
+                </div>
+                <div class="form-group">
+                    <label class="required">Végleges kiállítás kódja (614/)</label>
+                    <select class="form-control violation-code">
+                        {% for code, display in violation_codes %}
+                        <option value="{{ code }}">{{ display }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="required">Elkövető neve</label>
+                    <input type="text" class="form-control offender-name" placeholder="Teljes név">
+                </div>
+                <div class="form-group">
+                    <label>Mezszám</label>
+                    <input type="text" class="form-control offender-jersey" placeholder="pl. 10">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="required">Elkövető funkciója</label>
+                    <select class="form-control offender-function" onchange="toggleOtherFunction(this, ${redCardCounter})">
+                        {% for code, display in offender_functions %}
+                        <option value="{{ code }}">{{ display }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group other-function-group" id="otherFunctionGroup${redCardCounter}" style="display: none;">
+                    <label>Egyéb funkció</label>
+                    <input type="text" class="form-control offender-function-other" placeholder="Kérlek pontosítsd...">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="required">Incidens leírása</label>
+                <textarea class="form-control incident-description" placeholder="Részletes leírás..."></textarea>
+            </div>
+
+            <div class="witnesses-section">
+                <h4>Tanúk (opcionális)</h4>
+                <div class="witnesses-container" id="witnesses${redCardCounter}">
+                    <!-- Witnesses will be added here -->
+                </div>
+                <button type="button" class="btn-add-witness" onclick="addWitness(${redCardCounter})">
+                    <span class="material-icons">person_add</span>
+                    Tanú hozzáadása
+                </button>
+            </div>
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', entryHtml);
+}
+
+function removeRedCardEntry(id) {
+    const entry = document.getElementById(`redCard${id}`);
+    if (entry) {
+        entry.remove();
+    }
+
+    // Renumber remaining entries
+    const entries = document.querySelectorAll('.red-card-entry');
+    entries.forEach((entry, index) => {
+        entry.querySelector('.red-card-entry-title').textContent = `Piros lap #${index + 1}`;
+    });
+}
+
+function toggleOtherFunction(select, entryId) {
+    const otherGroup = document.getElementById(`otherFunctionGroup${entryId}`);
+    if (select.value === 'other') {
+        otherGroup.style.display = 'block';
+    } else {
+        otherGroup.style.display = 'none';
+    }
+}
+
+let witnessCounter = 0;
+
+function addWitness(redCardId) {
+    witnessCounter++;
+    const container = document.getElementById(`witnesses${redCardId}`);
+
+    const witnessHtml = `
+        <div class="witness-row" id="witness${witnessCounter}">
+            <input type="text" class="form-control witness-name" placeholder="Tanú neve">
+            <input type="text" class="form-control witness-phone" placeholder="Telefonszám">
+            <button type="button" class="btn-remove-witness" onclick="removeWitness(${witnessCounter})">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', witnessHtml);
+}
+
+function removeWitness(id) {
+    const witness = document.getElementById(`witness${id}`);
+    if (witness) {
+        witness.remove();
+    }
+}
+
+function collectRedCardData() {
+    const redCards = [];
+    document.querySelectorAll('.red-card-entry').forEach(entry => {
+        const witnesses = [];
+        entry.querySelectorAll('.witness-row').forEach(row => {
+            const name = row.querySelector('.witness-name').value.trim();
+            const phone = row.querySelector('.witness-phone').value.trim();
+            if (name || phone) {
+                witnesses.push({ name, phone });
+            }
+        });
+
+        redCards.push({
+            incident_time: entry.querySelector('.incident-time').value.trim(),
+            violation_code: entry.querySelector('.violation-code').value,
+            offender_name: entry.querySelector('.offender-name').value.trim(),
+            offender_jersey_number: entry.querySelector('.offender-jersey').value.trim(),
+            offender_function: entry.querySelector('.offender-function').value,
+            offender_function_other: entry.querySelector('.offender-function-other')?.value.trim() || '',
+            incident_description: entry.querySelector('.incident-description').value.trim(),
+            witnesses: witnesses
+        });
+    });
+    return redCards;
+}
+
+function validateRedCards(redCards) {
+    for (const rc of redCards) {
+        if (!rc.incident_time) {
+            alert('Kérlek add meg a jegyzőkönyvi időt minden piros lapnál!');
+            return false;
+        }
+        if (!rc.incident_time.match(/^[0-9]{1,2}:[0-9]{2}$/)) {
+            alert('A jegyzőkönyvi idő formátuma: MM:SS (pl. 15:30)');
+            return false;
+        }
+        if (!rc.offender_name) {
+            alert('Kérlek add meg az elkövető nevét minden piros lapnál!');
+            return false;
+        }
+        if (!rc.incident_description) {
+            alert('Kérlek add meg az incidens leírását minden piros lapnál!');
+            return false;
+        }
+    }
+    return true;
+}
+
+async function submitFeedback() {
+    if (!selectedFeedbackType) {
+        alert('Kérlek válassz visszajelzés típust!');
+        return;
+    }
+
+    const redCards = selectedFeedbackType === 'red_card' ? collectRedCardData() : [];
+
+    if (selectedFeedbackType === 'red_card') {
+        if (redCards.length === 0) {
+            alert('Kérlek adj hozzá legalább egy piros lap jelentést!');
+            return;
+        }
+        if (!validateRedCards(redCards)) {
+            return;
+        }
+    }
+
+    const data = {
+        feedback_type: selectedFeedbackType,
+        notes: document.getElementById('feedbackNotes').value.trim(),
+        red_cards: redCards
+    };
+
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Küldés...';
+
+    try {
+        const response = await fetch('{% url "matches:api_submit_feedback" assignment.id %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('Visszajelzés sikeresen beküldve!');
+            window.location.href = '{% url "matches:match_feedback_list" %}';
+        } else {
+            alert('Hiba: ' + result.error);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span class="material-icons">send</span> Visszajelzés beküldése';
+        }
+    } catch (error) {
+        alert('Hiba történt: ' + error);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span class="material-icons">send</span> Visszajelzés beküldése';
+    }
+}
+</script>
+{% endblock %}

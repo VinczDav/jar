@@ -168,6 +168,137 @@
     </form>
 </div>
 
+{% block extra_js %}
+<script>
+// Store all teams for filtering
+let allHomeTeams = [];
+let allAwayTeams = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    const phaseSelect = document.getElementById('id_phase');
+    const homeTeamSelect = document.getElementById('id_home_team');
+    const awayTeamSelect = document.getElementById('id_away_team');
+
+    if (!phaseSelect || !homeTeamSelect || !awayTeamSelect) return;
+
+    // Store all teams from the initial options
+    Array.from(homeTeamSelect.options).forEach(opt => {
+        allHomeTeams.push({
+            value: opt.value,
+            text: opt.text,
+            selected: opt.selected
+        });
+    });
+    Array.from(awayTeamSelect.options).forEach(opt => {
+        allAwayTeams.push({
+            value: opt.value,
+            text: opt.text,
+            selected: opt.selected
+        });
+    });
+
+    // Filter teams when phase changes
+    phaseSelect.addEventListener('change', function() {
+        filterTeamsByPhase(this.value);
+    });
+
+    // Filter on page load if phase is already selected
+    if (phaseSelect.value) {
+        filterTeamsByPhase(phaseSelect.value);
+    }
+});
+
+function filterTeamsByPhase(phaseId) {
+    if (!phaseId) {
+        // No phase selected, show all teams
+        resetTeamSelects();
+        return;
+    }
+
+    // Get the phase to find its competition
+    fetch('/matches/api/phase/' + phaseId + '/competition/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.competition_id) {
+                // Get teams for this competition
+                fetch('/matches/api/competition/' + data.competition_id + '/teams/')
+                    .then(response => response.json())
+                    .then(teamsData => {
+                        updateTeamSelects(teamsData.teams);
+                    });
+            }
+        })
+        .catch(() => {
+            // On error, show all teams
+            resetTeamSelects();
+        });
+}
+
+function updateTeamSelects(enrolledTeams) {
+    const homeTeamSelect = document.getElementById('id_home_team');
+    const awayTeamSelect = document.getElementById('id_away_team');
+
+    // Get current selections
+    const currentHomeValue = homeTeamSelect.value;
+    const currentAwayValue = awayTeamSelect.value;
+
+    // Create set of enrolled team IDs
+    const enrolledIds = new Set(enrolledTeams.map(t => String(t.id)));
+
+    // Filter and update home team
+    homeTeamSelect.innerHTML = '';
+    allHomeTeams.forEach(opt => {
+        // Always include empty option and TBD teams, or teams enrolled in competition
+        if (!opt.value || enrolledIds.has(opt.value)) {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.text = opt.text;
+            option.selected = opt.value === currentHomeValue;
+            homeTeamSelect.appendChild(option);
+        }
+    });
+
+    // Filter and update away team
+    awayTeamSelect.innerHTML = '';
+    allAwayTeams.forEach(opt => {
+        if (!opt.value || enrolledIds.has(opt.value)) {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.text = opt.text;
+            option.selected = opt.value === currentAwayValue;
+            awayTeamSelect.appendChild(option);
+        }
+    });
+}
+
+function resetTeamSelects() {
+    const homeTeamSelect = document.getElementById('id_home_team');
+    const awayTeamSelect = document.getElementById('id_away_team');
+
+    const currentHomeValue = homeTeamSelect.value;
+    const currentAwayValue = awayTeamSelect.value;
+
+    homeTeamSelect.innerHTML = '';
+    allHomeTeams.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.text = opt.text;
+        option.selected = opt.value === currentHomeValue;
+        homeTeamSelect.appendChild(option);
+    });
+
+    awayTeamSelect.innerHTML = '';
+    allAwayTeams.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt.value;
+        option.text = opt.text;
+        option.selected = opt.value === currentAwayValue;
+        awayTeamSelect.appendChild(option);
+    });
+}
+</script>
+{% endblock %}
+
 {% if match %}
 <!-- Kijelölések szekció -->
 <div class="card" style="margin-top: 1.5rem;">
@@ -231,7 +362,7 @@
             Megtekintés
         </a>
 
-        <form method="post" onsubmit="return confirm('Biztosan törölni szeretnéd a mérkőzést?');" style="margin: 0; margin-left: auto;">
+        <form method="post" onsubmit="return confirm('Biztosan törölni szeretnéd a mérkőzést?\n\nA törlés nem visszavonható!');" style="margin: 0; margin-left: auto;">
             {% csrf_token %}
             <input type="hidden" name="action" value="delete">
             <button type="submit" class="btn" style="background: var(--danger-color); color: white;">

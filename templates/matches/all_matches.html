@@ -205,7 +205,7 @@
         border-radius: 12px;
         font-size: 0.8rem;
         font-weight: 600;
-        color: white;
+        color: white !important;
     }
     .match-card-footer {
         display: flex;
@@ -609,12 +609,12 @@
                 <!-- Torna: rendező csapat + Torna badge -->
                 <div class="team-info">
                     {% if match.home_team %}
-                    {% if match.home_team.logo %}
-                    <img src="{{ match.home_team.logo.url }}" alt="" class="team-logo">
+                    {% if match.home_team.effective_logo %}
+                    <img src="{{ match.home_team.effective_logo.url }}" alt="" class="team-logo">
                     {% else %}
-                    <div class="team-logo-placeholder">{{ match.home_team.short_name|default:match.home_team.name|slice:":2"|upper }}</div>
+                    <div class="team-logo-placeholder">{{ match.home_team.short_name|default:match.home_team|slice:":2"|upper }}</div>
                     {% endif %}
-                    <span class="team-name">{{ match.home_team.name }}</span>
+                    <span class="team-name">{{ match.home_team.display_name }}</span>
                     {% else %}
                     <div class="team-logo-placeholder missing-data"><span class="material-icons">error_outline</span></div>
                     <span class="team-name missing-data">NINCS RENDEZŐ!</span>
@@ -636,12 +636,12 @@
                     <div class="team-logo-placeholder tbd-team"><span class="material-icons">help_outline</span></div>
                     <span class="team-name tbd-team">TBD</span>
                     {% elif match.home_team %}
-                    {% if match.home_team.logo %}
-                    <img src="{{ match.home_team.logo.url }}" alt="" class="team-logo">
+                    {% if match.home_team.effective_logo %}
+                    <img src="{{ match.home_team.effective_logo.url }}" alt="" class="team-logo">
                     {% else %}
-                    <div class="team-logo-placeholder">{{ match.home_team.short_name|default:match.home_team.name|slice:":2"|upper }}</div>
+                    <div class="team-logo-placeholder">{{ match.home_team.short_name|default:match.home_team|slice:":2"|upper }}</div>
                     {% endif %}
-                    <span class="team-name">{{ match.home_team.name }}</span>
+                    <span class="team-name">{{ match.home_team.display_name }}</span>
                     {% else %}
                     <div class="team-logo-placeholder missing-data"><span class="material-icons">error_outline</span></div>
                     <span class="team-name missing-data">NINCS CSAPAT!</span>
@@ -653,12 +653,12 @@
                     <div class="team-logo-placeholder tbd-team"><span class="material-icons">help_outline</span></div>
                     <span class="team-name tbd-team">TBD</span>
                     {% elif match.away_team %}
-                    {% if match.away_team.logo %}
-                    <img src="{{ match.away_team.logo.url }}" alt="" class="team-logo">
+                    {% if match.away_team.effective_logo %}
+                    <img src="{{ match.away_team.effective_logo.url }}" alt="" class="team-logo">
                     {% else %}
-                    <div class="team-logo-placeholder">{{ match.away_team.short_name|default:match.away_team.name|slice:":2"|upper }}</div>
+                    <div class="team-logo-placeholder">{{ match.away_team.short_name|default:match.away_team|slice:":2"|upper }}</div>
                     {% endif %}
-                    <span class="team-name">{{ match.away_team.name }}</span>
+                    <span class="team-name">{{ match.away_team.display_name }}</span>
                     {% else %}
                     <div class="team-logo-placeholder missing-data"><span class="material-icons">error_outline</span></div>
                     <span class="team-name missing-data">NINCS CSAPAT!</span>
@@ -690,7 +690,11 @@
                 <div class="match-venue">
                     <span class="material-icons">location_on</span>
                     {% if match.venue %}
+                    {% if match.venue.google_maps_url %}
+                    <a href="{{ match.venue.google_maps_url }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline; text-decoration-style: dotted;" title="Megnyitás Google Maps-ben">{{ match.venue.name }}</a>{% if match.court %} ({{ match.court }}){% endif %}
+                    {% else %}
                     {{ match.venue.name }}{% if match.court %} ({{ match.court }}){% endif %}
+                    {% endif %}
                     {% else %}
                     <span class="missing-data">NINCS HELYSZÍN!</span>
                     {% endif %}

@@ -1,0 +1,592 @@
+{% extends 'base.html' %}
+
+{% block title %}Klubbok{% endblock %}
+{% block page_title %}Klubbok kezelése{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-intro {
+        background: linear-gradient(135deg, var(--primary-color) 0%, #4f46e5 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    .page-intro::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 60%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+        transform: rotate(25deg);
+    }
+    .page-intro h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .page-intro h2 .material-icons {
+        font-size: 2rem;
+        opacity: 0.9;
+    }
+    .page-intro p {
+        opacity: 0.9;
+        font-size: 0.95rem;
+        margin: 0;
+        max-width: 600px;
+    }
+    .page-intro .header-actions {
+        position: absolute;
+        top: 2rem;
+        right: 2rem;
+    }
+    .page-intro .header-actions .btn {
+        background: rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.3);
+        color: white;
+    }
+    .page-intro .header-actions .btn:hover {
+        background: rgba(255,255,255,0.3);
+    }
+    .stats-row {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .stat-chip {
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .stat-chip .material-icons {
+        font-size: 1.1rem;
+    }
+    .filter-bar {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .club-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        transition: all 0.2s;
+    }
+    .club-card:hover {
+        border-color: var(--accent-color);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .club-card.inactive {
+        opacity: 0.6;
+        background: var(--bg-color);
+    }
+    .club-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid transparent;
+        transition: border-color 0.2s;
+    }
+    .club-header.expanded {
+        border-bottom-color: var(--border-color);
+    }
+    .club-logo {
+        width: 56px;
+        height: 56px;
+        border-radius: 10px;
+        background: var(--bg-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .club-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    .club-logo .material-icons {
+        font-size: 1.75rem;
+        color: var(--text-secondary);
+    }
+    .club-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .club-name {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .club-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .club-meta .material-icons {
+        font-size: 1rem;
+        margin-right: 0.25rem;
+    }
+    .club-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+    .expand-indicator {
+        color: var(--text-secondary);
+        transition: transform 0.2s;
+    }
+    .club-header.expanded .expand-indicator {
+        transform: rotate(180deg);
+    }
+    .club-teams {
+        display: none;
+        padding: 0.5rem 1rem 1rem 1rem;
+        background: var(--bg-color);
+    }
+    .club-teams.show {
+        display: block;
+    }
+    .teams-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px dashed var(--border-color);
+    }
+    .teams-header h4 {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        margin: 0;
+    }
+    .team-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s;
+    }
+    .team-item:hover {
+        border-color: var(--accent-color);
+    }
+    .team-item.inactive {
+        opacity: 0.5;
+    }
+    .team-logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        background: var(--bg-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .team-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    .team-logo .material-icons {
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+    }
+    .team-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .team-name {
+        font-weight: 500;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .team-meta {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.15rem;
+    }
+    .team-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+    .btn-icon {
+        padding: 0.5rem;
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+    }
+    .btn-icon:hover {
+        background: var(--border-color);
+        color: var(--text-primary);
+    }
+    .btn-icon.active {
+        color: var(--success-color);
+    }
+    .btn-icon.inactive {
+        color: var(--danger-color);
+    }
+    .btn-icon .material-icons {
+        font-size: 1.25rem;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+    .empty-state .material-icons {
+        font-size: 3rem;
+        opacity: 0.5;
+        margin-bottom: 1rem;
+    }
+    .empty-teams {
+        text-align: center;
+        padding: 1.5rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    .badge {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        background: var(--primary-light);
+        color: white;
+    }
+    .badge-danger {
+        background: var(--danger-color);
+    }
+    .badge-success {
+        background: var(--success-color);
+    }
+    .team-competitions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-top: 0.25rem;
+    }
+    .competition-badge {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        color: white !important;
+    }
+    .no-competition {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: {% if message.tags == 'success' %}rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);{% else %}rgba(23, 162, 184, 0.1); border: 1px solid var(--info-color);{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Page Intro -->
+<div class="page-intro">
+    <div class="header-actions">
+        <a href="{% url 'matches:club_new' %}" class="btn btn-primary">
+            <span class="material-icons">add</span>
+            Új klub
+        </a>
+    </div>
+    <h2>
+        <span class="material-icons">domain</span>
+        Klubbok kezelése
+    </h2>
+    <p>Klubbok és csapatok kezelése. Minden klubon belül több csapat hozható létre, amelyek más-más bajnokságban szerepelhetnek.</p>
+    <div class="stats-row">
+        <div class="stat-chip">
+            <span class="material-icons">domain</span>
+            {{ total_clubs }} klub
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">check_circle</span>
+            {{ active_clubs }} aktív
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">groups</span>
+            {{ total_teams }} csapat
+        </div>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: var(--card-bg); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+        <input type="checkbox" {% if show_inactive %}checked{% endif %} onchange="window.location.href='?show_inactive=' + (this.checked ? '1' : '0')">
+        Inaktívak mutatása
+    </label>
+</div>
+
+{% if clubs %}
+    {% for club in clubs %}
+    <div class="club-card {% if not club.is_active %}inactive{% endif %}">
+        <div class="club-header" onclick="toggleClub(this)">
+            <div class="club-logo">
+                {% if club.logo %}
+                <img src="{{ club.logo.url }}" alt="{{ club.name }}">
+                {% else %}
+                <span class="material-icons">domain</span>
+                {% endif %}
+            </div>
+            <div class="club-info">
+                <div class="club-name">
+                    {{ club.name }}
+                    {% if club.short_name %}
+                    <span class="badge">{{ club.short_name }}</span>
+                    {% endif %}
+                    {% if not club.is_active %}
+                    <span class="badge badge-danger">Inaktív</span>
+                    {% endif %}
+                </div>
+                <div class="club-meta">
+                    {% if club.city %}
+                    <span><span class="material-icons">location_on</span>{{ club.city }}</span>
+                    {% endif %}
+                    <span><span class="material-icons">groups</span>{{ club.teams.count }} csapat</span>
+                </div>
+            </div>
+            <div class="club-actions" onclick="event.stopPropagation();">
+                <a href="{% url 'matches:club_edit' club.id %}" class="btn-icon" title="Klub szerkesztése">
+                    <span class="material-icons">edit</span>
+                </a>
+                <form method="post" action="{% url 'matches:club_toggle_active' club.id %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-icon {% if club.is_active %}active{% else %}inactive{% endif %}" title="{% if club.is_active %}Deaktiválás{% else %}Aktiválás{% endif %}">
+                        <span class="material-icons">{% if club.is_active %}toggle_on{% else %}toggle_off{% endif %}</span>
+                    </button>
+                </form>
+                <button type="button" class="btn-icon" title="Archiválás" onclick="archiveClub({{ club.id }}, '{{ club.name|escapejs }}')" style="color: var(--warning-color);">
+                    <span class="material-icons">inventory_2</span>
+                </button>
+                <button type="button" class="btn-icon" title="Törlés" onclick="deleteClub({{ club.id }}, '{{ club.name|escapejs }}')" style="color: var(--danger-color);">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+            <span class="material-icons expand-indicator">expand_more</span>
+        </div>
+        <div class="club-teams">
+            <div class="teams-header">
+                <h4>Csapatok</h4>
+                <a href="{% url 'matches:team_new' club.id %}" class="btn btn-sm btn-primary">
+                    <span class="material-icons">add</span>
+                    Új csapat
+                </a>
+            </div>
+            {% if club.teams.exists %}
+                {% for team in club.teams.all %}
+                <div class="team-item {% if not team.is_active %}inactive{% endif %}">
+                    <div class="team-logo">
+                        {% if team.logo %}
+                        <img src="{{ team.logo.url }}" alt="{{ team }}">
+                        {% elif club.logo %}
+                        <img src="{{ club.logo.url }}" alt="{{ team }}">
+                        {% else %}
+                        <span class="material-icons">shield</span>
+                        {% endif %}
+                    </div>
+                    <div class="team-info">
+                        <div class="team-name">
+                            {{ team }}
+                            {% if team.short_name %}
+                            <span class="badge" style="font-size: 0.65rem;">{{ team.short_name }}</span>
+                            {% endif %}
+                            {% if not team.is_active %}
+                            <span class="badge badge-danger" style="font-size: 0.65rem;">Inaktív</span>
+                            {% endif %}
+                        </div>
+                        <div class="team-competitions">
+                            {% for comp in team.competitions.all %}
+                            <span class="competition-badge" style="background: {{ comp.color }};">{{ comp.short_name }}</span>
+                            {% empty %}
+                            <span class="no-competition">Nincs bajnoksághoz rendelve</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="team-actions">
+                        <a href="{% url 'matches:team_edit' club.id team.id %}" class="btn-icon" title="Csapat szerkesztése">
+                            <span class="material-icons">edit</span>
+                        </a>
+                        <form method="post" action="{% url 'matches:team_toggle_active' team.id %}" style="margin: 0;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-icon {% if team.is_active %}active{% else %}inactive{% endif %}" title="{% if team.is_active %}Deaktiválás{% else %}Aktiválás{% endif %}">
+                                <span class="material-icons">{% if team.is_active %}toggle_on{% else %}toggle_off{% endif %}</span>
+                            </button>
+                        </form>
+                        <button type="button" class="btn-icon" title="Archiválás" onclick="archiveTeam({{ team.id }}, '{{ team.name|escapejs }}')" style="color: var(--warning-color);">
+                            <span class="material-icons">inventory_2</span>
+                        </button>
+                        <button type="button" class="btn-icon" title="Törlés" onclick="deleteTeam({{ team.id }}, '{{ team.name|escapejs }}')" style="color: var(--danger-color);">
+                            <span class="material-icons">delete</span>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="empty-teams">
+                <span class="material-icons" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.5rem;">groups_off</span>
+                Még nincs csapat ehhez a klubhoz
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="empty-state">
+    <span class="material-icons">domain</span>
+    <h3>Nincs klub</h3>
+    <p>Adj hozzá klubokat a rendszerhez.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleClub(header) {
+    header.classList.toggle('expanded');
+    const teamsDiv = header.nextElementSibling;
+    teamsDiv.classList.toggle('show');
+}
+
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+async function archiveClub(clubId, clubName) {
+    if (!confirm(`Biztosan archiválod a "${clubName}" klubot és összes csapatát?\n\nAz archivált elemek az Archívumban lesznek elérhetők.`)) return;
+
+    try {
+        const response = await fetch(`/matches/api/club/${clubId}/archive/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Hiba történt az archiválás során.');
+        }
+    } catch (error) {
+        alert('Hiba történt az archiválás során.');
+    }
+}
+
+async function deleteClub(clubId, clubName) {
+    if (!confirm(`Biztosan véglegesen törlöd a "${clubName}" klubot és összes csapatát?\n\nEz a művelet nem vonható vissza.`)) return;
+
+    try {
+        const response = await fetch(`/matches/admin/clubs/${clubId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Hiba történt a törlés során.');
+        }
+    } catch (error) {
+        alert('Hiba történt a törlés során.');
+    }
+}
+
+async function archiveTeam(teamId, teamName) {
+    if (!confirm(`Biztosan archiválod a "${teamName}" csapatot?\n\nAz archivált elemek az Archívumban lesznek elérhetők.`)) return;
+
+    try {
+        const response = await fetch(`/matches/api/team/${teamId}/archive/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Hiba történt az archiválás során.');
+        }
+    } catch (error) {
+        alert('Hiba történt az archiválás során.');
+    }
+}
+
+async function deleteTeam(teamId, teamName) {
+    if (!confirm(`Biztosan véglegesen törlöd a "${teamName}" csapatot?\n\nEz a művelet nem vonható vissza.`)) return;
+
+    try {
+        const response = await fetch(`/matches/admin/teams/${teamId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Hiba történt a törlés során.');
+        }
+    } catch (error) {
+        alert('Hiba történt a törlés során.');
+    }
+}
+</script>
+{% endblock %}

@@ -35,10 +35,28 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def is_email_enabled():
+    """
+    Check if email sending is enabled in site settings.
+    """
+    try:
+        from accounts.models import SiteSettings
+        settings_obj = SiteSettings.get_settings()
+        return settings_obj.email_enabled
+    except Exception:
+        # If we can't check, assume enabled
+        return True
+
+
 def send_email(to_email, subject, html_content, text_content=None, from_email=None):
     """
     Send a simple email with HTML and optional text content.
     """
+    # Check if email is enabled
+    if not is_email_enabled():
+        logger.info(f"[EMAIL] Email sending is disabled in settings, skipping: {subject}")
+        return False
+
     if isinstance(to_email, str):
         to_email = [to_email]
 
@@ -223,23 +241,32 @@ def send_security_alert(user, alert_type, details=None, request=None):
 # USER ACCOUNT EMAILS
 # =============================================================================
 
-def send_welcome_email(user, generated_password):
+def send_welcome_email(user, generated_password=None):
     """
-    Send welcome email with login credentials to new user.
+    Send welcome email with password setup link to new user.
+    The link is valid for 24 hours.
     """
     if not user.email:
         return False
 
+    from django.utils.http import urlsafe_base64_encode
+    from django.utils.encoding import force_bytes
+    from core.validators import initial_password_token_generator
+
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = initial_password_token_generator.make_token(user)
+    setup_url = f"{settings.SITE_URL}/password-setup/{uid}/{token}/"
+
     context = {
         'user': user,
         'email': user.email,
-        'password': generated_password,
+        'setup_url': setup_url,
     }
 
     return send_templated_email(
         to_email=user.email,
         subject='Új fiókot regisztráltak neked a JAR rendszerben!',
-        template_name='welcome',
+        template_name='welcome_password_setup',
         context=context
     )
 
@@ -324,7 +351,16 @@ def send_match_assignment_notification(assignment, notify_type='new', changes=No
     logger.info(f"[ASSIGNMENT EMAIL] Subject: {subject}")
 
     # Get all assignments for this match to show in the email
-    all_assignments = list(match.assignments.select_related('user').order_by('role'))
+    # Order by: referee -> reserve -> inspector -> tournament_director
+    from matches.models import MatchAssignment
+    role_order = {
+        MatchAssignment.Role.REFEREE: 0,
+        MatchAssignment.Role.RESERVE: 1,
+        MatchAssignment.Role.INSPECTOR: 2,
+        MatchAssignment.Role.TOURNAMENT_DIRECTOR: 3,
+    }
+    all_assignments_qs = match.assignments.select_related('user')
+    all_assignments = sorted(all_assignments_qs, key=lambda a: (role_order.get(a.role, 99), a.id))
     logger.info(f"[ASSIGNMENT EMAIL] All assignments count: {len(all_assignments)}")
 
     context = {
@@ -434,7 +470,16 @@ def send_assignment_declined_notification(assignment, declining_user):
         subject += f", ({comp_str})"
 
     # Get all assignments for this match
-    all_assignments = list(match.assignments.select_related('user').order_by('role'))
+    # Order by: referee -> reserve -> inspector -> tournament_director
+    from matches.models import MatchAssignment
+    role_order = {
+        MatchAssignment.Role.REFEREE: 0,
+        MatchAssignment.Role.RESERVE: 1,
+        MatchAssignment.Role.INSPECTOR: 2,
+        MatchAssignment.Role.TOURNAMENT_DIRECTOR: 3,
+    }
+    all_assignments_qs = match.assignments.select_related('user')
+    all_assignments = sorted(all_assignments_qs, key=lambda a: (role_order.get(a.role, 99), a.id))
 
     context = {
         'assignment': assignment,

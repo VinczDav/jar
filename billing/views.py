@@ -162,19 +162,28 @@ def tig(request):
 
     assignments = assignments.order_by('match__date', 'match__time')
 
-    # Calculate fees based on phase settings (uses match.get_payment_per_referee for tournament support)
+    # Calculate fees (check for custom fee first, then fall back to phase settings)
     total_fee = 0
     assignments_with_fees = []
     for assignment in assignments:
-        # Use the model method which handles tournaments correctly
-        fee = assignment.match.get_payment_per_referee()
+        # Check if there's a custom fee set by admin
+        try:
+            match_fee = assignment.fee
+            fee = int(match_fee.final_amount)
+            is_custom = match_fee.manual_adjustment != 0
+        except:
+            # Use the model method which handles tournaments correctly
+            fee = assignment.match.get_payment_per_referee()
+            is_custom = False
+
         total_fee += fee
         # Format fee with space as thousands separator (Hungarian format)
         fee_display = f"{fee:,}".replace(',', ' ') if fee else None
         assignments_with_fees.append({
             'assignment': assignment,
             'fee': fee,
-            'fee_display': fee_display
+            'fee_display': fee_display,
+            'is_custom': is_custom,
         })
 
     # Available years (2026 onwards for future, plus current year)
@@ -393,11 +402,20 @@ def travel_costs(request):
     has_car_data = bool(user.vehicle_license_plate)
     can_submit_car_expense = user.vehicle_reimbursement_enabled and has_car_data
 
+    # Time-based filtering: only show matches that have started (start + 1 min passed)
+    from datetime import timedelta
+    from django.db.models import Q
+    one_min_ago = (timezone.now() - timedelta(minutes=1)).time()
+
     # Get user's past accepted assignments for match selection (without existing travel cost)
+    # Only include matches that have started (date < today OR (date == today AND time <= one_min_ago))
     past_assignments = MatchAssignment.objects.filter(
         user=user,
         response_status=MatchAssignment.ResponseStatus.ACCEPTED,
-        match__date__lt=today
+        match__is_deleted=False
+    ).filter(
+        Q(match__date__lt=today) |
+        Q(match__date=today, match__time__isnull=False, match__time__lte=one_min_ago)
     ).select_related(
         'match', 'match__home_team', 'match__away_team',
         'match__venue', 'match__phase', 'match__phase__competition'
@@ -479,6 +497,9 @@ def _tax_declaration_view(request, declaration_type):
 
     today = timezone.localtime(timezone.now()).date()
     five_days_from_now = today + timedelta(days=5)
+
+    # For EKHO: calculate deadline for urgent status (7th of next month after match date)
+    # A match is urgent if it's past the 7th of the month after the match and still pending
 
     # Set default date filters based on declaration type
     # EFO: today to today + 7 days
@@ -596,9 +617,22 @@ def _tax_declaration_view(request, declaration_type):
         if declaration.status == TaxDeclaration.Status.DECLARED:
             declaration.check_for_changes()
 
-        # Check if match is within 5 days (for yellow highlight)
+        # Check urgency based on declaration type
         match_date = assignment.match.date
-        is_urgent = match_date and match_date <= five_days_from_now
+        if declaration_type == 'ekho':
+            # EKHO: urgent if past 7th of the month after match date and still pending
+            if match_date and declaration.status != TaxDeclaration.Status.DECLARED:
+                # Calculate the 7th of the next month after match
+                if match_date.month == 12:
+                    deadline = match_date.replace(year=match_date.year + 1, month=1, day=7)
+                else:
+                    deadline = match_date.replace(month=match_date.month + 1, day=7)
+                is_urgent = today > deadline
+            else:
+                is_urgent = False
+        else:
+            # EFO: urgent if match is within 5 days
+            is_urgent = match_date and match_date <= five_days_from_now
 
         # Get fee data - first check for custom fee, otherwise calculate from phase
         try:
@@ -740,7 +774,18 @@ def _tax_declaration_view(request, declaration_type):
             declaration.check_for_changes()
 
         match_date = declaration.match.date if declaration.match else None
-        is_urgent = match_date and match_date <= five_days_from_now
+        if declaration_type == 'ekho':
+            # EKHO: urgent if past 7th of the month after match date and still pending
+            if match_date and declaration.status != TaxDeclaration.Status.DECLARED:
+                if match_date.month == 12:
+                    deadline = match_date.replace(year=match_date.year + 1, month=1, day=7)
+                else:
+                    deadline = match_date.replace(month=match_date.month + 1, day=7)
+                is_urgent = today > deadline
+            else:
+                is_urgent = False
+        else:
+            is_urgent = match_date and match_date <= five_days_from_now
 
         item = {
             'assignment': None,
@@ -794,7 +839,18 @@ def _tax_declaration_view(request, declaration_type):
             declaration.check_for_changes()
 
         match_date = declaration.match.date if declaration.match else None
-        is_urgent = match_date and match_date <= five_days_from_now
+        if declaration_type == 'ekho':
+            # EKHO: urgent if past 7th of the month after match date and still pending
+            if match_date and declaration.status != TaxDeclaration.Status.DECLARED:
+                if match_date.month == 12:
+                    deadline = match_date.replace(year=match_date.year + 1, month=1, day=7)
+                else:
+                    deadline = match_date.replace(month=match_date.month + 1, day=7)
+                is_urgent = today > deadline
+            else:
+                is_urgent = False
+        else:
+            is_urgent = match_date and match_date <= five_days_from_now
 
         item = {
             'assignment': declaration.assignment,
@@ -1145,7 +1201,7 @@ def api_travel_cost_approve(request, travel_cost_id):
         # Send notification to the user
         match = travel_cost.assignment.match
         date_str = match.date.strftime('%Y.%m.%d') if match.date else ''
-        teams = f"{match.home_team.name if match.home_team else 'TBD'} - {match.away_team.name if match.away_team else 'TBD'}"
+        teams = f"{str(match.home_team) if match.home_team else 'TBD'} - {str(match.away_team) if match.away_team else 'TBD'}"
         amount_str = f"{int(travel_cost.amount)} Ft" if travel_cost.amount else ''
 
         Notification.objects.create(
@@ -1197,7 +1253,7 @@ def api_travel_cost_reject(request, travel_cost_id):
         # Send notification to the user
         match = travel_cost.assignment.match
         date_str = match.date.strftime('%Y.%m.%d') if match.date else ''
-        teams = f"{match.home_team.name if match.home_team else 'TBD'} - {match.away_team.name if match.away_team else 'TBD'}"
+        teams = f"{str(match.home_team) if match.home_team else 'TBD'} - {str(match.away_team) if match.away_team else 'TBD'}"
         reason = travel_cost.comment if travel_cost.comment else 'Nincs indoklás megadva'
 
         Notification.objects.create(
@@ -1253,7 +1309,7 @@ def api_travel_cost_return(request, travel_cost_id):
         # Send notification to the user
         match = travel_cost.assignment.match
         date_str = match.date.strftime('%Y.%m.%d') if match.date else ''
-        teams = f"{match.home_team.name if match.home_team else 'TBD'} - {match.away_team.name if match.away_team else 'TBD'}"
+        teams = f"{str(match.home_team) if match.home_team else 'TBD'} - {str(match.away_team) if match.away_team else 'TBD'}"
 
         Notification.objects.create(
             recipient=travel_cost.assignment.user,
@@ -1415,7 +1471,7 @@ def _notify_admins_about_travel_cost(travel_cost):
     # Get match details
     match = travel_cost.assignment.match
     date_str = match.date.strftime('%Y.%m.%d') if match.date else ''
-    teams = f"{match.home_team.name if match.home_team else 'TBD'} - {match.away_team.name if match.away_team else 'TBD'}"
+    teams = f"{str(match.home_team) if match.home_team else 'TBD'} - {str(match.away_team) if match.away_team else 'TBD'}"
     user_name = travel_cost.assignment.user.get_full_name()
     expense_type_display = 'Autós' if travel_cost.expense_type == 'car' else 'Tömegközlekedés'
 

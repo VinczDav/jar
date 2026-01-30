@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: jar-web
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - DJANGO_SETTINGS_MODULE=jar.settings
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    depends_on:
+      - db
+    networks:
+      - jar-network
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: postgres:16-alpine
+    container_name: jar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-jar_db}
+      POSTGRES_USER: ${DB_USER:-jar_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - jar-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-jar_user} -d ${DB_NAME:-jar_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  scheduler:
+    build: .
+    container_name: jar-scheduler
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - DJANGO_SETTINGS_MODULE=jar.settings
+      - RUN_MIGRATIONS=false
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - media_volume:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      - jar-network
+    command: bash /app/scripts/scheduler.sh
+
+  nginx:
+    image: nginx:alpine
+    container_name: jar-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+    depends_on:
+      - web
+    networks:
+      - jar-network
+
+  # Optional: Certbot for SSL certificates
+  certbot:
+    image: certbot/certbot
+    container_name: jar-certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+
+networks:
+  jar-network:
+    driver: bridge

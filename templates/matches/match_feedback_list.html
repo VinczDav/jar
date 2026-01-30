@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+
+{% block title %}Mérkőzés visszajelzés{% endblock %}
+{% block page_title %}Mérkőzés visszajelzés{% endblock %}
+
+{% block extra_css %}
+<style>
+    .feedback-section {
+        margin-bottom: 2rem;
+    }
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+    .section-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    .section-header .badge {
+        background: var(--danger-color);
+        color: white;
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .match-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+    .match-card:hover {
+        border-color: var(--primary-color);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .match-card.needs-feedback {
+        border-left: 4px solid var(--warning-color);
+    }
+    .match-card.feedback-ok {
+        border-left: 4px solid var(--success-color);
+    }
+    .match-card.feedback-red-card {
+        border-left: 4px solid var(--danger-color);
+    }
+    .match-card.feedback-issue {
+        border-left: 4px solid #f97316;
+    }
+    .match-card-inner {
+        display: flex;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        gap: 1rem;
+        text-decoration: none;
+        color: inherit;
+    }
+    .match-date {
+        flex-shrink: 0;
+        text-align: center;
+        min-width: 60px;
+    }
+    .match-date .day {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        line-height: 1;
+    }
+    .match-date .month {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+    }
+    .match-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .match-teams {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    .match-meta {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    .match-meta span {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .match-meta .material-icons {
+        font-size: 0.9rem;
+    }
+    .match-action {
+        flex-shrink: 0;
+    }
+    .feedback-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    .feedback-status.ok {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    .feedback-status.red-card {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .feedback-status.issue {
+        background: #ffedd5;
+        color: #ea580c;
+    }
+    .feedback-status .material-icons {
+        font-size: 1rem;
+    }
+    .btn-feedback {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.5rem 1rem;
+        background: var(--primary-color);
+        color: white;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: background 0.2s;
+    }
+    .btn-feedback:hover {
+        background: var(--primary-hover, #2563eb);
+        color: white;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--text-secondary);
+    }
+    .empty-state .material-icons {
+        font-size: 3rem;
+        opacity: 0.5;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Matches needing feedback -->
+<div class="feedback-section">
+    <div class="section-header">
+        <span class="material-icons" style="color: var(--warning-color);">pending_actions</span>
+        <h3>Visszajelzésre váró mérkőzések</h3>
+        {% if assignments_needing_feedback %}
+        <span class="badge">{{ assignments_needing_feedback|length }}</span>
+        {% endif %}
+    </div>
+
+    {% if assignments_needing_feedback %}
+        {% for assignment in assignments_needing_feedback %}
+        <div class="match-card needs-feedback">
+            <div class="match-card-inner">
+                <div class="match-date">
+                    <div class="day">{{ assignment.match.date|date:"d" }}</div>
+                    <div class="month">{{ assignment.match.date|date:"M" }}</div>
+                </div>
+                <div class="match-info">
+                    <div class="match-teams">
+                        {{ assignment.match.home_team|default:"TBD" }} - {{ assignment.match.away_team|default:"TBD" }}
+                    </div>
+                    <div class="match-meta">
+                        {% if assignment.match.phase %}
+                        <span>
+                            <span class="badge" style="background-color: {{ assignment.match.phase.competition.color }}; color: white; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem;">
+                                {{ assignment.match.phase.competition.short_name }}
+                            </span>
+                        </span>
+                        {% endif %}
+                        {% if assignment.match.time %}
+                        <span><span class="material-icons">schedule</span> {{ assignment.match.time|time:"H:i" }}</span>
+                        {% endif %}
+                        {% if assignment.match.venue %}
+                        <span><span class="material-icons">place</span> {{ assignment.match.venue.name }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="match-action">
+                    <a href="{% url 'matches:match_feedback_submit' assignment.id %}" class="btn-feedback">
+                        <span class="material-icons">rate_review</span>
+                        Visszajelzés
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs visszajelzésre váró mérkőzésed</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Completed feedbacks -->
+{% if assignments_with_feedback %}
+<div class="feedback-section">
+    <div class="section-header">
+        <span class="material-icons" style="color: var(--success-color);">task_alt</span>
+        <h3>Beküldött visszajelzések</h3>
+    </div>
+
+    {% for assignment in assignments_with_feedback %}
+    <div class="match-card feedback-{{ assignment.feedback.feedback_type|default:'ok' }}">
+        <div class="match-card-inner">
+            <div class="match-date">
+                <div class="day">{{ assignment.match.date|date:"d" }}</div>
+                <div class="month">{{ assignment.match.date|date:"M" }}</div>
+            </div>
+            <div class="match-info">
+                <div class="match-teams">
+                    {{ assignment.match.home_team|default:"TBD" }} - {{ assignment.match.away_team|default:"TBD" }}
+                </div>
+                <div class="match-meta">
+                    {% if assignment.match.phase %}
+                    <span>
+                        <span class="badge" style="background-color: {{ assignment.match.phase.competition.color }}; color: white; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem;">
+                            {{ assignment.match.phase.competition.short_name }}
+                        </span>
+                    </span>
+                    {% endif %}
+                    {% if assignment.match.time %}
+                    <span><span class="material-icons">schedule</span> {{ assignment.match.time|time:"H:i" }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="match-action">
+                {% if assignment.feedback.feedback_type == 'ok' %}
+                <span class="feedback-status ok">
+                    <span class="material-icons">thumb_up</span>
+                    Minden rendben
+                </span>
+                {% elif assignment.feedback.feedback_type == 'red_card' %}
+                <span class="feedback-status red-card">
+                    <span class="material-icons">sports</span>
+                    Végleges kiállítás
+                </span>
+                {% elif assignment.feedback.feedback_type == 'issue' %}
+                <span class="feedback-status issue">
+                    <span class="material-icons">thumb_down</span>
+                    Probléma
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -5,24 +5,81 @@
 
 {% block extra_css %}
 <style>
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-        flex-wrap: wrap;
-        gap: 1rem;
+    .page-intro {
+        background: linear-gradient(135deg, var(--primary-color) 0%, #4f46e5 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
     }
-    .page-stats {
+    .page-intro::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 60%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+        transform: rotate(25deg);
+    }
+    .page-intro h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .page-intro h2 .material-icons {
+        font-size: 2rem;
+        opacity: 0.9;
+    }
+    .page-intro p {
+        opacity: 0.9;
+        font-size: 0.95rem;
+        margin: 0;
+        max-width: 600px;
+    }
+    .page-intro .header-actions {
+        position: absolute;
+        top: 2rem;
+        right: 2rem;
+    }
+    .page-intro .header-actions .btn {
+        background: rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.3);
+        color: white;
+    }
+    .page-intro .header-actions .btn:hover {
+        background: rgba(255,255,255,0.3);
+    }
+    .stats-row {
         display: flex;
         gap: 1rem;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .stat-chip {
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .stat-chip .material-icons {
+        font-size: 1.1rem;
     }
     .filter-bar {
         display: flex;
         gap: 1rem;
         align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
     }
     .venue-card {
         display: flex;
@@ -124,21 +181,36 @@
 </div>
 {% endif %}
 
-<div class="page-header">
-    <div class="page-stats">
-        <span>Összes: <strong>{{ total_count }}</strong></span>
-        <span>Aktív: <strong>{{ active_count }}</strong></span>
-    </div>
-    <div class="filter-bar">
-        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-            <input type="checkbox" {% if show_inactive %}checked{% endif %} onchange="window.location.href='?show_inactive=' + (this.checked ? '1' : '0')">
-            Inaktívak mutatása
-        </label>
+<!-- Page Intro -->
+<div class="page-intro">
+    <div class="header-actions">
         <a href="{% url 'matches:venue_new' %}" class="btn btn-primary">
             <span class="material-icons">add</span>
             Új helyszín
         </a>
     </div>
+    <h2>
+        <span class="material-icons">location_on</span>
+        Helyszínek kezelése
+    </h2>
+    <p>Sportcsarnokok és játszóhelyek kezelése. Google Maps hivatkozással.</p>
+    <div class="stats-row">
+        <div class="stat-chip">
+            <span class="material-icons">place</span>
+            {{ total_count }} helyszín
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">check_circle</span>
+            {{ active_count }} aktív
+        </div>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: var(--card-bg); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color);">
+        <input type="checkbox" {% if show_inactive %}checked{% endif %} onchange="window.location.href='?show_inactive=' + (this.checked ? '1' : '0')">
+        Inaktívak mutatása
+    </label>
 </div>
 
 {% if venues %}
@@ -155,10 +227,15 @@
                 {% endif %}
             </div>
             <div class="venue-meta">
-                {{ venue.city }}{% if venue.address %} - {{ venue.address }}{% endif %}
+                {{ venue.city }}{% if venue.postal_code %} {{ venue.postal_code }}{% endif %}{% if venue.address %}, {{ venue.address }}{% endif %}
             </div>
         </div>
         <div class="venue-actions">
+            {% if venue.google_maps_url %}
+            <a href="{{ venue.google_maps_url }}" target="_blank" rel="noopener" class="btn-icon" title="Megnyitás Google Maps-ben" style="color: var(--success-color);">
+                <span class="material-icons">map</span>
+            </a>
+            {% endif %}
             <a href="{% url 'matches:venue_edit' venue.id %}" class="btn-icon" title="Szerkesztés">
                 <span class="material-icons">edit</span>
             </a>
@@ -168,6 +245,12 @@
                     <span class="material-icons">{% if venue.is_active %}toggle_on{% else %}toggle_off{% endif %}</span>
                 </button>
             </form>
+            <button type="button" class="btn-icon" title="Archiválás" onclick="archiveVenue({{ venue.id }}, '{{ venue.name|escapejs }}')" style="color: var(--warning-color);">
+                <span class="material-icons">inventory_2</span>
+            </button>
+            <button type="button" class="btn-icon" title="Törlés" onclick="deleteVenue({{ venue.id }}, '{{ venue.name|escapejs }}')" style="color: var(--danger-color);">
+                <span class="material-icons">delete</span>
+            </button>
         </div>
     </div>
     {% endfor %}
@@ -176,10 +259,58 @@
     <span class="material-icons">location_on</span>
     <h3>Nincs helyszín</h3>
     <p>Adj hozzá helyszíneket a rendszerhez.</p>
-    <a href="{% url 'matches:venue_new' %}" class="btn btn-primary" style="margin-top: 1rem;">
-        <span class="material-icons">add</span>
-        Új helyszín
-    </a>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+async function archiveVenue(venueId, venueName) {
+    if (!confirm(`Biztosan archiválod a "${venueName}" helyszínt?\n\nAz archivált elemek az Archívumban lesznek elérhetők.`)) return;
+
+    try {
+        const response = await fetch(`/matches/api/venue/${venueId}/archive/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Hiba történt az archiválás során.');
+        }
+    } catch (error) {
+        alert('Hiba történt az archiválás során.');
+    }
+}
+
+async function deleteVenue(venueId, venueName) {
+    if (!confirm(`Biztosan véglegesen törlöd a "${venueName}" helyszínt?\n\nEz a művelet nem vonható vissza.`)) return;
+
+    try {
+        const response = await fetch(`/matches/api/venue/${venueId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || 'Hiba történt a törlés során.');
+        }
+    } catch (error) {
+        alert('Hiba történt a törlés során.');
+    }
+}
+</script>
 {% endblock %}

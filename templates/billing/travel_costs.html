@@ -96,8 +96,8 @@
                         {% endif %}
                     </td>
                     <td>{{ tc.assignment.match.venue.name|default:"-" }}</td>
-                    <td>{{ tc.assignment.match.home_team.name|default:"TBD" }}</td>
-                    <td>{{ tc.assignment.match.away_team.name|default:"TBD" }}</td>
+                    <td>{{ tc.assignment.match.home_team|default:"TBD" }}</td>
+                    <td>{{ tc.assignment.match.away_team|default:"TBD" }}</td>
                     <td>
                         {% if tc.expense_type == 'car' %}
                         <span class="expense-badge car">
@@ -214,7 +214,7 @@
                             {% endif %}
                             <br>
                             <span style="color: var(--text-secondary);">
-                                {{ assignment.match.home_team.name|default:"TBD" }} - {{ assignment.match.away_team.name|default:"TBD" }}
+                                {{ assignment.match.home_team|default:"TBD" }} - {{ assignment.match.away_team|default:"TBD" }}
                             </span>
                         </span>
                     </label>
@@ -228,8 +228,18 @@
             </div>
 
             <div class="form-group" style="margin-bottom: 1rem;" id="file-group">
-                <label for="file-input" id="file-label">Dokumentum feltöltése</label>
-                <input type="file" id="file-input" name="document" accept=".pdf,.png,.jpg,.jpeg" class="form-control">
+                <label id="file-label">Dokumentum feltöltése</label>
+                <div class="file-upload-wrapper" id="file-upload-wrapper" onclick="document.getElementById('file-input').click()">
+                    <input type="file" id="file-input" name="document" accept=".pdf,.png,.jpg,.jpeg" onchange="updateFileDisplay(this, 'file-upload-wrapper', 'file-info')">
+                    <span class="file-upload-btn">
+                        <span class="material-icons">upload_file</span>
+                        Fájl kiválasztása
+                    </span>
+                    <span class="file-upload-info" id="file-info">PDF, PNG, JPG (max 10 MB)</span>
+                    <button type="button" class="file-upload-clear" onclick="clearFileInput(event, 'file-input', 'file-upload-wrapper', 'file-info')">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
             </div>
 
             <div class="form-group" id="amount-group" style="margin-bottom: 1rem; display: none;">
@@ -273,8 +283,18 @@
             <input type="hidden" id="reupload-travel-cost-id" name="travel_cost_id" value="">
 
             <div class="form-group" style="margin-bottom: 1rem;" id="reupload-file-group">
-                <label for="reupload-file-input" id="reupload-file-label">Új dokumentum feltöltése</label>
-                <input type="file" id="reupload-file-input" name="document" accept=".pdf,.png,.jpg,.jpeg" class="form-control">
+                <label id="reupload-file-label">Új dokumentum feltöltése</label>
+                <div class="file-upload-wrapper" id="reupload-file-upload-wrapper" onclick="document.getElementById('reupload-file-input').click()">
+                    <input type="file" id="reupload-file-input" name="document" accept=".pdf,.png,.jpg,.jpeg" onchange="updateFileDisplay(this, 'reupload-file-upload-wrapper', 'reupload-file-info')">
+                    <span class="file-upload-btn">
+                        <span class="material-icons">upload_file</span>
+                        Fájl kiválasztása
+                    </span>
+                    <span class="file-upload-info" id="reupload-file-info">PDF, PNG, JPG (max 10 MB)</span>
+                    <button type="button" class="file-upload-clear" onclick="clearFileInput(event, 'reupload-file-input', 'reupload-file-upload-wrapper', 'reupload-file-info')">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
             </div>
 
             <div class="form-group" id="reupload-amount-group" style="margin-bottom: 1rem;">
@@ -478,6 +498,87 @@
     background: var(--card-bg);
     color: var(--text-color);
 }
+
+/* Custom file upload styling */
+.file-upload-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 2px dashed var(--border-color);
+    border-radius: 0.5rem;
+    background: var(--bg-color);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.file-upload-wrapper:hover {
+    border-color: var(--primary-color);
+    background: rgba(var(--primary-rgb, 59, 130, 246), 0.05);
+}
+.file-upload-wrapper.has-file {
+    border-style: solid;
+    border-color: var(--success-color, #22c55e);
+    background: rgba(34, 197, 94, 0.05);
+}
+.file-upload-wrapper input[type="file"] {
+    display: none;
+}
+.file-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+}
+.file-upload-btn:hover {
+    background: var(--primary-hover, #2563eb);
+}
+.file-upload-btn .material-icons {
+    font-size: 1.125rem;
+}
+.file-upload-info {
+    flex: 1;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.file-upload-info.has-file {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+.file-upload-clear {
+    display: none;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: var(--danger-color, #ef4444);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.file-upload-clear:hover {
+    background: #dc2626;
+}
+.file-upload-wrapper.has-file .file-upload-clear {
+    display: flex;
+}
+.file-upload-clear .material-icons {
+    font-size: 1rem;
+}
 .match-option {
     display: flex;
     align-items: center;
@@ -513,6 +614,33 @@
 </style>
 
 <script>
+// File upload helper functions
+function updateFileDisplay(input, wrapperId, infoId) {
+    const wrapper = document.getElementById(wrapperId);
+    const info = document.getElementById(infoId);
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        wrapper.classList.add('has-file');
+        info.classList.add('has-file');
+        info.textContent = file.name;
+    } else {
+        wrapper.classList.remove('has-file');
+        info.classList.remove('has-file');
+        info.textContent = 'PDF, PNG, JPG (max 10 MB)';
+    }
+}
+
+function clearFileInput(event, inputId, wrapperId, infoId) {
+    event.stopPropagation();
+    const input = document.getElementById(inputId);
+    const wrapper = document.getElementById(wrapperId);
+    const info = document.getElementById(infoId);
+    input.value = '';
+    wrapper.classList.remove('has-file');
+    info.classList.remove('has-file');
+    info.textContent = 'PDF, PNG, JPG (max 10 MB)';
+}
+
 let currentYear = {{ selected_year }};
 let currentMonth = {{ selected_month }};
 
@@ -578,6 +706,8 @@ function openUploadModal(type) {
 
 function closeUploadModal() {
     document.getElementById('upload-modal').style.display = 'none';
+    // Reset file input
+    clearFileInput(new Event('click'), 'file-input', 'file-upload-wrapper', 'file-info');
 }
 
 function showUploadStatus(message, type) {
@@ -643,7 +773,7 @@ async function submitUpload(event) {
 }
 
 async function deleteTravelCost(id) {
-    if (!confirm('Biztosan törölni szeretnéd ezt az útiköltség elszámolást?')) {
+    if (!confirm('Biztosan törölni szeretnéd ezt az útiköltség elszámolást?\n\nA törlés nem visszavonható!')) {
         return;
     }
 
@@ -723,6 +853,8 @@ function openReuploadModal(id, expenseType, reason) {
 function closeReuploadModal() {
     document.getElementById('reupload-modal').style.display = 'none';
     currentReuploadId = null;
+    // Reset file input
+    clearFileInput(new Event('click'), 'reupload-file-input', 'reupload-file-upload-wrapper', 'reupload-file-info');
 }
 
 function showReuploadStatus(message, type) {

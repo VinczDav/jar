@@ -1,0 +1,58 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Visszajelzés emlékeztető - JAR{% endblock %}
+
+{% block header_title %}Mérkőzés visszajelzés kérés{% endblock %}
+
+{% block content %}
+<p style="font-size: 16px; color: #1e293b;">Kedves {{ user.get_full_name|default:user.first_name }}!</p>
+
+<p>Kérjük, add meg a visszajelzésedet az alábbi mérkőzésről:</p>
+
+<table class="data-table">
+    <tr>
+        <th>Mérkőzés időpontja</th>
+        <td><strong>{{ match.date|date:"Y.m.d" }} ({{ match.date|date:"l" }})</strong>{% if match.time %} {{ match.time|time:"H:i" }}{% endif %}</td>
+    </tr>
+    {% if match.venue %}
+    <tr>
+        <th>Helyszín</th>
+        <td>{{ match.venue.name }}{% if match.venue.city %}, {{ match.venue.city }}{% endif %}</td>
+    </tr>
+    {% endif %}
+    {% if match.phase and match.phase.competition %}
+    <tr>
+        <th>Bajnokság</th>
+        <td>{{ match.phase.competition.name }}</td>
+    </tr>
+    {% endif %}
+    {% if not match.is_tournament %}
+    <tr>
+        <th>Mérkőzés</th>
+        <td>{{ match.home_team|default:"TBD" }} - {{ match.away_team|default:"TBD" }}</td>
+    </tr>
+    {% else %}
+    <tr>
+        <th>Esemény típus</th>
+        <td>Torna</td>
+    </tr>
+    {% endif %}
+    <tr class="section-divider highlight">
+        <th>Pozíciód</th>
+        <td>{{ assignment.get_role_display }}</td>
+    </tr>
+</table>
+
+<div class="alert alert-warning" style="margin-top: 20px;">
+    <strong>Fontos!</strong> A mérkőzés visszajelzésed segít nyomon követni az eseményeket és javítani a szolgáltatásainkat.
+    {% if days_since == 1 %}
+    <p style="margin-top: 8px;">A mérkőzés <strong>tegnap</strong> volt.</p>
+    {% else %}
+    <p style="margin-top: 8px;">A mérkőzés <strong>{{ days_since }} napja</strong> volt.</p>
+    {% endif %}
+</div>
+
+<p style="text-align: center; margin-top: 20px;">
+    <a href="{{ site_url }}{% url 'matches:match_feedback_submit' assignment.id %}" class="btn">Visszajelzés küldése</a>
+</p>
+{% endblock %}

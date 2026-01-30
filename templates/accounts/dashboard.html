@@ -126,6 +126,14 @@
         margin-left: auto;
     }
 
+    .match-time-badge.no-time {
+        background: var(--warning-bg);
+        border-color: var(--warning-color);
+        color: var(--warning-color);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
     /* News panel */
     .news-panel {
         background: var(--card-bg);
@@ -774,7 +782,7 @@
                                 {% if assignment.match.home_team.logo %}
                                 <img src="{{ assignment.match.home_team.logo.url }}" alt="" class="team-logo-tiny">
                                 {% else %}
-                                <span class="team-logo-placeholder-tiny">{{ assignment.match.home_team.short_name|default:assignment.match.home_team.name|slice:":2"|upper }}</span>
+                                <span class="team-logo-placeholder-tiny">{{ assignment.match.home_team.short_name|default:assignment.match.home_team|slice:":2"|upper }}</span>
                                 {% endif %}
                                 {{ assignment.match.home_team }}
                             {% else %}
@@ -791,7 +799,7 @@
                                 {% if assignment.match.home_team.logo %}
                                 <img src="{{ assignment.match.home_team.logo.url }}" alt="" class="team-logo-tiny">
                                 {% else %}
-                                <span class="team-logo-placeholder-tiny">{{ assignment.match.home_team.short_name|default:assignment.match.home_team.name|slice:":2"|upper }}</span>
+                                <span class="team-logo-placeholder-tiny">{{ assignment.match.home_team.short_name|default:assignment.match.home_team|slice:":2"|upper }}</span>
                                 {% endif %}
                                 {{ assignment.match.home_team }}
                             {% else %}
@@ -803,7 +811,7 @@
                                 {% if assignment.match.away_team.logo %}
                                 <img src="{{ assignment.match.away_team.logo.url }}" alt="" class="team-logo-tiny">
                                 {% else %}
-                                <span class="team-logo-placeholder-tiny">{{ assignment.match.away_team.short_name|default:assignment.match.away_team.name|slice:":2"|upper }}</span>
+                                <span class="team-logo-placeholder-tiny">{{ assignment.match.away_team.short_name|default:assignment.match.away_team|slice:":2"|upper }}</span>
                                 {% endif %}
                                 {{ assignment.match.away_team }}
                             {% else %}
@@ -821,10 +829,17 @@
                             </span>
                             {% endif %}
                             {% if assignment.match.venue %}
+                            {% if assignment.match.venue.google_maps_url %}
+                            <span onclick="event.preventDefault(); event.stopPropagation(); window.open('{{ assignment.match.venue.google_maps_url }}', '_blank')" style="cursor: pointer; text-decoration: underline; text-decoration-style: dotted;" title="Megnyitás Google Maps-ben">
+                                <span class="material-icons">location_on</span>
+                                {{ assignment.match.venue.name }}
+                            </span>
+                            {% else %}
                             <span>
                                 <span class="material-icons">location_on</span>
                                 {{ assignment.match.venue.name }}
                             </span>
+                            {% endif %}
                             {% endif %}
                             <span>
                                 <span class="material-icons">person</span>
@@ -838,8 +853,12 @@
                             {% endif %}
                         </div>
                     </div>
-                    <div class="match-time-badge">
-                        {{ assignment.match.time|time:"H:i" }}
+                    <div class="match-time-badge{% if not assignment.match.time %} no-time{% endif %}">
+                        {% if assignment.match.time %}
+                            {{ assignment.match.time|time:"H:i" }}
+                        {% else %}
+                            NINCS IDŐPONT
+                        {% endif %}
                     </div>
                 </a>
                 {% endfor %}
@@ -1085,7 +1104,7 @@ function togglePin(id) {
 }
 
 function deleteNews(id) {
-    if (!confirm('Biztosan törölni szeretnéd ezt a hírt?')) return;
+    if (!confirm('Biztosan törölni szeretnéd ezt a hírt?\n\nA törlés nem visszavonható!')) return;
 
     fetch(`/education/api/news/${id}/delete/`, {
         method: 'POST',

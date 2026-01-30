@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Season, Competition, CompetitionPhase, Venue, Team, Match, MatchAssignment
+from .models import Season, Competition, CompetitionPhase, Venue, Club, Team, Match, MatchAssignment
 
 
 @admin.register(Season)
@@ -34,10 +34,29 @@ class VenueAdmin(admin.ModelAdmin):
     list_filter = ('city',)
 
 
+class TeamInline(admin.TabularInline):
+    model = Team
+    extra = 0
+    fields = ('suffix', 'custom_name', 'short_name', 'is_active')
+
+
+@admin.register(Club)
+class ClubAdmin(admin.ModelAdmin):
+    list_display = ('name', 'short_name', 'city', 'is_active', 'teams_count')
+    search_fields = ('name', 'short_name', 'city')
+    list_filter = ('is_active',)
+    inlines = [TeamInline]
+
+    @admin.display(description='Csapatok')
+    def teams_count(self, obj):
+        return obj.teams.count()
+
+
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
-    list_display = ('name', 'short_name', 'city')
-    search_fields = ('name', 'short_name', 'city')
+    list_display = ('__str__', 'club', 'suffix', 'custom_name', 'is_active')
+    list_filter = ('is_active', 'club')
+    search_fields = ('club__name', 'suffix', 'custom_name', 'short_name')
 
 
 class MatchAssignmentInline(admin.TabularInline):

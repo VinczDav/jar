@@ -4,30 +4,31 @@ URL configuration for JAR project.
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.urls import path, include
+from django.db import connection
 
 
-# Custom admin site that doesn't require re-authentication
-class JARAdminSite(admin.AdminSite):
-    site_header = 'JAR Adatbázis'
-    site_title = 'JAR Admin'
-    index_title = 'Adatbázis kezelés'
+# Customize default admin site
+admin.site.site_header = 'JAR Adatbázis'
+admin.site.site_title = 'JAR Admin'
+admin.site.index_title = 'Adatbázis kezelés'
 
-    def has_permission(self, request):
-        """
-        Allow access if user is authenticated and is admin.
-        No separate admin login required.
-        """
-        return (
-            request.user.is_active and
-            (request.user.is_superuser or request.user.is_admin_user)
-        )
+# Store original has_permission
+_original_has_permission = admin.AdminSite.has_permission
 
+def custom_has_permission(self, request):
+    """Allow access only if user is super admin (or Django superuser)."""
+    if not request.user.is_active:
+        return False
+    if request.user.is_superuser:
+        return True
+    # Only super admins can access Django admin, not regular admins
+    if hasattr(request.user, 'is_super_admin') and request.user.is_super_admin:
+        return True
+    return False
 
-# Replace default admin site
-admin.site = JARAdminSite(name='jar_admin')
-admin.autodiscover()
+admin.site.has_permission = lambda request: custom_has_permission(admin.site, request)
 
 
 def admin_guard(request):
@@ -35,7 +36,25 @@ def admin_guard(request):
     raise Http404("Not found")
 
 
+def health_check(request):
+    """Health check endpoint for monitoring and load balancers."""
+    try:
+        # Check database connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        return JsonResponse({
+            'status': 'healthy',
+            'database': 'connected'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'unhealthy',
+            'error': str(e)
+        }, status=503)
+
+
 urlpatterns = [
+    path('health/', health_check, name='health_check'),
     path('', include('accounts.urls', namespace='accounts')),
     path('matches/', include('matches.urls', namespace='matches')),
     path('billing/', include('billing.urls', namespace='billing')),

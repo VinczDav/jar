@@ -291,7 +291,7 @@
 {% if can_upload %}
 <script>
 function deleteDocument(id) {
-    if (!confirm('Biztosan törölni szeretnéd ezt a dokumentumot?')) return;
+    if (!confirm('Biztosan törölni szeretnéd ezt a dokumentumot?\n\nA törlés nem visszavonható!')) return;
 
     fetch(`/documents/api/${id}/delete/`, {
         method: 'POST',

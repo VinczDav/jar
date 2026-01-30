@@ -1,252 +1,980 @@
 {% extends 'base.html' %}
 
-{% block title %}Törlések{% endblock %}
+{% block title %}Törölt elemek{% endblock %}
 {% block page_title %}Törölt elemek{% endblock %}
 
-{% block content %}
-<div class="card">
-    <div class="card-header">
-        <h3 class="card-title">Törölt mérkőzések</h3>
-    </div>
-
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Dátum</th>
-                    <th>Időpont</th>
-                    <th>Bajnokság</th>
-                    <th>Hazai</th>
-                    <th>Vendég</th>
-                    <th>Helyszín</th>
-                    <th>Törölve</th>
-                    <th style="text-align: right;">Műveletek</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% if deleted_matches %}
-                {% for match in deleted_matches %}
-                <tr id="row-{{ match.id }}">
-                    <td>{{ match.date|date:"Y.m.d" }}</td>
-                    <td>{% if match.time %}{{ match.time|time:"H:i" }}{% else %}-{% endif %}</td>
-                    <td>
-                        {% if match.phase %}
-                        <span class="badge" style="background-color: {{ match.phase.competition.color }}; color: white;">
-                            {{ match.phase.competition.short_name }}
-                        </span>
-                        {% else %}-{% endif %}
-                    </td>
-                    <td>{{ match.home_team.name|default:"TBD" }}</td>
-                    <td>{{ match.away_team.name|default:"TBD" }}</td>
-                    <td>{{ match.venue.name|default:"-" }}</td>
-                    <td>{{ match.deleted_at|date:"Y.m.d H:i" }}</td>
-                    <td style="text-align: right;">
-                        <button class="btn btn-secondary btn-sm" onclick="restoreMatch({{ match.id }})" title="Visszaállítás">
-                            <span class="material-icons">restore</span>
-                        </button>
-                        <button class="btn btn-sm" style="background: var(--danger-color); color: white;" onclick="permanentlyDeleteMatch({{ match.id }})" title="Végleges törlés">
-                            <span class="material-icons">delete_forever</span>
-                        </button>
-                    </td>
-                </tr>
-                {% endfor %}
-                {% else %}
-                <tr>
-                    <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">delete_outline</span>
-                        <p>Nincs törölt elem</p>
-                    </td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Törölt felhasználók -->
-<div class="card" style="margin-top: 2rem;">
-    <div class="card-header">
-        <h3 class="card-title">Törölt felhasználók</h3>
-    </div>
-
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Név</th>
-                    <th>E-mail</th>
-                    <th>Telefonszám</th>
-                    <th>Szerepkör</th>
-                    <th>Törölve</th>
-                    <th style="text-align: right;">Műveletek</th>
-                </tr>
-            </thead>
-            <tbody id="users-tbody">
-                {% if deleted_users %}
-                {% for user in deleted_users %}
-                <tr id="user-row-{{ user.id }}">
-                    <td>{{ user.get_full_name|default:user.username }}</td>
-                    <td>{{ user.email }}</td>
-                    <td>{{ user.phone|default:"-" }}</td>
-                    <td>{{ user.get_role_display }}</td>
-                    <td>{{ user.deleted_at|date:"Y.m.d H:i" }}</td>
-                    <td style="text-align: right;">
-                        <button class="btn btn-secondary btn-sm" onclick="restoreUser({{ user.id }})" title="Visszaállítás">
-                            <span class="material-icons">restore</span>
-                        </button>
-                        {% if request.user.is_admin_user %}
-                        <button class="btn btn-sm" style="background: var(--danger-color); color: white;" onclick="permanentlyDeleteUser({{ user.id }}, '{{ user.get_full_name|escapejs }}')" title="Végleges törlés">
-                            <span class="material-icons">delete_forever</span>
-                        </button>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-                {% else %}
-                <tr class="empty-row">
-                    <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                        <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">person_off</span>
-                        <p>Nincs törölt felhasználó</p>
-                    </td>
-                </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
+{% block extra_css %}
 <style>
-.badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
+    .page-intro {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    .page-intro::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 60%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+        transform: rotate(25deg);
+    }
+    .page-intro h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .page-intro h2 .material-icons {
+        font-size: 2rem;
+        opacity: 0.9;
+    }
+    .page-intro p {
+        opacity: 0.9;
+        font-size: 0.95rem;
+        margin: 0;
+        max-width: 600px;
+    }
+    .stats-row {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .stat-chip {
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
+        padding: 0.4rem 0.85rem;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .stat-chip .material-icons {
+        font-size: 1rem;
+    }
+
+    /* Warning banner */
+    .warning-banner {
+        background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05));
+        border: 1px solid var(--danger-color);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    .warning-banner .material-icons {
+        color: var(--danger-color);
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+    .warning-banner-content {
+        flex: 1;
+    }
+    .warning-banner-title {
+        font-weight: 600;
+        color: var(--danger-color);
+        margin-bottom: 0.25rem;
+    }
+    .warning-banner-text {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    /* Filter bar */
+    .filter-bar {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .filter-group label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    .filter-group input,
+    .filter-group select {
+        padding: 0.6rem 0.85rem;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        min-width: 140px;
+        transition: border-color 0.2s;
+    }
+    .filter-group input:focus,
+    .filter-group select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .filter-group input[type="text"] {
+        min-width: 220px;
+    }
+    .filter-group input[type="date"] {
+        min-width: 150px;
+    }
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: auto;
+    }
+    .filter-actions .btn {
+        padding: 0.6rem 1rem;
+    }
+
+    /* Bulk actions bar */
+    .bulk-actions-bar {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+    .bulk-actions-bar.visible {
+        display: flex;
+    }
+    .bulk-actions-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .bulk-actions-right {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .selected-count {
+        font-weight: 500;
+    }
+    .bulk-btn {
+        padding: 0.4rem 0.75rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        transition: all 0.2s ease;
+    }
+    .bulk-btn .material-icons {
+        font-size: 1.1rem;
+    }
+    .bulk-btn-restore {
+        background: white;
+        color: var(--primary-color);
+    }
+    .bulk-btn-restore:hover {
+        background: #f0f0f0;
+    }
+    .bulk-btn-delete {
+        background: var(--danger-color);
+        color: white;
+    }
+    .bulk-btn-delete:hover {
+        background: #c82333;
+    }
+    .bulk-btn-cancel {
+        background: transparent;
+        color: white;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+    .bulk-btn-cancel:hover {
+        background: rgba(255,255,255,0.1);
+    }
+
+    /* Table styles */
+    .deleted-card {
+        background: var(--card-bg);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .deleted-card .table-wrapper {
+        overflow-x: auto;
+    }
+    .deleted-card table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .deleted-card th {
+        background: rgba(0,0,0,0.02);
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .deleted-card td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+    .deleted-card tr:last-child td {
+        border-bottom: none;
+    }
+    .deleted-card tr:hover {
+        background: rgba(0,0,0,0.02);
+    }
+
+    /* Checkbox styles */
+    .row-checkbox,
+    .select-all-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--accent-color);
+    }
+
+    /* Type indicator */
+    .type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .type-badge.match {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+    }
+    .type-badge.user {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+    .type-badge.club {
+        background: rgba(139, 92, 246, 0.1);
+        color: #8b5cf6;
+    }
+    .type-badge.team {
+        background: rgba(236, 72, 153, 0.1);
+        color: #ec4899;
+    }
+    .type-badge.venue {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+    .type-badge.competition {
+        background: rgba(6, 182, 212, 0.1);
+        color: #06b6d4;
+    }
+    .type-badge.season {
+        background: rgba(107, 114, 128, 0.1);
+        color: #6b7280;
+    }
+    .type-badge .material-icons {
+        font-size: 1rem;
+    }
+
+    /* Action buttons */
+    .action-btns {
+        display: flex;
+        gap: 0.35rem;
+        justify-content: flex-end;
+    }
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+    .action-btn .material-icons {
+        font-size: 1.1rem;
+    }
+    .action-btn-restore {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+    .action-btn-restore:hover {
+        background: #10b981;
+        color: white;
+    }
+    .action-btn-delete {
+        background: rgba(220, 53, 69, 0.1);
+        color: var(--danger-color);
+    }
+    .action-btn-delete:hover {
+        background: var(--danger-color);
+        color: white;
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-secondary);
+    }
+    .empty-state .material-icons {
+        font-size: 4rem;
+        opacity: 0.3;
+        margin-bottom: 1rem;
+    }
+    .empty-state p {
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    /* Row selected state */
+    tr.selected {
+        background: rgba(59, 130, 246, 0.05) !important;
+    }
+
+    @media (max-width: 768px) {
+        .filter-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .filter-group input,
+        .filter-group select {
+            width: 100%;
+            min-width: unset;
+        }
+        .filter-actions {
+            margin-left: 0;
+            justify-content: flex-end;
+        }
+        .stats-row {
+            gap: 0.5rem;
+        }
+        .stat-chip {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
+        }
+    }
 </style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Intro -->
+<div class="page-intro">
+    <h2>
+        <span class="material-icons">delete_forever</span>
+        Törölt elemek
+    </h2>
+    <p>Visszaállítható és véglegesen törölhető elemek kezelése.</p>
+    <div class="stats-row">
+        <div class="stat-chip">
+            <span class="material-icons">folder_delete</span>
+            {{ counts.total }} összesen
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">sports_handball</span>
+            {{ counts.matches }}
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">person_off</span>
+            {{ counts.users }}
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">domain</span>
+            {{ counts.clubs }}
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">groups</span>
+            {{ counts.teams }}
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">location_on</span>
+            {{ counts.venues }}
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">emoji_events</span>
+            {{ counts.competitions }}
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">date_range</span>
+            {{ counts.seasons }}
+        </div>
+    </div>
+</div>
+
+<!-- Warning banner -->
+<div class="warning-banner">
+    <span class="material-icons">warning</span>
+    <div class="warning-banner-content">
+        <div class="warning-banner-title">Figyelem!</div>
+        <div class="warning-banner-text">
+            A végleges törlés nem visszavonható! Az itt törölt adatok véglegesen eltávolításra kerülnek az adatbázisból.
+        </div>
+    </div>
+</div>
+
+<!-- Filter bar -->
+<form method="get" class="filter-bar">
+    <div class="filter-group">
+        <label for="search">Keresés</label>
+        <input type="text" id="search" name="q" placeholder="Név, email, cím..." value="{{ search_query }}">
+    </div>
+    <div class="filter-group">
+        <label for="date_from">Törléstől</label>
+        <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+    </div>
+    <div class="filter-group">
+        <label for="date_to">Törlésig</label>
+        <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+    </div>
+    <div class="filter-group">
+        <label for="type">Típus</label>
+        <select id="type" name="type">
+            <option value="all" {% if item_type == 'all' %}selected{% endif %}>Összes</option>
+            <option value="match" {% if item_type == 'match' %}selected{% endif %}>Mérkőzés</option>
+            <option value="user" {% if item_type == 'user' %}selected{% endif %}>Felhasználó</option>
+            <option value="club" {% if item_type == 'club' %}selected{% endif %}>Klub</option>
+            <option value="team" {% if item_type == 'team' %}selected{% endif %}>Csapat</option>
+            <option value="venue" {% if item_type == 'venue' %}selected{% endif %}>Helyszín</option>
+            <option value="competition" {% if item_type == 'competition' %}selected{% endif %}>Bajnokság</option>
+            <option value="season" {% if item_type == 'season' %}selected{% endif %}>Szezon</option>
+        </select>
+    </div>
+    <div class="filter-actions">
+        <button type="submit" class="btn btn-primary btn-sm">
+            <span class="material-icons">search</span>
+            Szűrés
+        </button>
+        <a href="{% url 'matches:deleted_items' %}" class="btn btn-secondary btn-sm">
+            <span class="material-icons">clear</span>
+            Törlés
+        </a>
+    </div>
+</form>
+
+<!-- Bulk actions bar -->
+<div class="bulk-actions-bar" id="bulkActionsBar">
+    <div class="bulk-actions-left">
+        <span class="selected-count"><span id="selectedCount">0</span> elem kijelölve</span>
+    </div>
+    <div class="bulk-actions-right">
+        <button class="bulk-btn bulk-btn-restore" onclick="bulkRestore()">
+            <span class="material-icons">restore</span>
+            Visszaállítás
+        </button>
+        <button class="bulk-btn bulk-btn-delete" onclick="bulkDelete()">
+            <span class="material-icons">delete_forever</span>
+            Végleges törlés
+        </button>
+        <button class="bulk-btn bulk-btn-cancel" onclick="clearSelection()">
+            <span class="material-icons">close</span>
+            Mégse
+        </button>
+    </div>
+</div>
+
+<!-- Table -->
+<div class="deleted-card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" class="select-all-checkbox" onchange="toggleSelectAll(this)">
+                    </th>
+                    <th>Típus</th>
+                    <th>Megnevezés</th>
+                    <th>Részletek</th>
+                    <th>Törölve</th>
+                    <th style="text-align: right; width: 100px;">Műveletek</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-items">
+                {% if counts.total > 0 %}
+                    {% for match in deleted_matches %}
+                    <tr data-type="match" data-id="{{ match.id }}">
+                        <td>
+                            <input type="checkbox" class="row-checkbox" data-type="match" data-id="{{ match.id }}" onchange="updateBulkBar()">
+                        </td>
+                        <td>
+                            <span class="type-badge match">
+                                <span class="material-icons">sports_handball</span>
+                                Mérkőzés
+                            </span>
+                        </td>
+                        <td>
+                            <strong>{{ match.home_team|default:"TBD" }}</strong> vs <strong>{{ match.away_team|default:"TBD" }}</strong>
+                        </td>
+                        <td>
+                            {{ match.date|date:"Y.m.d" }} {% if match.time %}{{ match.time|time:"H:i" }}{% endif %}
+                            {% if match.venue %} - {{ match.venue.name }}{% endif %}
+                        </td>
+                        <td>{{ match.deleted_at|date:"Y.m.d H:i" }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="action-btn action-btn-restore" onclick="restoreItem('match', {{ match.id }})" title="Visszaállítás">
+                                    <span class="material-icons">restore</span>
+                                </button>
+                                <button class="action-btn action-btn-delete" onclick="deleteItem('match', {{ match.id }}, 'Mérkőzés')" title="Végleges törlés">
+                                    <span class="material-icons">delete_forever</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% for user in deleted_users %}
+                    <tr data-type="user" data-id="{{ user.id }}">
+                        <td>
+                            <input type="checkbox" class="row-checkbox" data-type="user" data-id="{{ user.id }}" onchange="updateBulkBar()">
+                        </td>
+                        <td>
+                            <span class="type-badge user">
+                                <span class="material-icons">person</span>
+                                Felhasználó
+                            </span>
+                        </td>
+                        <td>
+                            <strong>{{ user.get_full_name|default:user.username }}</strong>
+                        </td>
+                        <td>
+                            {{ user.email }} - {{ user.get_role_display }}
+                        </td>
+                        <td>{{ user.deleted_at|date:"Y.m.d H:i" }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="action-btn action-btn-restore" onclick="restoreItem('user', {{ user.id }})" title="Visszaállítás">
+                                    <span class="material-icons">restore</span>
+                                </button>
+                                <button class="action-btn action-btn-delete" onclick="deleteItem('user', {{ user.id }}, '{{ user.get_full_name|escapejs }}')" title="Végleges törlés">
+                                    <span class="material-icons">delete_forever</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% for club in deleted_clubs %}
+                    <tr data-type="club" data-id="{{ club.id }}">
+                        <td>
+                            <input type="checkbox" class="row-checkbox" data-type="club" data-id="{{ club.id }}" onchange="updateBulkBar()">
+                        </td>
+                        <td>
+                            <span class="type-badge club">
+                                <span class="material-icons">domain</span>
+                                Klub
+                            </span>
+                        </td>
+                        <td>
+                            <strong>{{ club.name }}</strong>
+                            {% if club.short_name %}<span style="color: var(--text-secondary);"> ({{ club.short_name }})</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if club.city %}{{ club.city }}{% else %}-{% endif %}
+                        </td>
+                        <td>{{ club.deleted_at|date:"Y.m.d H:i" }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="action-btn action-btn-restore" onclick="restoreItem('club', {{ club.id }})" title="Visszaállítás">
+                                    <span class="material-icons">restore</span>
+                                </button>
+                                <button class="action-btn action-btn-delete" onclick="deleteItem('club', {{ club.id }}, '{{ club.name|escapejs }}')" title="Végleges törlés">
+                                    <span class="material-icons">delete_forever</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% for team in deleted_teams %}
+                    <tr data-type="team" data-id="{{ team.id }}">
+                        <td>
+                            <input type="checkbox" class="row-checkbox" data-type="team" data-id="{{ team.id }}" onchange="updateBulkBar()">
+                        </td>
+                        <td>
+                            <span class="type-badge team">
+                                <span class="material-icons">groups</span>
+                                Csapat
+                            </span>
+                        </td>
+                        <td>
+                            <strong>{{ team }}</strong>
+                        </td>
+                        <td>
+                            {% if team.club %}Klub: {{ team.club.name }}{% else %}-{% endif %}
+                        </td>
+                        <td>{{ team.deleted_at|date:"Y.m.d H:i" }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="action-btn action-btn-restore" onclick="restoreItem('team', {{ team.id }})" title="Visszaállítás">
+                                    <span class="material-icons">restore</span>
+                                </button>
+                                <button class="action-btn action-btn-delete" onclick="deleteItem('team', {{ team.id }}, '{{ team|escapejs }}')" title="Végleges törlés">
+                                    <span class="material-icons">delete_forever</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% for venue in deleted_venues %}
+                    <tr data-type="venue" data-id="{{ venue.id }}">
+                        <td>
+                            <input type="checkbox" class="row-checkbox" data-type="venue" data-id="{{ venue.id }}" onchange="updateBulkBar()">
+                        </td>
+                        <td>
+                            <span class="type-badge venue">
+                                <span class="material-icons">location_on</span>
+                                Helyszín
+                            </span>
+                        </td>
+                        <td>
+                            <strong>{{ venue.name }}</strong>
+                        </td>
+                        <td>
+                            {{ venue.city }}{% if venue.address %}, {{ venue.address }}{% endif %}
+                        </td>
+                        <td>{{ venue.deleted_at|date:"Y.m.d H:i" }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="action-btn action-btn-restore" onclick="restoreItem('venue', {{ venue.id }})" title="Visszaállítás">
+                                    <span class="material-icons">restore</span>
+                                </button>
+                                <button class="action-btn action-btn-delete" onclick="deleteItem('venue', {{ venue.id }}, '{{ venue.name|escapejs }}')" title="Végleges törlés">
+                                    <span class="material-icons">delete_forever</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% for comp in deleted_competitions %}
+                    <tr data-type="competition" data-id="{{ comp.id }}">
+                        <td>
+                            <input type="checkbox" class="row-checkbox" data-type="competition" data-id="{{ comp.id }}" onchange="updateBulkBar()">
+                        </td>
+                        <td>
+                            <span class="type-badge competition">
+                                <span class="material-icons">emoji_events</span>
+                                Bajnokság
+                            </span>
+                        </td>
+                        <td>
+                            <strong>{{ comp.name }}</strong>
+                            {% if comp.short_name %}<span style="color: var(--text-secondary);"> ({{ comp.short_name }})</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if comp.season %}Szezon: {{ comp.season.name }}{% else %}-{% endif %}
+                        </td>
+                        <td>{{ comp.deleted_at|date:"Y.m.d H:i" }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="action-btn action-btn-restore" onclick="restoreItem('competition', {{ comp.id }})" title="Visszaállítás">
+                                    <span class="material-icons">restore</span>
+                                </button>
+                                <button class="action-btn action-btn-delete" onclick="deleteItem('competition', {{ comp.id }}, '{{ comp.name|escapejs }}')" title="Végleges törlés">
+                                    <span class="material-icons">delete_forever</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% for season in deleted_seasons %}
+                    <tr data-type="season" data-id="{{ season.id }}">
+                        <td>
+                            <input type="checkbox" class="row-checkbox" data-type="season" data-id="{{ season.id }}" onchange="updateBulkBar()">
+                        </td>
+                        <td>
+                            <span class="type-badge season">
+                                <span class="material-icons">date_range</span>
+                                Szezon
+                            </span>
+                        </td>
+                        <td>
+                            <strong>{{ season.name }}</strong>
+                        </td>
+                        <td>
+                            {{ season.start_date|date:"Y.m.d" }} - {{ season.end_date|date:"Y.m.d" }}
+                        </td>
+                        <td>{{ season.deleted_at|date:"Y.m.d H:i" }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="action-btn action-btn-restore" onclick="restoreItem('season', {{ season.id }})" title="Visszaállítás">
+                                    <span class="material-icons">restore</span>
+                                </button>
+                                <button class="action-btn action-btn-delete" onclick="deleteItem('season', {{ season.id }}, '{{ season.name|escapejs }}')" title="Végleges törlés">
+                                    <span class="material-icons">delete_forever</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr class="empty-row">
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <span class="material-icons">delete_outline</span>
+                                <p>Nincs törölt elem{% if search_query or date_from or date_to or item_type != 'all' %} a megadott szűrőkkel{% endif %}</p>
+                            </div>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
 <script>
-function restoreMatch(matchId) {
-    if (!confirm('Biztosan vissza szeretnéd állítani a mérkőzést?')) return;
+const csrfToken = '{{ csrf_token }}';
 
-    fetch(`/matches/api/match/${matchId}/restore/`, {
+// API endpoint mapping
+const apiEndpoints = {
+    match: {
+        restore: '/matches/api/match/{id}/restore/',
+        delete: '/matches/api/match/{id}/permanently-delete/'
+    },
+    user: {
+        restore: '/matches/api/user/{id}/restore/',
+        delete: '/matches/api/user/{id}/permanently-delete/'
+    },
+    club: {
+        restore: '/matches/api/club/{id}/restore/',
+        delete: '/matches/api/club/{id}/permanently-delete/'
+    },
+    team: {
+        restore: '/matches/api/team/{id}/restore/',
+        delete: '/matches/api/team/{id}/permanently-delete/'
+    },
+    venue: {
+        restore: '/matches/api/venue/{id}/restore/',
+        delete: '/matches/api/venue/{id}/permanently-delete/'
+    },
+    competition: {
+        restore: '/matches/api/competition/{id}/restore/',
+        delete: '/matches/api/competition/{id}/permanently-delete/'
+    },
+    season: {
+        restore: '/matches/api/season/{id}/restore/',
+        delete: '/matches/api/season/{id}/permanently-delete/'
+    }
+};
+
+// Select all toggle
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+        const row = cb.closest('tr');
+        row.classList.toggle('selected', checkbox.checked);
+    });
+    updateBulkBar();
+}
+
+// Update bulk actions bar
+function updateBulkBar() {
+    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+    const count = checkedBoxes.length;
+    const bar = document.getElementById('bulkActionsBar');
+    const countSpan = document.getElementById('selectedCount');
+
+    countSpan.textContent = count;
+    bar.classList.toggle('visible', count > 0);
+
+    // Update row highlighting
+    document.querySelectorAll('.row-checkbox').forEach(cb => {
+        const row = cb.closest('tr');
+        row.classList.toggle('selected', cb.checked);
+    });
+
+    // Update select all checkbox state
+    const allCheckboxes = document.querySelectorAll('.row-checkbox');
+    const selectAll = document.querySelector('.select-all-checkbox');
+    if (selectAll && allCheckboxes.length > 0) {
+        selectAll.checked = checkedBoxes.length === allCheckboxes.length;
+        selectAll.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < allCheckboxes.length;
+    }
+}
+
+// Clear selection
+function clearSelection() {
+    document.querySelectorAll('.row-checkbox').forEach(cb => {
+        cb.checked = false;
+        const row = cb.closest('tr');
+        if (row) row.classList.remove('selected');
+    });
+    const selectAll = document.querySelector('.select-all-checkbox');
+    if (selectAll) {
+        selectAll.checked = false;
+        selectAll.indeterminate = false;
+    }
+    document.getElementById('bulkActionsBar').classList.remove('visible');
+}
+
+// Get selected items
+function getSelectedItems() {
+    const items = [];
+    document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+        items.push({
+            type: cb.dataset.type,
+            id: parseInt(cb.dataset.id)
+        });
+    });
+    return items;
+}
+
+// Single item restore
+function restoreItem(type, id) {
+    if (!confirm('Biztosan vissza szeretnéd állítani ezt az elemet?')) return;
+
+    const url = apiEndpoints[type].restore.replace('{id}', id);
+
+    fetch(url, {
         method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
-        }
+        headers: { 'X-CSRFToken': csrfToken }
     })
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            document.getElementById('row-' + matchId).remove();
-            // Check if table is now empty
-            const tbody = document.querySelector('tbody');
-            if (!tbody.querySelector('tr')) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                            <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">delete_outline</span>
-                            <p>Nincs törölt elem</p>
-                        </td>
-                    </tr>
-                `;
-            }
+            removeRow(type, id);
         } else {
             alert(result.error || 'Hiba történt.');
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Hiba történt a művelet során.');
     });
 }
 
-function permanentlyDeleteMatch(matchId) {
-    if (!confirm('FIGYELEM: A mérkőzés véglegesen törlődik és nem lehet visszaállítani!\n\nBiztosan folytatod?')) return;
+// Single item delete
+function deleteItem(type, id, name) {
+    if (!confirm(`FIGYELEM: "${name}" véglegesen törlődik!\n\nA törlés nem visszavonható!\n\nBiztosan folytatod?`)) return;
 
-    fetch(`/matches/api/match/${matchId}/permanently-delete/`, {
+    const url = apiEndpoints[type].delete.replace('{id}', id);
+
+    fetch(url, {
         method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
-        }
+        headers: { 'X-CSRFToken': csrfToken }
     })
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            document.getElementById('row-' + matchId).remove();
-            // Check if table is now empty
-            const tbody = document.querySelector('tbody');
-            if (!tbody.querySelector('tr')) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                            <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">delete_outline</span>
-                            <p>Nincs törölt elem</p>
-                        </td>
-                    </tr>
-                `;
-            }
+            removeRow(type, id);
         } else {
             alert(result.error || 'Hiba történt.');
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Hiba történt a művelet során.');
     });
 }
 
-function restoreUser(userId) {
-    if (!confirm('Biztosan vissza szeretnéd állítani a felhasználót?')) return;
+// Bulk restore
+async function bulkRestore() {
+    const items = getSelectedItems();
+    if (items.length === 0) return;
 
-    fetch(`/matches/api/user/${userId}/restore/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
-        }
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            document.getElementById('user-row-' + userId).remove();
-            // Check if table is now empty
-            const tbody = document.getElementById('users-tbody');
-            if (!tbody.querySelector('tr:not(.empty-row)') || tbody.querySelectorAll('tr').length === 0) {
-                tbody.innerHTML = `
-                    <tr class="empty-row">
-                        <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                            <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">person_off</span>
-                            <p>Nincs törölt felhasználó</p>
-                        </td>
-                    </tr>
-                `;
+    if (!confirm(`Biztosan vissza szeretnéd állítani a kijelölt ${items.length} elemet?`)) return;
+
+    for (const item of items) {
+        const url = apiEndpoints[item.type].restore.replace('{id}', item.id);
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken }
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                removeRow(item.type, item.id);
             }
-        } else {
-            alert(result.error || 'Hiba történt.');
+        } catch (error) {
+            console.error('Restore error:', error);
         }
-    });
+    }
+
+    clearSelection();
 }
 
-function permanentlyDeleteUser(userId, userName) {
-    if (!confirm(`FIGYELEM: "${userName}" felhasználó véglegesen törlődik és nem lehet visszaállítani!\n\nBiztosan folytatod?`)) return;
+// Bulk delete
+async function bulkDelete() {
+    const items = getSelectedItems();
+    if (items.length === 0) return;
 
-    fetch(`/matches/api/user/${userId}/permanently-delete/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
-        }
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            document.getElementById('user-row-' + userId).remove();
-            // Check if table is now empty
-            const tbody = document.getElementById('users-tbody');
-            if (!tbody.querySelector('tr:not(.empty-row)') || tbody.querySelectorAll('tr').length === 0) {
-                tbody.innerHTML = `
-                    <tr class="empty-row">
-                        <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                            <span class="material-icons" style="font-size: 3rem; opacity: 0.5;">person_off</span>
-                            <p>Nincs törölt felhasználó</p>
-                        </td>
-                    </tr>
-                `;
+    if (!confirm(`FIGYELEM: ${items.length} elem véglegesen törlődik!\n\nA törlés nem visszavonható!\n\nBiztosan folytatod?`)) return;
+
+    for (const item of items) {
+        const url = apiEndpoints[item.type].delete.replace('{id}', item.id);
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken }
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                removeRow(item.type, item.id);
             }
-        } else {
-            alert(result.error || 'Hiba történt.');
+        } catch (error) {
+            console.error('Delete error:', error);
         }
-    });
+    }
+
+    clearSelection();
+}
+
+// Remove row from table
+function removeRow(type, id) {
+    const row = document.querySelector(`tr[data-type="${type}"][data-id="${id}"]`);
+    if (row) {
+        row.remove();
+        checkEmptyTable();
+    }
+}
+
+// Check if table is empty
+function checkEmptyTable() {
+    const tbody = document.getElementById('tbody-items');
+    const dataRows = tbody.querySelectorAll('tr:not(.empty-row)');
+
+    if (dataRows.length === 0 && !tbody.querySelector('.empty-row')) {
+        tbody.innerHTML = `
+            <tr class="empty-row">
+                <td colspan="6">
+                    <div class="empty-state">
+                        <span class="material-icons">delete_outline</span>
+                        <p>Nincs törölt elem</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
 }
 </script>
 {% endblock %}

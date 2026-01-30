@@ -103,8 +103,8 @@
                         {% endif %}
                     </td>
                     <td>{{ item.assignment.match.venue.name|default:"-" }}</td>
-                    <td>{{ item.assignment.match.home_team.name|default:"TBD" }}</td>
-                    <td>{{ item.assignment.match.away_team.name|default:"TBD" }}</td>
+                    <td>{{ item.assignment.match.home_team|default:"TBD" }}</td>
+                    <td>{{ item.assignment.match.away_team|default:"TBD" }}</td>
                     <td>{{ item.assignment.get_role_display }}</td>
                     <td style="text-align: right;">{% if item.fee_display %}{{ item.fee_display }} Ft{% else %}-{% endif %}</td>
                 </tr>

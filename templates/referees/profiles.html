@@ -336,7 +336,7 @@ async function toggleLogin(userId) {
 }
 
 async function deleteUser(userId, userName) {
-    if (!confirm(`Biztosan törölni szeretnéd "${userName}" felhasználót?`)) return;
+    if (!confirm(`Biztosan törölni szeretnéd "${userName}" felhasználót?\n\nA törlés nem visszavonható!`)) return;
 
     try {
         const response = await fetch(`/matches/api/user/${userId}/delete/`, {

@@ -12,8 +12,8 @@ class MatchForm(forms.ModelForm):
         model = Match
         fields = ['date', 'time', 'venue', 'court', 'home_team', 'away_team', 'phase', 'notes']
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
+            'time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}, format='%H:%M'),
             'venue': forms.Select(attrs={'class': 'form-control'}),
             'court': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'pl. 1-es pálya'}),
             'home_team': forms.Select(attrs={'class': 'form-control'}),
@@ -39,25 +39,25 @@ class MatchAssignmentForm(forms.Form):
     """Form for assigning referees to a match."""
 
     referee1 = forms.ModelChoiceField(
-        queryset=User.objects.filter(role__in=['referee', 'jt_admin', 'admin', 'inspector']).order_by('last_name', 'first_name'),
+        queryset=User.objects.none(),
         required=False,
         label='1. Játékvezető',
         widget=forms.Select(attrs={'class': 'form-control'})
     )
     referee2 = forms.ModelChoiceField(
-        queryset=User.objects.filter(role__in=['referee', 'jt_admin', 'admin', 'inspector']).order_by('last_name', 'first_name'),
+        queryset=User.objects.none(),
         required=False,
         label='2. Játékvezető',
         widget=forms.Select(attrs={'class': 'form-control'})
     )
     inspector = forms.ModelChoiceField(
-        queryset=User.objects.filter(role__in=['referee', 'jt_admin', 'admin', 'inspector']).order_by('last_name', 'first_name'),
+        queryset=User.objects.none(),
         required=False,
         label='Ellenőr',
         widget=forms.Select(attrs={'class': 'form-control'})
     )
     reserve = forms.ModelChoiceField(
-        queryset=User.objects.filter(role__in=['referee', 'jt_admin', 'admin', 'inspector']).order_by('last_name', 'first_name'),
+        queryset=User.objects.none(),
         required=False,
         label='Tartalék',
         widget=forms.Select(attrs={'class': 'form-control'})
@@ -67,8 +67,17 @@ class MatchAssignmentForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.match = match
 
-        # Update querysets to show full name
+        # Base queryset: active users who can be assigned to matches
+        # Excludes: deleted, login disabled, hidden from colleagues
+        assignable_users = User.objects.filter(
+            role__in=['referee', 'jt_admin', 'admin', 'inspector'],
+            is_deleted=False,
+            is_login_disabled=False,
+        ).order_by('last_name', 'first_name')
+
+        # Update querysets for all fields
         for field_name in ['referee1', 'referee2', 'inspector', 'reserve']:
+            self.fields[field_name].queryset = assignable_users
             self.fields[field_name].label_from_instance = lambda obj: obj.get_full_name() or obj.username
 
         # Pre-fill from existing assignments if editing
@@ -150,12 +159,17 @@ class MatchResponseForm(forms.Form):
         })
     )
 
+    def __init__(self, *args, require_reason=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.require_reason = require_reason
+
     def clean(self):
         cleaned_data = super().clean()
         response = cleaned_data.get('response')
         decline_reason = cleaned_data.get('decline_reason')
 
-        if response == 'declined' and not decline_reason:
+        # Only require decline reason if setting is enabled
+        if self.require_reason and response == 'declined' and not decline_reason:
             self.add_error('decline_reason', 'Kérlek add meg az elutasítás okát.')
 
         return cleaned_data

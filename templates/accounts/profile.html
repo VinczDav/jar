@@ -284,6 +284,10 @@
                         <label for="bank_account">Bankszámlaszám</label>
                         <input type="text" id="bank_account" name="bank_account" value="{{ user.bank_account }}" placeholder="12345678-12345678-12345678">
                     </div>
+                    <div class="form-group">
+                        <label for="facebook_link">Facebook/Messenger link</label>
+                        <input type="url" id="facebook_link" name="facebook_link" value="{{ user.facebook_link }}" placeholder="https://m.me/felhasznalonev">
+                    </div>
                 </div>
             </div>
 
@@ -387,14 +391,20 @@
                 </div>
             </div>
 
-            <div class="form-actions">
-                <button type="submit" class="btn btn-primary">
-                    <span class="material-icons">save</span>
-                    Mentés
-                </button>
-                <div class="save-status" id="saveStatus">
-                    <span class="material-icons">check_circle</span>
-                    <span>Mentve</span>
+            <div class="form-actions" style="justify-content: space-between;">
+                <a href="{% url 'accounts:password_reset_request' %}" class="btn btn-secondary" style="text-decoration: none;">
+                    <span class="material-icons">lock_reset</span>
+                    Jelszó visszaállítása
+                </a>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button type="submit" class="btn btn-primary">
+                        <span class="material-icons">save</span>
+                        Mentés
+                    </button>
+                    <div class="save-status" id="saveStatus">
+                        <span class="material-icons">check_circle</span>
+                        <span>Mentve</span>
+                    </div>
                 </div>
             </div>
         </form>
@@ -409,6 +419,7 @@ document.getElementById('profileForm').addEventListener('submit', async function
         email: document.getElementById('email').value,
         phone: document.getElementById('phone').value,
         bank_account: document.getElementById('bank_account').value,
+        facebook_link: document.getElementById('facebook_link').value,
     };
 
     try {

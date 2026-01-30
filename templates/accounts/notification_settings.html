@@ -1,0 +1,521 @@
+{% extends 'base.html' %}
+
+{% block title %}Értesítés beállítások{% endblock %}
+{% block page_title %}Értesítés beállítások{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-section {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .settings-section h3 {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+        font-size: 1.1rem;
+    }
+
+    .settings-section h3 .material-icons {
+        font-size: 1.5rem;
+    }
+
+    .section-description {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        color: var(--text-secondary);
+        text-decoration: none;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .back-link:hover {
+        color: var(--primary-color);
+    }
+
+    .notification-grid {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .notification-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--bg-color);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .notification-item:hover {
+        border-color: var(--primary-color);
+    }
+
+    .notification-toggle {
+        flex-shrink: 0;
+        margin-top: 0.125rem;
+    }
+
+    .notification-toggle input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        accent-color: var(--primary-color);
+        cursor: pointer;
+    }
+
+    .notification-info {
+        flex: 1;
+    }
+
+    .notification-label {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+        cursor: pointer;
+    }
+
+    .notification-description {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+    }
+
+    .notification-category {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .category-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        background: var(--primary-color);
+        color: white;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .category-badge.admin-only {
+        background: var(--warning-color);
+        color: #000;
+    }
+
+    .form-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .save-status {
+        font-size: 0.9rem;
+        color: var(--success-color);
+    }
+
+    .save-status.error {
+        color: var(--danger-color);
+    }
+
+    .toggle-all-section {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .toggle-all-btn {
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        color: var(--text-secondary);
+        transition: all 0.15s;
+    }
+
+    .toggle-all-btn:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="{% url 'accounts:admin_settings' %}" class="back-link">
+    <span class="material-icons">arrow_back</span>
+    Vissza a beállításokhoz
+</a>
+
+<div class="settings-section">
+    <h3>
+        <span class="material-icons">notifications</span>
+        Értesítés beállítások
+    </h3>
+    <p class="section-description">
+        Itt beállíthatod, hogy milyen típusú értesítéseket kapjanak a felhasználók a rendszerben.
+        A kikapcsolt értesítések nem jelennek meg a felhasználók értesítési központjában.
+    </p>
+
+    <form id="notificationSettingsForm">
+        <div class="toggle-all-section">
+            <button type="button" class="toggle-all-btn" onclick="toggleAll(true)">
+                <span class="material-icons" style="font-size: 1rem; vertical-align: middle;">check_box</span>
+                Összes bekapcsolása
+            </button>
+            <button type="button" class="toggle-all-btn" onclick="toggleAll(false)">
+                <span class="material-icons" style="font-size: 1rem; vertical-align: middle;">check_box_outline_blank</span>
+                Összes kikapcsolása
+            </button>
+        </div>
+
+        <div class="notification-grid">
+            <!-- Match notifications -->
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_match_assignment" name="notify_match_assignment"
+                           {% if notif_settings.notify_match_assignment %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_match_assignment">
+                    <div class="notification-label">Új kiírás értesítés</div>
+                    <div class="notification-description">
+                        Értesítés küldése, amikor a játékvezetőt új mérkőzésre írják ki.
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Mérkőzés</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_match_reminder" name="notify_match_reminder"
+                           {% if notif_settings.notify_match_reminder %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_match_reminder">
+                    <div class="notification-label">Mérkőzés emlékeztető (elfogadott)</div>
+                    <div class="notification-description">
+                        Emlékeztető email azoknak, akik elfogadták a mérkőzést.
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Mérkőzés</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_match_reminder_pending" name="notify_match_reminder_pending"
+                           {% if notif_settings.notify_match_reminder_pending %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_match_reminder_pending">
+                    <div class="notification-label">Mérkőzés emlékeztető (nem elfogadott)</div>
+                    <div class="notification-description">
+                        Emlékeztető email azoknak, akik még nem fogadták el a mérkőzést.
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Mérkőzés</span>
+                        <span class="category-badge admin-only">Sürgető</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="notification-item" style="background: var(--card-bg);">
+                <div class="notification-toggle" style="visibility: hidden;">
+                    <input type="checkbox" disabled>
+                </div>
+                <div class="notification-info">
+                    <div class="notification-label">Emlékeztető időzítése</div>
+                    <div class="notification-description">
+                        Hány órával a mérkőzés előtt küldjön emlékeztetőt.
+                    </div>
+                    <div class="timing-setting" style="margin-top: 0.75rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                            <input type="number" id="match_reminder_hours" name="match_reminder_hours"
+                                   value="{{ notif_settings.match_reminder_hours|default:24 }}" min="1" max="168"
+                                   style="width: 70px; padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-color); color: var(--text-primary);">
+                            órával a mérkőzés előtt
+                            <span style="color: var(--text-secondary); font-size: 0.8rem;">(24 óra = 1 nap)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_match_cancellation" name="notify_match_cancellation"
+                           {% if notif_settings.notify_match_cancellation %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_match_cancellation">
+                    <div class="notification-label">Lemondás értesítés</div>
+                    <div class="notification-description">
+                        Értesítés az adminoknak, amikor egy játékvezető lemondja a mérkőzést.
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Mérkőzés</span>
+                        <span class="category-badge admin-only">Admin</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_match_modification" name="notify_match_modification"
+                           {% if notif_settings.notify_match_modification %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_match_modification">
+                    <div class="notification-label">Mérkőzés módosítás értesítés</div>
+                    <div class="notification-description">
+                        Értesítés a kiírt játékvezetőknek, amikor a mérkőzés adatai módosulnak (időpont, helyszín).
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Mérkőzés</span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- EFO notifications -->
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_efo" name="notify_efo"
+                           {% if notif_settings.notify_efo %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_efo">
+                    <div class="notification-label">EFO értesítés</div>
+                    <div class="notification-description">
+                        EFO bejelentésekkel kapcsolatos értesítések (új, módosított, törölt).
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Pénzügy</span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Travel expense notifications -->
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_travel_expense" name="notify_travel_expense"
+                           {% if notif_settings.notify_travel_expense %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_travel_expense">
+                    <div class="notification-label">Útiköltség értesítés</div>
+                    <div class="notification-description">
+                        Útiköltség jóváhagyás, visszaküldés vagy elutasítás értesítések.
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Pénzügy</span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- News notifications -->
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_news" name="notify_news"
+                           {% if notif_settings.notify_news %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_news">
+                    <div class="notification-label">Hírek értesítés</div>
+                    <div class="notification-description">
+                        Értesítés új hír megjelenésekor az Oktatás menüben.
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Oktatás</span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_mandatory_news" name="notify_mandatory_news"
+                           {% if notif_settings.notify_mandatory_news %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_mandatory_news">
+                    <div class="notification-label">Kötelező hírek értesítés</div>
+                    <div class="notification-description">
+                        Értesítés kötelező elolvasandó hírekről (kiemelt figyelmeztetés).
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Oktatás</span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Report notifications -->
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_report" name="notify_report"
+                           {% if notif_settings.notify_report %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_report">
+                    <div class="notification-label">Jelentés értesítés</div>
+                    <div class="notification-description">
+                        Értesítés ellenőri jelentés beérkezésekor a játékvezetőnek.
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Dokumentum</span>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Medical notifications -->
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_medical_expiry" name="notify_medical_expiry"
+                           {% if notif_settings.notify_medical_expiry %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_medical_expiry">
+                    <div class="notification-label">Orvosi lejárat értesítés</div>
+                    <div class="notification-description">
+                        Emlékeztető, ha az orvosi alkalmassági hamarosan lejár.
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Profil</span>
+                    </div>
+                    <div class="timing-setting" style="margin-top: 0.75rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                            <input type="number" id="medical_expiry_reminder_days" name="medical_expiry_reminder_days"
+                                   value="{{ notif_settings.medical_expiry_reminder_days }}" min="1" max="90"
+                                   style="width: 60px; padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg); color: var(--text-primary);">
+                            nappal a lejárat előtt
+                        </label>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Security notifications -->
+            <div class="notification-item">
+                <div class="notification-toggle">
+                    <input type="checkbox" id="notify_failed_logins" name="notify_failed_logins"
+                           {% if notif_settings.notify_failed_logins %}checked{% endif %}>
+                </div>
+                <label class="notification-info" for="notify_failed_logins">
+                    <div class="notification-label">Sikertelen bejelentkezés értesítés</div>
+                    <div class="notification-description">
+                        Értesítés az adminoknak, ha valaki többször sikertelen bejelentkezést próbál.
+                    </div>
+                    <div class="notification-category">
+                        <span class="category-badge">Biztonság</span>
+                        <span class="category-badge admin-only">Admin</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">save</span>
+                Mentés
+            </button>
+            <span id="saveStatus" class="save-status"></span>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleAll(value) {
+    const checkboxes = document.querySelectorAll('#notificationSettingsForm input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = value);
+}
+
+document.getElementById('notificationSettingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const form = this;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const statusEl = document.getElementById('saveStatus');
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Mentés...';
+    statusEl.textContent = '';
+    statusEl.className = 'save-status';
+
+    // Collect all toggle values
+    const data = {};
+    const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        data[cb.name] = cb.checked;
+    });
+    // Collect number inputs
+    const numberInputs = form.querySelectorAll('input[type="number"]');
+    numberInputs.forEach(input => {
+        data[input.name] = parseInt(input.value) || 0;
+    });
+
+    try {
+        const response = await fetch('{% url "accounts:api_save_notification_settings" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            statusEl.textContent = 'Mentve!';
+            statusEl.className = 'save-status';
+        } else {
+            statusEl.textContent = 'Hiba: ' + result.error;
+            statusEl.className = 'save-status error';
+        }
+    } catch (error) {
+        statusEl.textContent = 'Hiba: ' + error.message;
+        statusEl.className = 'save-status error';
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span class="material-icons">save</span> Mentés';
+});
+</script>
+{% endblock %}

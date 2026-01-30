@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
-{% block title %}Visszajelzéseim{% endblock %}
-{% block page_title %}Ellenőri visszajelzések{% endblock %}
+{% block title %}Ellenőri jelentések{% endblock %}
+{% block page_title %}Ellenőri jelentések{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -153,9 +153,9 @@
                     <td>{{ item.match.date|date:"Y.m.d" }}</td>
                     <td>
                         <div class="match-cell">
-                            <span class="team-name">{{ item.match.home_team.name|default:"TBD" }}</span>
+                            <span class="team-name">{{ item.match.home_team|default:"TBD" }}</span>
                             <span style="color: var(--text-secondary);">-</span>
-                            <span class="team-name">{{ item.match.away_team.name|default:"TBD" }}</span>
+                            <span class="team-name">{{ item.match.away_team|default:"TBD" }}</span>
                         </div>
                     </td>
                     <td>

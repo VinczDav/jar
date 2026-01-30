@@ -150,7 +150,7 @@
         .competition-badge {
             display: inline-block;
             padding: 0.35rem 0.75rem;
-            color: white;
+            color: white !important;
             font-size: 0.75rem;
             font-weight: 600;
             border-radius: 6px;
@@ -296,7 +296,7 @@
             <div class="match-card">
                 <div class="match-header">
                     <div class="match-teams">
-                        {% if match.home_team %}{{ match.home_team.name }}{% else %}TBD{% endif %}
+                        {% if match.home_team %}{{ match.home_team.display_name }}{% else %}TBD{% endif %}
                         {% if match.is_tournament %}
                         <span style="background: #7c3aed; color: white; padding: 0.2rem 0.5rem; border-radius: 8px; font-size: 0.8rem; font-weight: 600; margin-left: 0.5rem; display: inline-flex; align-items: center; gap: 0.25rem;">
                             <span class="material-icons" style="font-size: 0.9rem;">emoji_events</span>
@@ -304,7 +304,7 @@
                         </span>
                         {% else %}
                         <span>-</span>
-                        {% if match.away_team %}{{ match.away_team.name }}{% else %}TBD{% endif %}
+                        {% if match.away_team %}{{ match.away_team.display_name }}{% else %}TBD{% endif %}
                         {% endif %}
                     </div>
                     {% if match.phase %}
@@ -322,7 +322,11 @@
                     {% if match.venue %}
                     <div class="match-meta-item">
                         <span class="material-icons">location_on</span>
+                        {% if match.venue.google_maps_url %}
+                        <a href="{{ match.venue.google_maps_url }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline; text-decoration-style: dotted;" title="Megnyitás Google Maps-ben">{{ match.venue.name }}</a>
+                        {% else %}
                         {{ match.venue.name }}
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>

@@ -21,6 +21,12 @@ class AuditLog(models.Model):
         CREATE = 'create', 'Létrehozás'
         UPDATE = 'update', 'Módosítás'
         DELETE = 'delete', 'Törlés'
+        ARCHIVE = 'archive', 'Archiválás'
+        SOFT_DELETE = 'soft_delete', 'Törlés'  # Regular admin sees "Törlés"
+        HARD_DELETE = 'hard_delete', 'Végleges törlés'  # Super admin only
+        RESTORE = 'restore', 'Visszaállítás'
+        HIDE_USER = 'hide_user', 'Elrejtés'
+        EXCLUDE_USER = 'exclude_user', 'Kizárás'
         LOGIN = 'login', 'Bejelentkezés'
         LOGOUT = 'logout', 'Kijelentkezés'
         LOGIN_FAILED = 'login_failed', 'Sikertelen bejelentkezés'
@@ -92,6 +98,12 @@ class AuditLog(models.Model):
             'create': 'add_circle',
             'update': 'edit',
             'delete': 'delete',
+            'archive': 'inventory_2',
+            'soft_delete': 'delete',
+            'hard_delete': 'delete_forever',
+            'restore': 'restore',
+            'hide_user': 'visibility_off',
+            'exclude_user': 'person_off',
             'login': 'login',
             'logout': 'logout',
             'login_failed': 'error',
@@ -117,6 +129,12 @@ class AuditLog(models.Model):
             'create': 'var(--success-color)',
             'update': 'var(--accent-color)',
             'delete': 'var(--danger-color)',
+            'archive': 'var(--warning-color)',
+            'soft_delete': 'var(--danger-color)',
+            'hard_delete': 'var(--danger-color)',
+            'restore': 'var(--success-color)',
+            'hide_user': 'var(--warning-color)',
+            'exclude_user': 'var(--danger-color)',
             'login': 'var(--success-color)',
             'logout': 'var(--text-secondary)',
             'login_failed': 'var(--danger-color)',

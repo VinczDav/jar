@@ -163,6 +163,43 @@
         margin-top: 0;
     }
 
+    /* Per-row application toggle icon */
+    .row-application-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+        background: transparent;
+        border: none;
+        padding: 0;
+        flex-shrink: 0;
+    }
+    .row-application-toggle .material-icons {
+        font-size: 18px;
+        color: var(--text-secondary);
+        transition: color 0.15s;
+    }
+    .row-application-toggle:hover:not(.disabled) {
+        background: var(--bg-color);
+    }
+    .row-application-toggle:hover:not(.disabled) .material-icons {
+        color: var(--primary-color);
+    }
+    .row-application-toggle.active .material-icons {
+        color: var(--success-color);
+    }
+    .row-application-toggle.disabled {
+        cursor: not-allowed;
+        opacity: 0.4;
+    }
+    .row-application-toggle.disabled .material-icons {
+        color: var(--text-secondary);
+    }
+
     /* Assignment rows */
     .assignment-row {
         display: flex;
@@ -415,6 +452,12 @@
     .toast-notification.error .material-icons {
         color: var(--danger-color);
     }
+    .toast-notification.warning {
+        border-left-color: var(--warning-color);
+    }
+    .toast-notification.warning .material-icons {
+        color: var(--warning-color);
+    }
 
     /* Match Cards */
     .card-header {
@@ -573,7 +616,7 @@
         border-radius: 6px;
         font-size: 0.8rem;
         font-weight: 600;
-        color: white;
+        color: white !important;
         white-space: nowrap;
     }
     .match-venue {
@@ -1170,7 +1213,7 @@
                     <option value="">Összes csapat</option>
                     {% for team in teams %}
                     {% if not team.is_tbd %}
-                    <option value="{{ team.id }}" {% if filter_team == team.id|stringformat:"s" %}selected{% endif %}>{{ team.name }}</option>
+                    <option value="{{ team.id }}" {% if filter_team == team.id|stringformat:"s" %}selected{% endif %}>{{ team }}</option>
                     {% endif %}
                     {% endfor %}
                 </select>
@@ -1228,12 +1271,12 @@
                     <!-- Torna: rendező csapat + Torna badge -->
                     <div class="team-info">
                         {% if match.home_team %}
-                        {% if match.home_team.logo %}
-                        <img src="{{ match.home_team.logo.url }}" alt="" class="team-logo">
+                        {% if match.home_team.effective_logo %}
+                        <img src="{{ match.home_team.effective_logo.url }}" alt="" class="team-logo">
                         {% else %}
-                        <div class="team-logo-placeholder">{{ match.home_team.short_name|default:match.home_team.name|slice:":2"|upper }}</div>
+                        <div class="team-logo-placeholder">{{ match.home_team.short_name|default:match.home_team|slice:":2"|upper }}</div>
                         {% endif %}
-                        <span class="team-name">{{ match.home_team.name }}</span>
+                        <span class="team-name">{{ match.home_team.display_name }}</span>
                         {% else %}
                         <div class="team-logo-placeholder missing-data"><span class="material-icons">error_outline</span></div>
                         <span class="team-name missing-data">NINCS CSAPAT!</span>
@@ -1255,12 +1298,12 @@
                         <div class="team-logo-placeholder tbd-team"><span class="material-icons">help_outline</span></div>
                         <span class="team-name tbd-team">TBD</span>
                         {% elif match.home_team %}
-                        {% if match.home_team.logo %}
-                        <img src="{{ match.home_team.logo.url }}" alt="" class="team-logo">
+                        {% if match.home_team.effective_logo %}
+                        <img src="{{ match.home_team.effective_logo.url }}" alt="" class="team-logo">
                         {% else %}
-                        <div class="team-logo-placeholder">{{ match.home_team.short_name|default:match.home_team.name|slice:":2"|upper }}</div>
+                        <div class="team-logo-placeholder">{{ match.home_team.short_name|default:match.home_team|slice:":2"|upper }}</div>
                         {% endif %}
-                        <span class="team-name">{{ match.home_team.name }}</span>
+                        <span class="team-name">{{ match.home_team.display_name }}</span>
                         {% else %}
                         <div class="team-logo-placeholder missing-data"><span class="material-icons">error_outline</span></div>
                         <span class="team-name missing-data">NINCS CSAPAT!</span>
@@ -1272,12 +1315,12 @@
                         <div class="team-logo-placeholder tbd-team"><span class="material-icons">help_outline</span></div>
                         <span class="team-name tbd-team">TBD</span>
                         {% elif match.away_team %}
-                        {% if match.away_team.logo %}
-                        <img src="{{ match.away_team.logo.url }}" alt="" class="team-logo">
+                        {% if match.away_team.effective_logo %}
+                        <img src="{{ match.away_team.effective_logo.url }}" alt="" class="team-logo">
                         {% else %}
-                        <div class="team-logo-placeholder">{{ match.away_team.short_name|default:match.away_team.name|slice:":2"|upper }}</div>
+                        <div class="team-logo-placeholder">{{ match.away_team.short_name|default:match.away_team|slice:":2"|upper }}</div>
                         {% endif %}
-                        <span class="team-name">{{ match.away_team.name }}</span>
+                        <span class="team-name">{{ match.away_team.display_name }}</span>
                         {% else %}
                         <div class="team-logo-placeholder missing-data"><span class="material-icons">error_outline</span></div>
                         <span class="team-name missing-data">NINCS CSAPAT!</span>
@@ -1309,7 +1352,11 @@
                     <div class="match-venue">
                         <span class="material-icons">location_on</span>
                         {% if match.venue %}
+                        {% if match.venue.google_maps_url %}
+                        <a href="{{ match.venue.google_maps_url }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline; text-decoration-style: dotted;" title="Megnyitás Google Maps-ben">{{ match.venue.name }}</a>{% if match.court %} ({{ match.court }}){% endif %}
+                        {% else %}
                         {{ match.venue.name }}{% if match.court %} ({{ match.court }}){% endif %}
+                        {% endif %}
                         {% else %}
                         <span class="missing-data">NINCS HELYSZÍN!</span>
                         {% endif %}
@@ -1547,7 +1594,7 @@
                     <select id="newMatchHomeTeam">
                         <option value="">-- Válassz --</option>
                         {% for team in teams %}
-                        <option value="{{ team.id }}">{{ team.name }}</option>
+                        <option value="{{ team.id }}">{{ team }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -1557,7 +1604,7 @@
                     <select id="newMatchAwayTeam">
                         <option value="">-- Válassz --</option>
                         {% for team in teams %}
-                        <option value="{{ team.id }}">{{ team.name }}</option>
+                        <option value="{{ team.id }}">{{ team }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -1686,7 +1733,7 @@
                                 <div class="custom-select-option" data-value="" onclick="selectMatchDataOption(this, 'home_team')">-- Nincs megadva --</div>
                                 {% for team in teams %}
                                 <div class="custom-select-option{% if team.is_tbd %} tbd-option{% endif %}" data-value="{{ team.id }}" data-is-tbd="{{ team.is_tbd|yesno:'true,false' }}" onclick="selectMatchDataOption(this, 'home_team')">
-                                    {% if team.is_tbd %}<span class="material-icons" style="font-size: 1rem; vertical-align: middle; margin-right: 0.25rem;">help_outline</span>{% endif %}{{ team.name }}
+                                    {% if team.is_tbd %}<span class="material-icons" style="font-size: 1rem; vertical-align: middle; margin-right: 0.25rem;">help_outline</span>{% endif %}{{ team }}
                                 </div>
                                 {% endfor %}
                             </div>
@@ -1709,7 +1756,7 @@
                                 <div class="custom-select-option" data-value="" onclick="selectMatchDataOption(this, 'away_team')">-- Nincs megadva --</div>
                                 {% for team in teams %}
                                 <div class="custom-select-option{% if team.is_tbd %} tbd-option{% endif %}" data-value="{{ team.id }}" data-is-tbd="{{ team.is_tbd|yesno:'true,false' }}" onclick="selectMatchDataOption(this, 'away_team')">
-                                    {% if team.is_tbd %}<span class="material-icons" style="font-size: 1rem; vertical-align: middle; margin-right: 0.25rem;">help_outline</span>{% endif %}{{ team.name }}
+                                    {% if team.is_tbd %}<span class="material-icons" style="font-size: 1rem; vertical-align: middle; margin-right: 0.25rem;">help_outline</span>{% endif %}{{ team }}
                                 </div>
                                 {% endfor %}
                             </div>
@@ -1839,20 +1886,32 @@
                 <span class="material-icons">save</span>
                 Piszkozat
             </button>
-            <button type="button" class="btn btn-primary btn-sm" id="publishBtn" onclick="publishMatch(false)" title="Kiírás e-mail nélkül">
+            {% if is_super_admin %}
+            <button type="button" class="btn btn-sm" id="publishNoNotifyBtn" onclick="publishMatch(false, true)" style="background: var(--warning-color); color: white;" title="Kiírás értesítés nélkül (se email, se belső értesítés)">
+                <span class="material-icons">notifications_off</span>
+                Értesítés nélkül
+            </button>
+            {% endif %}
+            <button type="button" class="btn btn-primary btn-sm" id="publishBtn" onclick="publishMatch(false, false)" title="Kiírás e-mail nélkül">
                 <span class="material-icons">send</span>
                 Kiírás
             </button>
-            <button type="button" class="btn btn-sm" id="publishEmailBtn" onclick="publishMatch(true)" style="background: var(--success-color); color: white;" title="Kiírás és e-mail küldés">
+            <button type="button" class="btn btn-sm" id="publishEmailBtn" onclick="publishMatch(true, false)" style="background: var(--success-color); color: white;" title="Kiírás és e-mail küldés">
                 <span class="material-icons">email</span>
                 Kiírás + email
             </button>
             <!-- Edit buttons (shown when status is scheduled or confirmed) -->
-            <button type="button" class="btn btn-secondary btn-sm" id="saveNoEmailBtn" onclick="saveChanges(false)" style="display: none;" title="Mentés e-mail nélkül">
+            {% if is_super_admin %}
+            <button type="button" class="btn btn-sm" id="saveNoNotifyBtn" onclick="saveChanges(false, true)" style="display: none; background: var(--warning-color); color: white;" title="Mentés értesítés nélkül (se email, se belső értesítés)">
+                <span class="material-icons">notifications_off</span>
+                Értesítés nélkül
+            </button>
+            {% endif %}
+            <button type="button" class="btn btn-secondary btn-sm" id="saveNoEmailBtn" onclick="saveChanges(false, false)" style="display: none;" title="Mentés e-mail nélkül">
                 <span class="material-icons">save</span>
                 Mentés
             </button>
-            <button type="button" class="btn btn-sm" id="saveWithEmailBtn" onclick="saveChanges(true)" style="display: none; background: var(--success-color); color: white;" title="Mentés és e-mail küldés">
+            <button type="button" class="btn btn-sm" id="saveWithEmailBtn" onclick="saveChanges(true, false)" style="display: none; background: var(--success-color); color: white;" title="Mentés és e-mail küldés">
                 <span class="material-icons">email</span>
                 Mentés + email
             </button>
@@ -1867,6 +1926,23 @@ const allReferees = [
     { id: {{ ref.id }}, name: "{{ ref.get_full_name|default:ref.username|escapejs }}" }{% if not forloop.last %},{% endif %}
     {% endfor %}
 ];
+
+// All teams data for filtering
+const allTeams = [
+    {% for team in teams %}
+    { id: {{ team.id }}, name: "{{ team|escapejs }}", is_tbd: {{ team.is_tbd|yesno:"true,false" }} }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+];
+
+// Phase to competition mapping
+const phaseCompetitionMap = {
+    {% for phase in phases %}
+    {{ phase.id }}: {{ phase.competition.id }}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+};
+
+// Teams enrolled in each competition (loaded dynamically)
+const competitionTeamsCache = {};
 
 // Referee unavailabilities: user_id -> [{start, end}, ...]
 const refereeUnavailabilities = {
@@ -1904,9 +1980,42 @@ let currentMatchId = null;
 let currentMatchDate = null;
 let currentPhaseSettings = { referee_count: 2, reserve_count: 0, inspector_count: 0 };
 let declinedUsersForMatch = new Map();  // Map<userId, declineReason>
+let applicantsForMatch = new Set();  // Set of user IDs who applied for this match (flat, for backwards compat)
+let applicantsByRole = { referee: new Set(), inspector: new Set(), tournament_director: new Set() };  // Applicants by role
 let originalAssignedUserIds = [];  // Track original users when sidebar opens (for notification logic)
 let hasMatchDetailsChanged = false;  // Track if match details (venue, time, teams) changed since sidebar opened
 let saveTimeout = null;
+
+// Check if phase allows applications for a given role
+function isPhaseApplicationEnabled(role) {
+    const settingKeys = {
+        referee: 'referee_application_enabled',
+        inspector: 'inspector_application_enabled',
+        tournament_director: 'tournament_director_application_enabled'
+    };
+    return currentPhaseSettings[settingKeys[role]] || false;
+}
+
+// Toggle application for a specific row
+function toggleRowApplication(btn, role) {
+    if (!isPhaseApplicationEnabled(role)) {
+        showToast('A jelentkezés nincs engedélyezve ebben a bajnokság szakaszban.', 'warning');
+        return;
+    }
+
+    // Toggle the active state
+    const isActive = btn.classList.toggle('active');
+    const icon = btn.querySelector('.material-icons');
+    icon.textContent = isActive ? 'person' : 'person_outline';
+    btn.title = isActive
+        ? 'Jelentkezés engedélyezve erre a pozícióra (kattints a kikapcsoláshoz)'
+        : 'Jelentkezés kikapcsolva (kattints a bekapcsoláshoz)';
+
+    // Mark as unsaved (user must click Save button)
+    if (currentMatchId) {
+        showSaveStatus('Nincs mentve', true);
+    }
+}
 
 let openDropdown = null;
 
@@ -1993,6 +2102,128 @@ function openNewMatchSidebar(isTournament = false) {
 function closeNewMatchSidebar() {
     document.getElementById('newMatchSidebar').classList.remove('open');
 }
+
+// ==================== TEAM FILTERING BY COMPETITION ====================
+
+// Fetch teams for a competition and cache them
+async function fetchTeamsForCompetition(competitionId) {
+    if (competitionTeamsCache[competitionId]) {
+        return competitionTeamsCache[competitionId];
+    }
+
+    try {
+        const response = await fetch(`/matches/api/competition/${competitionId}/teams/`);
+        const data = await response.json();
+        competitionTeamsCache[competitionId] = data.teams;
+        return data.teams;
+    } catch (error) {
+        console.error('Error fetching teams:', error);
+        return null;
+    }
+}
+
+// Filter standard <select> element by competition teams
+async function filterStandardSelectByCompetition(selectElement, competitionId) {
+    const currentValue = selectElement.value;
+
+    if (!competitionId) {
+        // No competition selected - show all teams
+        selectElement.innerHTML = '<option value="">-- Válassz --</option>';
+        allTeams.forEach(team => {
+            const option = document.createElement('option');
+            option.value = team.id;
+            option.textContent = team.name;
+            selectElement.appendChild(option);
+        });
+        selectElement.value = currentValue;
+        return;
+    }
+
+    const teams = await fetchTeamsForCompetition(competitionId);
+    if (!teams) return;
+
+    selectElement.innerHTML = '<option value="">-- Válassz --</option>';
+
+    // Sort: TBD first, then by name
+    const sortedTeams = [...teams].sort((a, b) => {
+        if (a.is_tbd && !b.is_tbd) return -1;
+        if (!a.is_tbd && b.is_tbd) return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    sortedTeams.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team.id;
+        option.textContent = team.name;
+        selectElement.appendChild(option);
+    });
+
+    // Try to restore the previous value if it's still in the list
+    const optionExists = Array.from(selectElement.options).some(opt => opt.value === currentValue);
+    selectElement.value = optionExists ? currentValue : '';
+}
+
+// Filter custom select dropdown by competition teams
+async function filterCustomSelectByCompetition(wrapperElement, competitionId, fieldName) {
+    const optionsContainer = wrapperElement.querySelector('.custom-select-options');
+    const currentSelect = wrapperElement.querySelector('.custom-select');
+    const currentValue = currentSelect.dataset.value;
+
+    if (!competitionId) {
+        // No competition selected - show all teams
+        let html = '<div class="custom-select-option" data-value="" onclick="selectMatchDataOption(this, \'' + fieldName + '\')">-- Nincs megadva --</div>';
+        allTeams.forEach(team => {
+            const tbdClass = team.is_tbd ? ' tbd-option' : '';
+            const tbdIcon = team.is_tbd ? '<span class="material-icons" style="font-size: 1rem; vertical-align: middle; margin-right: 0.25rem;">help_outline</span>' : '';
+            html += `<div class="custom-select-option${tbdClass}" data-value="${team.id}" data-is-tbd="${team.is_tbd}" onclick="selectMatchDataOption(this, '${fieldName}')">${tbdIcon}${escapeHtml(team.name)}</div>`;
+        });
+        optionsContainer.innerHTML = html;
+        return;
+    }
+
+    const teams = await fetchTeamsForCompetition(competitionId);
+    if (!teams) return;
+
+    // Sort: TBD first, then by name
+    const sortedTeams = [...teams].sort((a, b) => {
+        if (a.is_tbd && !b.is_tbd) return -1;
+        if (!a.is_tbd && b.is_tbd) return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    let html = '<div class="custom-select-option" data-value="" onclick="selectMatchDataOption(this, \'' + fieldName + '\')">-- Nincs megadva --</div>';
+    sortedTeams.forEach(team => {
+        const tbdClass = team.is_tbd ? ' tbd-option' : '';
+        const tbdIcon = team.is_tbd ? '<span class="material-icons" style="font-size: 1rem; vertical-align: middle; margin-right: 0.25rem;">help_outline</span>' : '';
+        html += `<div class="custom-select-option${tbdClass}" data-value="${team.id}" data-is-tbd="${team.is_tbd}" onclick="selectMatchDataOption(this, '${fieldName}')">${tbdIcon}${escapeHtml(team.name)}</div>`;
+    });
+    optionsContainer.innerHTML = html;
+
+    // Check if current value is still valid
+    const teamStillExists = teams.some(t => String(t.id) === String(currentValue));
+    if (!teamStillExists && currentValue) {
+        // Current selection is no longer valid - clear it
+        currentSelect.dataset.value = '';
+        currentSelect.querySelector('.custom-select-value').textContent = '-- Nincs megadva --';
+        currentSelect.querySelector('.custom-select-value').classList.add('placeholder');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Handle phase change in New Match sidebar (standard select)
+document.getElementById('newMatchPhase').addEventListener('change', async function() {
+    const phaseId = this.value;
+    const competitionId = phaseId ? phaseCompetitionMap[phaseId] : null;
+
+    // Filter home and away team selects
+    await filterStandardSelectByCompetition(document.getElementById('newMatchHomeTeam'), competitionId);
+    await filterStandardSelectByCompetition(document.getElementById('newMatchAwayTeam'), competitionId);
+});
 
 function toggleEditMatchTournamentMode(isTournament) {
     const tournamentFieldsGroup = document.getElementById('editMatchTournamentFieldsGroup');
@@ -2214,7 +2445,7 @@ function toggleMatchCancelled(matchId) {
 }
 
 function deleteMatchDirect(matchId) {
-    if (!confirm('Biztosan törölni szeretnéd ezt a mérkőzést?')) {
+    if (!confirm('Biztosan törölni szeretnéd ezt a mérkőzést?\n\nA törlés nem visszavonható!')) {
         return;
     }
 
@@ -2299,6 +2530,14 @@ function selectMatchDataOption(optionEl, field) {
     dropdown.classList.remove('show');
     selectEl.classList.remove('open');
     matchDataDropdownOpen = null;
+
+    // If phase was changed, filter team selects
+    if (field === 'phase') {
+        const phaseId = value;
+        const competitionId = phaseId ? phaseCompetitionMap[phaseId] : null;
+        filterCustomSelectByCompetition(document.getElementById('editMatchHomeTeamWrapper'), competitionId, 'home_team');
+        filterCustomSelectByCompetition(document.getElementById('editMatchAwayTeamWrapper'), competitionId, 'away_team');
+    }
 }
 
 function filterMatchDataOptions(inputEl, field) {
@@ -2352,7 +2591,7 @@ function openMatchDataSidebar(matchId) {
 
     editingMatchId = matchId;
 
-    // Load match data
+    // Load match data first, then show sidebar
     fetch(`/matches/api/match/${matchId}/`)
         .then(response => response.json())
         .then(data => {
@@ -2395,9 +2634,14 @@ function openMatchDataSidebar(matchId) {
             } else {
                 mfszOverrideSelect.value = data.mfsz_declaration_override ? 'true' : 'false';
             }
-        });
 
-    document.getElementById('matchDataSidebar').classList.add('open');
+            // Show sidebar after data is loaded
+            document.getElementById('matchDataSidebar').classList.add('open');
+        })
+        .catch(error => {
+            console.error('Error loading match data:', error);
+            showToast('Hiba a mérkőzés adatok betöltésekor!', true);
+        });
 }
 
 function closeMatchDataSidebar() {
@@ -2495,6 +2739,16 @@ function loadMatchData(matchId, isRefresh = false) {
                 }
             });
 
+            // Collect applicants for this match (users who volunteered)
+            applicantsForMatch = new Set(data.applicants || []);
+
+            // Collect applicants by role
+            applicantsByRole = {
+                referee: new Set(data.applicants_by_role?.referee || []),
+                inspector: new Set(data.applicants_by_role?.inspector || []),
+                tournament_director: new Set(data.applicants_by_role?.tournament_director || [])
+            };
+
             // Capture original assigned user IDs (non-declined) for notification logic
             // This tracks who was assigned BEFORE this editing session started
             // Only set on initial load, NOT on refresh (auto-save refresh would include newly added users)
@@ -2587,11 +2841,11 @@ function renderReferees(referees, requiredCount = 2) {
         } else {
             value = ref.user_id || ref.placeholder_type || '';
         }
-        container.appendChild(createAssignmentRow('referee', value, ref.response_status, ref.id, null));
+        container.appendChild(createAssignmentRow('referee', value, ref.response_status, ref.id, null, ref.application_enabled || false));
     });
     // Pre-populate empty slots up to required count (only for new matches)
     for (let i = visibleReferees.length; i < requiredCount; i++) {
-        container.appendChild(createAssignmentRow('referee', '', ''));
+        container.appendChild(createAssignmentRow('referee', '', '', null, null, false));
     }
 }
 
@@ -2612,11 +2866,11 @@ function renderReserves(reserves, requiredCount = 0) {
         } else {
             value = ref.user_id || ref.placeholder_type || '';
         }
-        container.appendChild(createAssignmentRow('reserve', value, ref.response_status, ref.id, null));
+        container.appendChild(createAssignmentRow('reserve', value, ref.response_status, ref.id, null, false));
     });
     // Pre-populate empty slots up to required count (only for new matches)
     for (let i = visibleReserves.length; i < requiredCount; i++) {
-        container.appendChild(createAssignmentRow('reserve', '', ''));
+        container.appendChild(createAssignmentRow('reserve', '', '', null, null, false));
     }
 }
 
@@ -2637,11 +2891,11 @@ function renderInspectors(inspectors, requiredCount = 0) {
         } else {
             value = ref.user_id || ref.placeholder_type || '';
         }
-        container.appendChild(createAssignmentRow('inspector', value, ref.response_status, ref.id, null));
+        container.appendChild(createAssignmentRow('inspector', value, ref.response_status, ref.id, null, ref.application_enabled || false));
     });
     // Pre-populate empty slots up to required count (only for new matches)
     for (let i = visibleInspectors.length; i < requiredCount; i++) {
-        container.appendChild(createAssignmentRow('inspector', '', ''));
+        container.appendChild(createAssignmentRow('inspector', '', '', null, null, false));
     }
 }
 
@@ -2662,14 +2916,38 @@ function renderTournamentDirectors(directors) {
         } else {
             value = ref.user_id || ref.placeholder_type || '';
         }
-        container.appendChild(createAssignmentRow('tournament_director', value, ref.response_status, ref.id, null));
+        container.appendChild(createAssignmentRow('tournament_director', value, ref.response_status, ref.id, null, ref.application_enabled || false));
     });
 }
 
-function createAssignmentRow(type, userId, status, assignmentId = null, declineInfo = null) {
+// Create application toggle button HTML for a row
+// This function is used by dropdown change handler - creates toggle button element
+function createApplicationToggleElement(type, applicationEnabled = false) {
+    const phaseEnabled = isPhaseApplicationEnabled(type);
+    const isActive = applicationEnabled && phaseEnabled;
+    const isDisabled = !phaseEnabled;
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'row-application-toggle' + (isActive ? ' active' : '') + (isDisabled ? ' disabled' : '');
+    toggleBtn.title = isDisabled
+        ? 'Jelentkezés nem engedélyezett ebben a szakaszban'
+        : (isActive ? 'Jelentkezés engedélyezve erre a pozícióra (kattints a kikapcsoláshoz)' : 'Jelentkezés kikapcsolva (kattints a bekapcsoláshoz)');
+    toggleBtn.onclick = function() { toggleRowApplication(this, type); };
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'material-icons';
+    iconSpan.textContent = isActive ? 'person' : 'person_outline';
+    toggleBtn.appendChild(iconSpan);
+
+    return toggleBtn;
+}
+
+function createAssignmentRow(type, userId, status, assignmentId = null, declineInfo = null, applicationEnabled = false) {
     const row = document.createElement('div');
     row.className = 'assignment-row';
     row.dataset.type = type;
+    row.dataset.applicationEnabled = applicationEnabled ? 'true' : 'false';
     if (assignmentId) row.dataset.assignmentId = assignmentId;
 
     // Store decline info on the row for later use when re-selecting the same person
@@ -2689,8 +2967,12 @@ function createAssignmentRow(type, userId, status, assignmentId = null, declineI
     const isPlaceholder = specialOptions.some(o => o.value === userId);
 
     let statusIcon = '';
-    // Only show status icon for real users who accepted or are pending, not placeholders or declined
-    if (!isPlaceholder && status !== 'declined') {
+    // Always show status icon - but disabled for placeholders, active for real users
+    if (isPlaceholder || status === 'declined') {
+        // Show disabled/greyed out clock icon for placeholder values
+        statusIcon = '<span class="material-icons response-status-icon disabled" style="color: var(--text-secondary); opacity: 0.4; cursor: not-allowed;" title="Válassz ki egy személyt az elfogadáshoz">schedule</span>';
+    } else {
+        // Real user - show clickable icon based on status
         if (status === 'accepted' && assignmentId) {
             statusIcon = `<span class="material-icons response-status-icon response-accepted clickable" onclick="resetAssignment(${assignmentId}, this)" title="Kattints a visszavonáshoz">check_circle</span>`;
         } else if (status === 'accepted') {
@@ -2699,6 +2981,9 @@ function createAssignmentRow(type, userId, status, assignmentId = null, declineI
             statusIcon = `<span class="material-icons response-status-icon response-pending clickable" onclick="acceptAssignment(${assignmentId}, this)" title="Kattints az elfogadáshoz">schedule</span>`;
         } else if (status === 'pending') {
             statusIcon = '<span class="material-icons response-status-icon response-pending">schedule</span>';
+        } else {
+            // New user being added (no status yet) - show disabled icon
+            statusIcon = '<span class="material-icons response-status-icon disabled" style="color: var(--text-secondary); opacity: 0.4; cursor: not-allowed;" title="Mentés után válik aktívvá">schedule</span>';
         }
     }
 
@@ -2761,17 +3046,28 @@ function createAssignmentRow(type, userId, status, assignmentId = null, declineI
                         const matchDate = currentMatchDate || '';
                         const isUnavail = isRefereeUnavailable(r.id, matchDate);
                         const isDeclined = declinedUsersForMatch.has(r.id);
+                        // Determine applicant role based on assignment type (reserve maps to referee)
+                        const applicantRole = (type === 'reserve') ? 'referee' : type;
+                        const isApplicant = applicantsByRole[applicantRole]?.has(r.id) || false;
                         const declineReason = isDeclined ? declinedUsersForMatch.get(r.id) : '';
                         let style = '';
                         let suffix = '';
                         let titleAttr = '';
                         let dataAlreadyAssigned = '';
-                        if (isDeclined) {
+                        // Priority: declined+applicant > declined > unavail > applicant
+                        if (isDeclined && isApplicant) {
+                            // Declined but re-applied: green name with red X
+                            style = 'color: #16a34a; font-weight: 600; background: rgba(22, 163, 74, 0.1);';
+                            suffix = ' <span class="material-icons" style="font-size: 14px; vertical-align: middle; color: #dc2626; cursor: help;" title="' + (declineReason ? 'Lemondta, de újra jelentkezett. Indok: ' + declineReason.replace(/"/g, '&quot;') : 'Lemondta, de újra jelentkezett') + '">cancel</span>';
+                        } else if (isDeclined) {
                             style = 'color: #dc2626; font-weight: 600;';
                             suffix = ' <span class="material-icons" style="font-size: 14px; vertical-align: middle; cursor: help;" title="' + (declineReason ? 'Indok: ' + declineReason.replace(/"/g, '&quot;') : 'Lemondta') + '">cancel</span>';
                         } else if (isUnavail) {
                             style = 'color: #dc2626; font-weight: 600;';
                             suffix = ' <span class="material-icons" style="font-size: 14px; vertical-align: middle;">event_busy</span>';
+                        } else if (isApplicant) {
+                            style = 'color: #16a34a; font-weight: 600; background: rgba(22, 163, 74, 0.1);';
+                            suffix = ' <span class="material-icons" style="font-size: 14px; vertical-align: middle;" title="Jelentkezett">how_to_reg</span>';
                         }
                         // Note: Already-assigned check will be done dynamically when dropdown opens
                         return `<div class="custom-select-option ${r.id == effectiveUserId ? 'selected' : ''}" data-value="${r.id}" style="${style}" onclick="selectOption(this)">${r.name}${suffix}</div>`;
@@ -2783,6 +3079,32 @@ function createAssignmentRow(type, userId, status, assignmentId = null, declineI
             <span class="material-icons" style="font-size: 1rem;">close</span>
         </button>
     `;
+
+    // Add toggle button using DOM manipulation (innerHTML interpolation wasn't working)
+    if (effectiveUserId === 'szukseges' && type !== 'reserve') {
+        const phaseEnabled = isPhaseApplicationEnabled(type);
+        const isActive = applicationEnabled && phaseEnabled;
+        const isDisabled = !phaseEnabled;
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'row-application-toggle' + (isActive ? ' active' : '') + (isDisabled ? ' disabled' : '');
+        toggleBtn.title = isDisabled
+            ? 'Jelentkezés nem engedélyezett ebben a szakaszban'
+            : (isActive ? 'Jelentkezés engedélyezve erre a pozícióra (kattints a kikapcsoláshoz)' : 'Jelentkezés kikapcsolva (kattints a bekapcsoláshoz)');
+        toggleBtn.onclick = function() { toggleRowApplication(this, type); };
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'material-icons';
+        iconSpan.textContent = isActive ? 'person' : 'person_outline';
+        toggleBtn.appendChild(iconSpan);
+
+        // Insert before the remove button
+        const removeBtn = row.querySelector('.remove-btn');
+        if (removeBtn) {
+            row.insertBefore(toggleBtn, removeBtn);
+        }
+    }
 
     // Append decline info after the row if present
     if (declineHtml) {
@@ -2812,6 +3134,13 @@ function toggleDropdown(selectEl) {
 
         // Update already-assigned styling for all options
         const currentlyAssigned = getCurrentlyAssignedUserIds(selectEl);
+
+        // Get the assignment type from the row to determine which applicants to show
+        const assignmentRow = selectEl.closest('.assignment-row');
+        const rowType = assignmentRow?.dataset?.type || 'referee';
+        // Map assignment type to applicant role (reserve maps to referee)
+        const applicantRole = (rowType === 'reserve') ? 'referee' : rowType;
+
         dropdown.querySelectorAll('.custom-select-option').forEach(opt => {
             const value = opt.dataset.value;
             if (value && !['', 'hianyzik', 'szukseges', 'nincs'].includes(value) && opt.dataset.special !== 'true') {
@@ -2824,12 +3153,22 @@ function toggleDropdown(selectEl) {
                 const ref = allReferees.find(r => r.id === userId);
                 const name = ref ? ref.name : '';
 
+                const isApplicant = applicantsByRole[applicantRole]?.has(userId) || false;
+
                 // Reset and rebuild the option content and style
+                // Priority: assigned > declined+applicant > declined > unavail > applicant > default
                 if (isAssigned && !isDeclined && !isUnavail) {
                     // Already assigned to another position - show in yellow/orange
                     opt.style.cssText = 'color: #d97706; font-weight: 600; background: rgba(217, 119, 6, 0.1);';
                     opt.innerHTML = name + ' <span class="material-icons" style="font-size: 14px; vertical-align: middle;">person</span>';
                     opt.dataset.alreadyAssigned = 'true';
+                } else if (isDeclined && isApplicant) {
+                    // Declined but re-applied - green name with red X
+                    opt.style.cssText = 'color: #16a34a; font-weight: 600; background: rgba(22, 163, 74, 0.1);';
+                    const declineReason = declinedUsersForMatch.get(userId) || '';
+                    const declineTitle = declineReason ? 'Lemondta, de újra jelentkezett. Indok: ' + declineReason.replace(/"/g, '&quot;') : 'Lemondta, de újra jelentkezett';
+                    opt.innerHTML = name + ' <span class="material-icons" style="font-size: 14px; vertical-align: middle; color: #dc2626; cursor: help;" title="' + declineTitle + '">cancel</span>';
+                    opt.dataset.alreadyAssigned = 'false';
                 } else if (isDeclined) {
                     opt.style.cssText = 'color: #dc2626; font-weight: 600;';
                     const declineReason = declinedUsersForMatch.get(userId) || '';
@@ -2839,6 +3178,11 @@ function toggleDropdown(selectEl) {
                 } else if (isUnavail) {
                     opt.style.cssText = 'color: #dc2626; font-weight: 600;';
                     opt.innerHTML = name + ' <span class="material-icons" style="font-size: 14px; vertical-align: middle;">event_busy</span>';
+                    opt.dataset.alreadyAssigned = 'false';
+                } else if (isApplicant) {
+                    // Applicant - show in green
+                    opt.style.cssText = 'color: #16a34a; font-weight: 600; background: rgba(22, 163, 74, 0.1);';
+                    opt.innerHTML = name + ' <span class="material-icons" style="font-size: 14px; vertical-align: middle;" title="Jelentkezett">how_to_reg</span>';
                     opt.dataset.alreadyAssigned = 'false';
                 } else {
                     opt.style.cssText = '';
@@ -2945,6 +3289,66 @@ function selectOption(optionEl) {
     dropdown.querySelectorAll('.custom-select-option').forEach(o => o.classList.remove('selected'));
     optionEl.classList.add('selected');
 
+    // Update the application toggle button visibility based on new value
+    const row = selectEl.closest('.assignment-row');
+    const rowType = row?.dataset?.type || 'referee';
+    const removeBtn = row?.querySelector('.remove-btn');
+
+    // Remove existing toggle button if any
+    const existingToggle = row?.querySelector('.row-application-toggle');
+    if (existingToggle) {
+        existingToggle.remove();
+    }
+
+    // Add toggle button if value is 'szukseges' and role supports applications
+    if (value === 'szukseges' && rowType !== 'reserve' && removeBtn) {
+        const toggleBtn = createApplicationToggleElement(rowType, false);
+        row.insertBefore(toggleBtn, removeBtn);
+    }
+
+    // Update status icon based on whether a real user or placeholder was selected
+    const statusIconEl = row?.querySelector('.response-status-icon');
+    if (statusIconEl) {
+        const isPlaceholderValue = ['', 'hianyzik', 'szukseges', 'nincs'].includes(value);
+        if (isPlaceholderValue) {
+            // Placeholder selected - show disabled grey icon
+            statusIconEl.className = 'material-icons response-status-icon disabled';
+            statusIconEl.style.cssText = 'color: var(--text-secondary); opacity: 0.4; cursor: not-allowed;';
+            statusIconEl.title = 'Válassz ki egy személyt az elfogadáshoz';
+            statusIconEl.textContent = 'schedule';
+            statusIconEl.onclick = null;
+        } else {
+            // Real user selected - check if row has existing assignment ID
+            const assignmentId = row.dataset.assignmentId;
+            if (assignmentId) {
+                // Has assignment ID - show clickable pending icon
+                statusIconEl.className = 'material-icons response-status-icon response-pending clickable';
+                statusIconEl.style.cssText = '';
+                statusIconEl.title = 'Kattints az elfogadáshoz';
+                statusIconEl.textContent = 'schedule';
+                statusIconEl.onclick = function() { acceptAssignment(parseInt(assignmentId), this); };
+            } else {
+                // New row without assignment ID - check if pre-accepted
+                const isPreAccepted = row.dataset.preAccepted === 'true';
+                if (isPreAccepted) {
+                    // Already pre-accepted - show green checkmark
+                    statusIconEl.className = 'material-icons response-status-icon response-accepted clickable';
+                    statusIconEl.style.cssText = '';
+                    statusIconEl.title = 'Elfogadva (mentéskor véglegesítve)';
+                    statusIconEl.textContent = 'check_circle';
+                    statusIconEl.onclick = function() { togglePreAccept(row, this); };
+                } else {
+                    // Not pre-accepted - show clickable pending icon
+                    statusIconEl.className = 'material-icons response-status-icon response-pending clickable';
+                    statusIconEl.style.cssText = '';
+                    statusIconEl.title = 'Kattints az előzetes elfogadáshoz';
+                    statusIconEl.textContent = 'schedule';
+                    statusIconEl.onclick = function() { togglePreAccept(row, this); };
+                }
+            }
+        }
+    }
+
     // Close dropdown
     closeAllDropdowns();
 
@@ -2993,7 +3397,7 @@ function removeAssignmentRow(btn) {
         // Find the person's name
         const ref = allReferees.find(r => r.id == value);
         const name = ref ? ref.name : 'ez a személy';
-        if (!confirm(`Biztos törölni akarod ezt a pozíciót? ${name} is törlődik a mérkőzésről.`)) {
+        if (!confirm(`Biztos törölni akarod ezt a pozíciót? ${name} is törlődik a mérkőzésről.\n\nA törlés nem visszavonható!`)) {
             return;
         }
     }
@@ -3038,27 +3442,42 @@ function saveMatchField(field, value) {
     });
 }
 
+// Helper function to collect assignments with application_enabled state
+function collectAssignments(containerId, role) {
+    const assignments = [];
+
+    document.querySelectorAll(`#${containerId} .assignment-row`).forEach(row => {
+        const select = row.querySelector('.custom-select');
+        const value = select?.dataset?.value;
+        if (value) {
+            // Get application_enabled from row data or toggle button state
+            let applicationEnabled = false;
+            if (value === 'szukseges') {
+                // Check if the toggle button is active
+                const toggleBtn = row.querySelector('.row-application-toggle.active');
+                applicationEnabled = !!toggleBtn;
+            }
+            // Check if pre-accepted (for new rows)
+            const preAccepted = row.dataset.preAccepted === 'true';
+            assignments.push({
+                value: value,
+                application_enabled: applicationEnabled,
+                pre_accepted: preAccepted
+            });
+        }
+    });
+
+    return assignments;
+}
+
 function saveAssignments() {
     if (!currentMatchId) return;
 
-    // Collect assignments - values can be user IDs or placeholder types (hianyzik, szukseges, nincs)
-    const referees = [];
-    const reserves = [];
-    const inspectors = [];
-    const tournament_directors = [];
-
-    document.querySelectorAll('#refereesContainer .assignment-row .custom-select').forEach(select => {
-        if (select.dataset.value) referees.push(select.dataset.value);
-    });
-    document.querySelectorAll('#reservesContainer .assignment-row .custom-select').forEach(select => {
-        if (select.dataset.value) reserves.push(select.dataset.value);
-    });
-    document.querySelectorAll('#inspectorsContainer .assignment-row .custom-select').forEach(select => {
-        if (select.dataset.value) inspectors.push(select.dataset.value);
-    });
-    document.querySelectorAll('#tournamentDirectorsContainer .assignment-row .custom-select').forEach(select => {
-        if (select.dataset.value) tournament_directors.push(select.dataset.value);
-    });
+    // Collect assignments with application_enabled state
+    const referees = collectAssignments('refereesContainer', 'referee');
+    const reserves = collectAssignments('reservesContainer', 'reserve');
+    const inspectors = collectAssignments('inspectorsContainer', 'inspector');
+    const tournament_directors = collectAssignments('tournamentDirectorsContainer', 'tournament_director');
 
     showSaveStatus('Mentés...');
 
@@ -3089,33 +3508,76 @@ function saveDraft() {
     showSaveStatus('Piszkozat mentve');
 }
 
-function publishMatch(sendEmail) {
+function publishMatch(sendEmail, noNotification = false) {
     if (!currentMatchId) return;
 
-    const message = sendEmail
-        ? 'Biztosan ki szeretnéd írni a mérkőzést és e-mailt küldeni a játékvezetőknek?'
-        : 'Biztosan ki szeretnéd írni a mérkőzést (e-mail nélkül)?';
+    // No confirmation needed for noNotification (super admin feature)
+    if (!noNotification) {
+        let message;
+        if (sendEmail) {
+            message = 'Biztosan ki szeretnéd írni a mérkőzést és e-mailt küldeni a játékvezetőknek?';
+        } else {
+            message = 'Biztosan ki szeretnéd írni a mérkőzést (e-mail nélkül)?';
+        }
+        if (!confirm(message)) return;
+    }
 
-    if (!confirm(message)) return;
+    showSaveStatus(noNotification ? 'Mentés (értesítés nélkül)...' : 'Mentés és kiírás...');
 
-    fetch(`/matches/api/match/${currentMatchId}/publish/`, {
+    // First save assignments, then publish
+    const referees = collectAssignments('refereesContainer', 'referee');
+    const reserves = collectAssignments('reservesContainer', 'reserve');
+    const inspectors = collectAssignments('inspectorsContainer', 'inspector');
+    const tournament_directors = collectAssignments('tournamentDirectorsContainer', 'tournament_director');
+
+    // Save assignments first
+    fetch(`/matches/api/match/${currentMatchId}/assignments/`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': '{{ csrf_token }}'
         },
-        body: JSON.stringify({ send_email: sendEmail })
+        body: JSON.stringify({ referees, reserves, inspectors, tournament_directors, send_email: false, no_notification: noNotification, original_assigned_user_ids: originalAssignedUserIds, has_match_details_changed: hasMatchDetailsChanged })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) {
+            showSaveStatus('Mentési hiba!', true);
+            return Promise.reject('Save failed');
+        }
+        // Now publish
+        return fetch(`/matches/api/match/${currentMatchId}/publish/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ send_email: sendEmail, no_notification: noNotification })
+        });
     })
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            showSaveStatus('Kiírva');
+            showSaveStatus(noNotification ? 'Kiírva (értesítés nélkül)' : 'Kiírva');
             document.getElementById('saveDraftBtn').style.display = 'none';
             document.getElementById('publishBtn').style.display = 'none';
             document.getElementById('publishEmailBtn').style.display = 'none';
+            hasMatchDetailsChanged = false;
+            // Update originalAssignedUserIds to current state to prevent duplicate notifications
+            // Data is now objects with value property
+            originalAssignedUserIds = [...referees, ...reserves, ...inspectors, ...tournament_directors]
+                .map(item => item.value)
+                .filter(v => v && !['hianyzik', 'szukseges', 'nincs'].includes(v))
+                .map(v => parseInt(v));
             updateMatchCard(currentMatchId);
         } else {
-            alert(result.error || 'Hiba történt.');
+            alert(result.error || 'Hiba történt a kiíráskor.');
+        }
+    })
+    .catch(error => {
+        if (error !== 'Save failed') {
+            showSaveStatus('Hiba!', true);
+            console.error(error);
         }
     });
 }
@@ -3123,7 +3585,7 @@ function publishMatch(sendEmail) {
 function deleteMatch() {
     if (!currentMatchId) return;
 
-    if (!confirm('Biztosan törölni szeretnéd a mérkőzést?')) return;
+    if (!confirm('Biztosan törölni szeretnéd a mérkőzést?\n\nA törlés nem visszavonható!')) return;
 
     fetch(`/matches/api/match/${currentMatchId}/delete/`, {
         method: 'POST',
@@ -3141,6 +3603,29 @@ function deleteMatch() {
     });
 }
 
+function togglePreAccept(row, iconEl) {
+    // Toggle pre-accepted state for new rows without assignment ID
+    const isPreAccepted = row.dataset.preAccepted === 'true';
+
+    if (isPreAccepted) {
+        // Change to pending
+        row.dataset.preAccepted = 'false';
+        iconEl.classList.remove('response-accepted');
+        iconEl.classList.add('response-pending');
+        iconEl.textContent = 'schedule';
+        iconEl.title = 'Kattints az előzetes elfogadáshoz';
+    } else {
+        // Change to pre-accepted
+        row.dataset.preAccepted = 'true';
+        iconEl.classList.remove('response-pending');
+        iconEl.classList.add('response-accepted');
+        iconEl.textContent = 'check_circle';
+        iconEl.title = 'Elfogadva (mentéskor véglegesítve)';
+    }
+
+    showSaveStatus('Nincs mentve', true);
+}
+
 function acceptAssignment(assignmentId, iconEl) {
     if (!confirm('Biztosan elfogadod a kiírást a játékvezető nevében?')) return;
 
@@ -3150,7 +3635,12 @@ function acceptAssignment(assignmentId, iconEl) {
             'X-CSRFToken': '{{ csrf_token }}'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Szerver hiba: ' + response.status);
+        }
+        return response.json();
+    })
     .then(result => {
         if (result.success) {
             // Update the icon to accepted (clickable to reset)
@@ -3165,6 +3655,10 @@ function acceptAssignment(assignmentId, iconEl) {
         } else {
             alert(result.error || 'Hiba történt.');
         }
+    })
+    .catch(error => {
+        console.error('Accept error:', error);
+        alert('Hiba történt az elfogadáskor: ' + error.message);
     });
 }
 
@@ -3177,7 +3671,12 @@ function resetAssignment(assignmentId, iconEl) {
             'X-CSRFToken': '{{ csrf_token }}'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Szerver hiba: ' + response.status);
+        }
+        return response.json();
+    })
     .then(result => {
         if (result.success) {
             // Update the icon to pending (clickable to accept)
@@ -3192,32 +3691,23 @@ function resetAssignment(assignmentId, iconEl) {
         } else {
             alert(result.error || 'Hiba történt.');
         }
+    })
+    .catch(error => {
+        console.error('Reset error:', error);
+        alert('Hiba történt a visszavonáskor: ' + error.message);
     });
 }
 
-function saveChanges(sendEmail) {
+function saveChanges(sendEmail, noNotification = false) {
     if (!currentMatchId) return;
 
     showSaveStatus('Mentés...');
 
-    // Collect assignments only - match data is edited in a separate sidebar
-    const referees = [];
-    const reserves = [];
-    const inspectors = [];
-    const tournament_directors = [];
-
-    document.querySelectorAll('#refereesContainer .assignment-row .custom-select').forEach(select => {
-        if (select.dataset.value) referees.push(select.dataset.value);
-    });
-    document.querySelectorAll('#reservesContainer .assignment-row .custom-select').forEach(select => {
-        if (select.dataset.value) reserves.push(select.dataset.value);
-    });
-    document.querySelectorAll('#inspectorsContainer .assignment-row .custom-select').forEach(select => {
-        if (select.dataset.value) inspectors.push(select.dataset.value);
-    });
-    document.querySelectorAll('#tournamentDirectorsContainer .assignment-row .custom-select').forEach(select => {
-        if (select.dataset.value) tournament_directors.push(select.dataset.value);
-    });
+    // Collect assignments with application_enabled state
+    const referees = collectAssignments('refereesContainer', 'referee');
+    const reserves = collectAssignments('reservesContainer', 'reserve');
+    const inspectors = collectAssignments('inspectorsContainer', 'inspector');
+    const tournament_directors = collectAssignments('tournamentDirectorsContainer', 'tournament_director');
 
     fetch(`/matches/api/match/${currentMatchId}/assignments/`, {
         method: 'POST',
@@ -3225,14 +3715,23 @@ function saveChanges(sendEmail) {
             'Content-Type': 'application/json',
             'X-CSRFToken': '{{ csrf_token }}'
         },
-        body: JSON.stringify({ referees, reserves, inspectors, tournament_directors, send_email: sendEmail, original_assigned_user_ids: originalAssignedUserIds, has_match_details_changed: hasMatchDetailsChanged })
+        body: JSON.stringify({ referees, reserves, inspectors, tournament_directors, send_email: sendEmail, no_notification: noNotification, original_assigned_user_ids: originalAssignedUserIds, has_match_details_changed: hasMatchDetailsChanged })
     })
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            showSaveStatus(sendEmail ? 'Mentve és e-mail elküldve' : 'Mentve');
+            const statusMsg = noNotification ? 'Mentve (értesítés nélkül)' : (sendEmail ? 'Mentve és e-mail elküldve' : 'Mentve');
+            showSaveStatus(statusMsg);
             // Reset match details change tracker after successful save
             hasMatchDetailsChanged = false;
+            // Update originalAssignedUserIds to current state to prevent duplicate "removed" emails
+            // on subsequent saves. This is important: after saving, the "original" state should be
+            // the current state, so future saves only detect NEW changes.
+            // Data is now objects with value property
+            originalAssignedUserIds = [...referees, ...reserves, ...inspectors, ...tournament_directors]
+                .map(item => item.value)
+                .filter(v => v && !['hianyzik', 'szukseges', 'nincs'].includes(v))
+                .map(v => parseInt(v));
             updateMatchCard(currentMatchId);
             loadMatchData(currentMatchId, true); // Refresh the sidebar (isRefresh=true to preserve originalAssignedUserIds)
         } else {
@@ -3248,7 +3747,12 @@ function showSaveStatus(text, isError = false) {
     showToast(text, isError);
 }
 
-function showToast(text, isError = false) {
+function showToast(text, type = 'success') {
+    // Support old API: showToast(text, isError) where isError is boolean
+    if (typeof type === 'boolean') {
+        type = type ? 'error' : 'success';
+    }
+
     // Get or create toast element
     let toast = document.getElementById('toastNotification');
     if (!toast) {
@@ -3258,10 +3762,15 @@ function showToast(text, isError = false) {
         document.body.appendChild(toast);
     }
 
-    // Set content and style
-    const icon = isError ? 'error' : 'check_circle';
+    // Set content and style based on type
+    const icons = {
+        success: 'check_circle',
+        error: 'error',
+        warning: 'warning'
+    };
+    const icon = icons[type] || 'info';
     toast.innerHTML = `<span class="material-icons">${icon}</span><span>${text}</span>`;
-    toast.className = 'toast-notification ' + (isError ? 'error' : 'success');
+    toast.className = 'toast-notification ' + type;
 
     // Show toast
     setTimeout(() => toast.classList.add('show'), 10);
@@ -3270,7 +3779,7 @@ function showToast(text, isError = false) {
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(() => {
         toast.classList.remove('show');
-    }, isError ? 3000 : 2000);
+    }, type === 'error' ? 3000 : 2000);
 }
 
 function updateMatchCard(matchId) {

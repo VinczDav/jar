@@ -1,0 +1,612 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if club %}Klub szerkesztése{% else %}Új klub{% endif %}{% endblock %}
+{% block page_title %}{% if club %}{{ club.name }} szerkesztése{% else %}Új klub{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card {
+        background: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        padding: 1.75rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+    .form-card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .form-card-title .material-icons {
+        color: var(--accent-color);
+    }
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+    .form-group label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+    .form-group .help-text {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .form-input {
+        padding: 0.875rem 1rem;
+        border: 2px solid var(--border-color);
+        border-radius: 10px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+    .form-input:hover {
+        border-color: var(--text-secondary);
+    }
+    .form-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    .form-input::placeholder {
+        color: var(--text-secondary);
+        opacity: 0.7;
+    }
+    .checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem 1rem;
+        background: var(--bg-color);
+        border: 2px solid var(--border-color);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .checkbox-wrapper:hover {
+        border-color: var(--text-secondary);
+    }
+    .checkbox-wrapper input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        accent-color: var(--accent-color);
+        cursor: pointer;
+    }
+    .checkbox-wrapper span {
+        font-size: 0.95rem;
+        color: var(--text-primary);
+    }
+    .file-input-wrapper input[type="file"] {
+        padding: 0.875rem 1rem;
+        border: 2px dashed var(--border-color);
+        border-radius: 10px;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        width: 100%;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .file-input-wrapper input[type="file"]:hover {
+        border-color: var(--accent-color);
+        background: rgba(99, 102, 241, 0.05);
+    }
+    .logo-preview {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 0.75rem;
+        padding: 0.75rem;
+        background: var(--bg-color);
+        border-radius: 8px;
+    }
+    .logo-preview img {
+        width: 56px;
+        height: 56px;
+        object-fit: contain;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background: white;
+    }
+    .logo-preview span {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+    .button-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1.5rem;
+        gap: 1rem;
+    }
+    .button-group-left {
+        display: flex;
+        gap: 0.75rem;
+    }
+    .btn-delete {
+        background: transparent;
+        border: 2px solid var(--danger-color);
+        color: var(--danger-color);
+    }
+    .btn-delete:hover {
+        background: var(--danger-color);
+        color: white;
+    }
+    .teams-list {
+        margin-top: 1rem;
+    }
+    .team-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: var(--bg-color);
+        border-radius: 10px;
+        margin-bottom: 0.5rem;
+        border: 2px solid var(--border-color);
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+    .team-item:hover {
+        border-color: var(--accent-color);
+        transform: translateX(4px);
+    }
+    .team-item.inactive {
+        opacity: 0.5;
+    }
+    .team-logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
+        background: var(--card-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    .team-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    .team-logo .material-icons {
+        color: var(--text-secondary);
+    }
+    .team-info {
+        flex: 1;
+    }
+    .team-name {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    .team-meta {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.15rem;
+    }
+    .empty-teams {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-secondary);
+    }
+    .empty-teams .material-icons {
+        font-size: 2.5rem;
+        opacity: 0.3;
+        margin-bottom: 0.5rem;
+    }
+    .contact-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.75rem;
+        padding: 0.75rem;
+        background: var(--bg-color);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+    .contact-row .btn-delete {
+        padding: 0.5rem;
+        min-width: auto;
+    }
+    .contact-row .btn-delete .material-icons {
+        font-size: 1.1rem;
+    }
+    @media (max-width: 768px) {
+        .contact-row {
+            flex-wrap: wrap;
+        }
+        .contact-row select,
+        .contact-row input {
+            min-width: 100% !important;
+            width: 100% !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if messages %}
+<div style="margin-bottom: 1rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 10px; margin-bottom: 0.5rem; background: rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Alapadatok -->
+    <div class="form-card">
+        <div class="form-card-title">
+            <span class="material-icons">domain</span>
+            Alapadatok
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="name">Klub neve *</label>
+                <input type="text" id="name" name="name" class="form-input"
+                       value="{{ club.name|default:'' }}"
+                       placeholder="pl. Szolnoki Olajbányász" required>
+            </div>
+            <div class="form-group">
+                <label for="short_name">Rövid név</label>
+                <input type="text" id="short_name" name="short_name" class="form-input"
+                       value="{{ club.short_name|default:'' }}"
+                       placeholder="pl. SZOL">
+                <span class="help-text">Opcionális - rövid megjelenítéshez</span>
+            </div>
+            <div class="form-group">
+                <label for="logo">Logó</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="logo" name="logo" accept="image/*">
+                </div>
+                <span class="help-text">A klubhoz tartozó összes csapat ezt a logót örökli (ha nincs saját)</span>
+                {% if club and club.logo %}
+                <div class="logo-preview">
+                    <img src="{{ club.logo.url }}" alt="Jelenlegi logó">
+                    <span>Jelenlegi logó</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Cím -->
+    <div class="form-card">
+        <div class="form-card-title">
+            <span class="material-icons">location_on</span>
+            Cím
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="country">Ország</label>
+                <input type="text" id="country" name="country" class="form-input"
+                       value="{{ club.country|default:'Magyarország' }}"
+                       placeholder="pl. Magyarország">
+            </div>
+            <div class="form-group">
+                <label for="city">Város</label>
+                <input type="text" id="city" name="city" class="form-input"
+                       value="{{ club.city|default:'' }}"
+                       placeholder="pl. Szolnok">
+            </div>
+            <div class="form-group">
+                <label for="postal_code">Irányítószám</label>
+                <input type="text" id="postal_code" name="postal_code" class="form-input"
+                       value="{{ club.postal_code|default:'' }}"
+                       placeholder="pl. 5000">
+            </div>
+            <div class="form-group">
+                <label for="address">Cím</label>
+                <input type="text" id="address" name="address" class="form-input"
+                       value="{{ club.address|default:'' }}"
+                       placeholder="pl. Sporttelep utca 1.">
+            </div>
+        </div>
+    </div>
+
+    <!-- Képviselő -->
+    <div class="form-card">
+        <div class="form-card-title">
+            <span class="material-icons">person</span>
+            Képviselő
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="representative_name">Név</label>
+                <input type="text" id="representative_name" name="representative_name" class="form-input"
+                       value="{{ club.representative_name|default:'' }}"
+                       placeholder="pl. Kovács János">
+            </div>
+            <div class="form-group">
+                <label for="representative_phone">Telefonszám</label>
+                <input type="tel" id="representative_phone" name="representative_phone" class="form-input"
+                       value="{{ club.representative_phone|default:'' }}"
+                       placeholder="pl. +36 30 123 4567">
+            </div>
+            <div class="form-group full-width">
+                <label for="representative_email">Email</label>
+                <input type="email" id="representative_email" name="representative_email" class="form-input"
+                       value="{{ club.representative_email|default:'' }}"
+                       placeholder="pl. kovacs.janos@example.com">
+            </div>
+        </div>
+    </div>
+
+    <!-- Elérhetőségek -->
+    <div class="form-card">
+        <div class="form-card-title">
+            <span class="material-icons">contact_phone</span>
+            Elérhetőségek
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-input"
+                       value="{{ club.email|default:'' }}"
+                       placeholder="pl. info@klub.hu">
+            </div>
+            <div class="form-group">
+                <label for="phone">Telefon</label>
+                <input type="tel" id="phone" name="phone" class="form-input"
+                       value="{{ club.phone|default:'' }}"
+                       placeholder="pl. +36 56 123 456">
+            </div>
+            <div class="form-group">
+                <label for="website">Weboldal</label>
+                <input type="url" id="website" name="website" class="form-input"
+                       value="{{ club.website|default:'' }}"
+                       placeholder="pl. https://www.klub.hu">
+            </div>
+            <div class="form-group">
+                <label for="facebook">Facebook</label>
+                <input type="url" id="facebook" name="facebook" class="form-input"
+                       value="{{ club.facebook|default:'' }}"
+                       placeholder="pl. https://facebook.com/klub">
+            </div>
+        </div>
+
+        <!-- További elérhetőségek -->
+        {% if club %}
+        <div class="additional-contacts" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <span style="font-weight: 500; color: var(--text-secondary); font-size: 0.9rem;">További elérhetőségek</span>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="addContact()">
+                    <span class="material-icons">add</span>
+                    Új
+                </button>
+            </div>
+            <div id="contactsList">
+                {% for contact in club.contacts.all %}
+                <div class="contact-row" data-contact-id="{{ contact.id }}">
+                    <select name="contact_type_{{ contact.id }}" class="form-input" style="width: auto; min-width: 130px;">
+                        <option value="email" {% if contact.contact_type == 'email' %}selected{% endif %}>Email</option>
+                        <option value="phone" {% if contact.contact_type == 'phone' %}selected{% endif %}>Telefon</option>
+                        <option value="website" {% if contact.contact_type == 'website' %}selected{% endif %}>Weboldal</option>
+                        <option value="facebook" {% if contact.contact_type == 'facebook' %}selected{% endif %}>Facebook</option>
+                        <option value="instagram" {% if contact.contact_type == 'instagram' %}selected{% endif %}>Instagram</option>
+                        <option value="twitter" {% if contact.contact_type == 'twitter' %}selected{% endif %}>Twitter/X</option>
+                        <option value="other" {% if contact.contact_type == 'other' %}selected{% endif %}>Egyéb</option>
+                    </select>
+                    <input type="text" name="contact_label_{{ contact.id }}" class="form-input"
+                           value="{{ contact.label }}" placeholder="Címke (opcionális)" style="width: 150px;">
+                    <input type="text" name="contact_value_{{ contact.id }}" class="form-input"
+                           value="{{ contact.value }}" placeholder="Érték" style="flex: 1;" required>
+                    <button type="button" class="btn btn-sm btn-delete" onclick="removeContact({{ contact.id }})" title="Törlés">
+                        <span class="material-icons">close</span>
+                    </button>
+                </div>
+                {% empty %}
+                <div class="no-contacts" style="text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                    Még nincsenek további elérhetőségek
+                </div>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="existing_contacts" id="existingContacts" value="{% for c in club.contacts.all %}{{ c.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+            <input type="hidden" name="deleted_contacts" id="deletedContacts" value="">
+            <input type="hidden" name="new_contacts" id="newContacts" value="">
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="button-group">
+        <div class="button-group-left">
+            <a href="{% url 'matches:clubs_list' %}" class="btn btn-secondary">
+                <span class="material-icons">arrow_back</span>
+                Vissza
+            </a>
+            {% if club %}
+            <button type="button" class="btn btn-delete" onclick="confirmDeleteClub()">
+                <span class="material-icons">delete</span>
+                Klub törlése
+            </button>
+            {% endif %}
+        </div>
+        <button type="submit" class="btn btn-primary">
+            <span class="material-icons">save</span>
+            {% if club %}Mentés{% else %}Létrehozás{% endif %}
+        </button>
+    </div>
+</form>
+
+{% if club %}
+<!-- Hidden delete form -->
+<form id="deleteClubForm" method="post" action="{% url 'matches:club_delete' club.id %}" style="display: none;">
+    {% csrf_token %}
+</form>
+
+<!-- Csapatok -->
+<div class="form-card" style="margin-top: 1.5rem;">
+    <div class="form-card-title" style="justify-content: space-between;">
+        <span style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="material-icons">groups</span>
+            Csapatok ({{ teams|length }})
+        </span>
+        <a href="{% url 'matches:team_new' club.id %}" class="btn btn-sm btn-primary">
+            <span class="material-icons">add</span>
+            Új csapat
+        </a>
+    </div>
+
+    <div class="teams-list">
+        {% for team in teams %}
+        <a href="{% url 'matches:team_edit' club.id team.id %}" class="team-item {% if not team.is_active %}inactive{% endif %}">
+            <div class="team-logo">
+                {% if team.logo %}
+                <img src="{{ team.logo.url }}" alt="{{ team }}">
+                {% elif club.logo %}
+                <img src="{{ club.logo.url }}" alt="{{ team }}">
+                {% else %}
+                <span class="material-icons">shield</span>
+                {% endif %}
+            </div>
+            <div class="team-info">
+                <div class="team-name">{{ team }}</div>
+                <div class="team-meta">
+                    {% if team.short_name %}Rövid: {{ team.short_name }}{% endif %}
+                    {% if not team.is_active %}<span style="color: var(--danger-color);"> - Inaktív</span>{% endif %}
+                </div>
+            </div>
+            <span class="material-icons" style="color: var(--text-secondary);">chevron_right</span>
+        </a>
+        {% empty %}
+        <div class="empty-teams">
+            <span class="material-icons">groups_off</span>
+            <p>Még nincs csapat a klubhoz.</p>
+            <p style="font-size: 0.85rem;">Kattints az "Új csapat" gombra a hozzáadáshoz.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDeleteClub() {
+    const teamCount = {{ club.teams.count|default:0 }};
+    let message = 'Biztosan törölni szeretnéd ezt a klubot?';
+    if (teamCount > 0) {
+        message += '\n\nFIGYELEM: A klubhoz ' + teamCount + ' csapat tartozik, amelyek szintén törlődnek!';
+    }
+    message += '\n\nEz a művelet nem vonható vissza!';
+
+    if (confirm(message)) {
+        document.getElementById('deleteClubForm').submit();
+    }
+}
+
+// Contact management
+let newContactIndex = 0;
+const newContactsList = [];
+
+function addContact() {
+    const contactsList = document.getElementById('contactsList');
+    const noContacts = contactsList.querySelector('.no-contacts');
+    if (noContacts) {
+        noContacts.remove();
+    }
+
+    const newId = 'new_' + newContactIndex++;
+    newContactsList.push(newId);
+    document.getElementById('newContacts').value = newContactsList.join(',');
+
+    const row = document.createElement('div');
+    row.className = 'contact-row';
+    row.setAttribute('data-contact-id', newId);
+    row.innerHTML = `
+        <select name="contact_type_${newId}" class="form-input" style="width: auto; min-width: 130px;">
+            <option value="email">Email</option>
+            <option value="phone">Telefon</option>
+            <option value="website">Weboldal</option>
+            <option value="facebook">Facebook</option>
+            <option value="instagram">Instagram</option>
+            <option value="twitter">Twitter/X</option>
+            <option value="other">Egyéb</option>
+        </select>
+        <input type="text" name="contact_label_${newId}" class="form-input"
+               placeholder="Címke (opcionális)" style="width: 150px;">
+        <input type="text" name="contact_value_${newId}" class="form-input"
+               placeholder="Érték" style="flex: 1;" required>
+        <button type="button" class="btn btn-sm btn-delete" onclick="removeContact('${newId}')" title="Törlés">
+            <span class="material-icons">close</span>
+        </button>
+    `;
+    contactsList.appendChild(row);
+}
+
+function removeContact(contactId) {
+    const row = document.querySelector(`.contact-row[data-contact-id="${contactId}"]`);
+    if (row) {
+        row.remove();
+    }
+
+    // Track deleted existing contacts
+    if (typeof contactId === 'number' || !contactId.toString().startsWith('new_')) {
+        const deletedField = document.getElementById('deletedContacts');
+        const deleted = deletedField.value ? deletedField.value.split(',') : [];
+        if (!deleted.includes(contactId.toString())) {
+            deleted.push(contactId.toString());
+            deletedField.value = deleted.join(',');
+        }
+
+        // Remove from existing contacts
+        const existingField = document.getElementById('existingContacts');
+        const existing = existingField.value ? existingField.value.split(',') : [];
+        const idx = existing.indexOf(contactId.toString());
+        if (idx > -1) {
+            existing.splice(idx, 1);
+            existingField.value = existing.join(',');
+        }
+    } else {
+        // Remove from new contacts list
+        const idx = newContactsList.indexOf(contactId);
+        if (idx > -1) {
+            newContactsList.splice(idx, 1);
+            document.getElementById('newContacts').value = newContactsList.join(',');
+        }
+    }
+
+    // Show "no contacts" message if empty
+    const contactsList = document.getElementById('contactsList');
+    if (contactsList && contactsList.querySelectorAll('.contact-row').length === 0) {
+        const noMsg = document.createElement('div');
+        noMsg.className = 'no-contacts';
+        noMsg.style = 'text-align: center; padding: 1rem; color: var(--text-secondary); font-size: 0.9rem;';
+        noMsg.textContent = 'Még nincsenek további elérhetőségek';
+        contactsList.appendChild(noMsg);
+    }
+}
+</script>
+{% endblock %}

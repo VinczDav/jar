@@ -1,0 +1,524 @@
+{% extends 'base.html' %}
+
+{% block title %}Archívum{% endblock %}
+{% block page_title %}Archívum{% endblock %}
+
+{% block extra_css %}
+<style>
+    .archive-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .archive-tab {
+        padding: 0.75rem 1.25rem;
+        border-radius: 10px;
+        background: var(--card-bg);
+        border: 2px solid var(--border-color);
+        color: var(--text-primary);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .archive-tab:hover {
+        border-color: var(--accent-color);
+    }
+    .archive-tab.active {
+        background: var(--accent-color);
+        border-color: var(--accent-color);
+        color: white;
+    }
+    .archive-tab .count {
+        background: var(--border-color);
+        color: var(--text-primary);
+        padding: 0.15rem 0.5rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+    }
+    .archive-tab.active .count {
+        background: rgba(255,255,255,0.3);
+        color: white;
+    }
+    /* Dark mode fixes - use !important to override base.html link color */
+    [data-theme="dark"] .archive-tab {
+        color: var(--text-primary) !important;
+    }
+    [data-theme="dark"] .archive-tab .count {
+        background: rgba(255,255,255,0.15);
+        color: var(--text-primary) !important;
+    }
+    [data-theme="dark"] .archive-tab.active {
+        color: white !important;
+    }
+    [data-theme="dark"] .archive-tab.active .count {
+        color: white !important;
+    }
+    [data-theme="dark"] .archive-tab .material-icons {
+        color: inherit !important;
+    }
+    .archive-section {
+        margin-bottom: 2rem;
+    }
+    .archive-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        background: var(--card-bg);
+        border-radius: 12px 12px 0 0;
+        border: 1px solid var(--border-color);
+        border-bottom: none;
+    }
+    .archive-section-header .material-icons {
+        color: var(--accent-color);
+    }
+    .archive-section-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .archive-section-count {
+        background: var(--bg-color);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .archive-list {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 0 0 12px 12px;
+    }
+    .archive-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        gap: 1rem;
+    }
+    .archive-item:last-child {
+        border-bottom: none;
+    }
+    .archive-item-info {
+        flex: 1;
+    }
+    .archive-item-name {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+    .archive-item-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .archive-item-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .archive-item.deleted {
+        background: rgba(239, 68, 68, 0.05);
+    }
+    .archive-item.deleted .archive-item-name {
+        color: var(--danger-color);
+    }
+    .empty-state {
+        padding: 3rem;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+    .empty-state .material-icons {
+        font-size: 3rem;
+        opacity: 0.3;
+        margin-bottom: 0.5rem;
+    }
+    .hierarchy-indent {
+        padding-left: 2rem;
+        border-left: 2px solid var(--border-color);
+        margin-left: 1rem;
+    }
+    .toggle-deleted {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        cursor: pointer;
+        margin-bottom: 1.5rem;
+    }
+    .toggle-deleted input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--danger-color);
+    }
+    .toggle-deleted span {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    .badge-deleted {
+        background: var(--danger-color);
+        color: white;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .badge-archived {
+        background: var(--warning-color);
+        color: #000;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Tabs -->
+<div class="archive-tabs">
+    <a href="?tab=seasons" class="archive-tab {% if active_tab == 'seasons' %}active{% endif %}">
+        <span class="material-icons">date_range</span>
+        Szezonok
+        <span class="count">{{ counts.archived_seasons }}</span>
+    </a>
+    <a href="?tab=matches" class="archive-tab {% if active_tab == 'matches' %}active{% endif %}">
+        <span class="material-icons">sports</span>
+        Mérkőzések
+        <span class="count">{{ counts.archived_matches }}</span>
+    </a>
+    <a href="?tab=venues" class="archive-tab {% if active_tab == 'venues' %}active{% endif %}">
+        <span class="material-icons">location_on</span>
+        Helyszínek
+        <span class="count">{{ counts.archived_venues }}</span>
+    </a>
+    <a href="?tab=clubs" class="archive-tab {% if active_tab == 'clubs' %}active{% endif %}">
+        <span class="material-icons">domain</span>
+        Klubbok
+        <span class="count">{{ counts.archived_clubs }}</span>
+    </a>
+    <a href="?tab=users" class="archive-tab {% if active_tab == 'users' %}active{% endif %}">
+        <span class="material-icons">people</span>
+        Felhasználók
+        <span class="count">{{ counts.archived_users }}</span>
+    </a>
+</div>
+
+<!-- Seasons Tab -->
+{% if active_tab == 'seasons' %}
+<div class="archive-section">
+    <div class="archive-section-header">
+        <span class="material-icons">date_range</span>
+        <span class="archive-section-title">Archivált szezonok</span>
+        <span class="archive-section-count">{{ archived_seasons|length }} elem</span>
+    </div>
+    <div class="archive-list">
+        {% for season in archived_seasons %}
+        <div class="archive-item">
+            <div class="archive-item-info">
+                <div class="archive-item-name">
+                    {{ season.name }}
+                    <span class="badge-archived">Archivált</span>
+                </div>
+                <div class="archive-item-meta">
+                    {{ season.start_date|date:"Y.m.d" }} - {{ season.end_date|date:"Y.m.d" }}
+                    | {{ season.competitions.count }} bajnokság
+                    | Archiválva: {{ season.archived_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            {% if is_super_admin %}
+            <div class="archive-item-actions">
+                <button class="btn btn-sm btn-success" onclick="restoreFromArchive('season', {{ season.id }})" title="Visszaállítás">
+                    <span class="material-icons">unarchive</span>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteFromArchive('season', {{ season.id }}, '{{ season.name|escapejs }}')" title="Törlés">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs archivált szezon</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Matches Tab -->
+{% if active_tab == 'matches' %}
+<div class="archive-section">
+    <div class="archive-section-header">
+        <span class="material-icons">sports</span>
+        <span class="archive-section-title">Archivált mérkőzések</span>
+        <span class="archive-section-count">{{ archived_matches|length }} elem</span>
+    </div>
+    <div class="archive-list">
+        {% for match in archived_matches %}
+        <div class="archive-item">
+            <div class="archive-item-info">
+                <div class="archive-item-name">
+                    {% if match.is_tournament %}
+                        Torna: {{ match.home_team|default:"?" }}
+                    {% else %}
+                        {{ match.home_team|default:"?" }} vs {{ match.away_team|default:"?" }}
+                    {% endif %}
+                    <span class="badge-archived">Archivált</span>
+                </div>
+                <div class="archive-item-meta">
+                    {{ match.date|date:"Y.m.d" }} {{ match.time|time:"H:i" }}
+                    {% if match.phase %}| {{ match.phase.competition.short_name }}{% endif %}
+                    | Archiválva: {{ match.archived_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            {% if is_super_admin %}
+            <div class="archive-item-actions">
+                <button class="btn btn-sm btn-success" onclick="restoreFromArchive('match', {{ match.id }})" title="Visszaállítás">
+                    <span class="material-icons">unarchive</span>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteFromArchive('match', {{ match.id }}, 'mérkőzés')" title="Törlés">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs archivált mérkőzés</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Venues Tab -->
+{% if active_tab == 'venues' %}
+<div class="archive-section">
+    <div class="archive-section-header">
+        <span class="material-icons">location_on</span>
+        <span class="archive-section-title">Archivált helyszínek</span>
+        <span class="archive-section-count">{{ archived_venues|length }} elem</span>
+    </div>
+    <div class="archive-list">
+        {% for venue in archived_venues %}
+        <div class="archive-item">
+            <div class="archive-item-info">
+                <div class="archive-item-name">
+                    {{ venue.name }}
+                    <span class="badge-archived">Archivált</span>
+                </div>
+                <div class="archive-item-meta">
+                    {{ venue.city }}{% if venue.address %}, {{ venue.address }}{% endif %}
+                    | Archiválva: {{ venue.archived_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            {% if is_super_admin %}
+            <div class="archive-item-actions">
+                <button class="btn btn-sm btn-success" onclick="restoreFromArchive('venue', {{ venue.id }})" title="Visszaállítás">
+                    <span class="material-icons">unarchive</span>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteFromArchive('venue', {{ venue.id }}, '{{ venue.name|escapejs }}')" title="Törlés">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs archivált helyszín</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Clubs Tab -->
+{% if active_tab == 'clubs' %}
+<div class="archive-section">
+    <div class="archive-section-header">
+        <span class="material-icons">domain</span>
+        <span class="archive-section-title">Archivált klubbok és csapatok</span>
+        <span class="archive-section-count">{{ archived_clubs|length }} klub, {{ archived_teams|length }} csapat</span>
+    </div>
+    <div class="archive-list">
+        {% for club in archived_clubs %}
+        <div class="archive-item">
+            <div class="archive-item-info">
+                <div class="archive-item-name">
+                    {{ club.name }}
+                    <span class="badge-archived">Archivált</span>
+                </div>
+                <div class="archive-item-meta">
+                    {{ club.city|default:"-" }} | {{ club.teams.count }} csapat
+                    | Archiválva: {{ club.archived_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            {% if is_super_admin %}
+            <div class="archive-item-actions">
+                <button class="btn btn-sm btn-success" onclick="restoreFromArchive('club', {{ club.id }})" title="Visszaállítás">
+                    <span class="material-icons">unarchive</span>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteFromArchive('club', {{ club.id }}, '{{ club.name|escapejs }}')" title="Törlés">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% for team in archived_teams %}
+        <div class="archive-item" style="padding-left: 3rem;">
+            <div class="archive-item-info">
+                <div class="archive-item-name">
+                    {{ team }}
+                    <span class="badge-archived">Archivált</span>
+                </div>
+                <div class="archive-item-meta">
+                    Klub: {{ team.club.name|default:"-" }}
+                    | Archiválva: {{ team.archived_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            {% if is_super_admin %}
+            <div class="archive-item-actions">
+                <button class="btn btn-sm btn-success" onclick="restoreFromArchive('team', {{ team.id }})" title="Visszaállítás">
+                    <span class="material-icons">unarchive</span>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteFromArchive('team', {{ team.id }}, '{{ team|escapejs }}')" title="Törlés">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% if not archived_clubs and not archived_teams %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs archivált klub vagy csapat</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Users Tab -->
+{% if active_tab == 'users' %}
+<div class="archive-section">
+    <div class="archive-section-header">
+        <span class="material-icons">people</span>
+        <span class="archive-section-title">Kizárt felhasználók</span>
+        <span class="archive-section-count">{{ archived_users|length }} elem</span>
+    </div>
+    <div class="archive-list">
+        {% for user in archived_users %}
+        <div class="archive-item">
+            <div class="archive-item-info">
+                <div class="archive-item-name">
+                    {{ user.get_full_name }}
+                    <span class="badge-archived">Kizárva</span>
+                </div>
+                <div class="archive-item-meta">
+                    {{ user.email }} | {{ user.get_role_display }}
+                    | Kizárva: {{ user.archived_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            {% if is_super_admin %}
+            <div class="archive-item-actions">
+                <button class="btn btn-sm btn-success" onclick="restoreFromArchive('user', {{ user.id }})" title="Visszaállítás">
+                    <span class="material-icons">person_add</span>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteFromArchive('user', {{ user.id }}, '{{ user.get_full_name|escapejs }}')" title="Törlés">
+                    <span class="material-icons">delete</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs kizárt felhasználó</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+           document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+}
+
+// Restore from archive (Super Admin only)
+async function restoreFromArchive(type, id) {
+    if (!confirm('Biztosan vissza szeretnéd állítani ezt az elemet az archívumból?')) return;
+    try {
+        const response = await fetch(`/matches/api/${type}/${id}/restore/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Hiba történt!');
+        }
+    } catch (e) {
+        alert('Hiba történt!');
+    }
+}
+
+// Delete from archive (moves to Kuka - Super Admin only)
+async function deleteFromArchive(type, id, name) {
+    if (!confirm(`Biztosan törölni szeretnéd "${name}" elemet? Az elem a Kukába kerül.`)) return;
+    try {
+        // Use the appropriate delete endpoint based on type
+        let url;
+        if (type === 'user') {
+            url = `/matches/api/user/${id}/delete/`;
+        } else if (type === 'match') {
+            url = `/matches/api/match/${id}/delete/`;
+        } else if (type === 'season') {
+            url = `/matches/api/season/${id}/permanently-delete/`;
+        } else if (type === 'competition') {
+            url = `/matches/api/competition/${id}/delete/`;
+        } else if (type === 'venue') {
+            url = `/matches/api/venue/${id}/permanently-delete/`;
+        } else if (type === 'club') {
+            url = `/matches/admin/clubs/${id}/delete/`;
+        } else if (type === 'team') {
+            url = `/matches/admin/teams/${id}/delete/`;
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Hiba történt!');
+        }
+    } catch (e) {
+        alert('Hiba történt!');
+    }
+}
+</script>
+{% endblock %}

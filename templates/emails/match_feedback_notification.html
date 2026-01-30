@@ -1,0 +1,124 @@
+{% extends "emails/base_email.html" %}
+
+{% block title %}Mérkőzés visszajelzés - JAR{% endblock %}
+
+{% block header_title %}
+{% if feedback.feedback_type == 'red_card' %}
+Végleges kiállítás jelentés
+{% elif feedback.feedback_type == 'issue' %}
+Probléma jelentés
+{% else %}
+Új mérkőzés visszajelzés
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<p style="font-size: 16px; color: #1e293b;">Kedves JT Admin!</p>
+
+{% if feedback.feedback_type == 'red_card' %}
+<div class="alert alert-danger" style="margin-bottom: 20px;">
+    <strong>Végleges kiállítás(ok) történt(ek)!</strong> A játékvezető piros lapot/piros lapokat osztott ki a mérkőzésen.
+</div>
+{% elif feedback.feedback_type == 'issue' %}
+<div class="alert alert-warning" style="margin-bottom: 20px;">
+    <strong>Probléma történt!</strong> A játékvezető valamilyen problémát jelzett.
+</div>
+{% endif %}
+
+<table class="data-table">
+    <tr>
+        <th>Játékvezető</th>
+        <td><strong>{{ feedback.assignment.user.get_full_name }}</strong></td>
+    </tr>
+    <tr>
+        <th>Mérkőzés időpontja</th>
+        <td>{{ match.date|date:"Y.m.d" }} ({{ match.date|date:"l" }}){% if match.time %} {{ match.time|time:"H:i" }}{% endif %}</td>
+    </tr>
+    {% if match.venue %}
+    <tr>
+        <th>Helyszín</th>
+        <td>{{ match.venue.name }}{% if match.venue.city %}, {{ match.venue.city }}{% endif %}</td>
+    </tr>
+    {% endif %}
+    {% if match.phase and match.phase.competition %}
+    <tr>
+        <th>Bajnokság</th>
+        <td>{{ match.phase.competition.name }}</td>
+    </tr>
+    {% endif %}
+    {% if not match.is_tournament %}
+    <tr>
+        <th>Mérkőzés</th>
+        <td>{{ match.home_team|default:"TBD" }} - {{ match.away_team|default:"TBD" }}</td>
+    </tr>
+    {% endif %}
+    <tr class="section-divider">
+        <th>Pozíció</th>
+        <td>{{ feedback.assignment.get_role_display }}</td>
+    </tr>
+    <tr>
+        <th>Visszajelzés típusa</th>
+        <td>
+            {% if feedback.feedback_type == 'red_card' %}
+            <span style="color: #dc2626; font-weight: bold;">Végleges kiállítás</span>
+            {% elif feedback.feedback_type == 'issue' %}
+            <span style="color: #ea580c; font-weight: bold;">Egyéb probléma</span>
+            {% else %}
+            <span style="color: #16a34a;">Minden rendben</span>
+            {% endif %}
+        </td>
+    </tr>
+    {% if feedback.notes %}
+    <tr>
+        <th>Megjegyzés</th>
+        <td>{{ feedback.notes }}</td>
+    </tr>
+    {% endif %}
+</table>
+
+{% if red_cards %}
+<h3 style="margin-top: 24px; margin-bottom: 12px; color: #dc2626;">Piros lapok ({{ red_cards|length }} db)</h3>
+
+{% for rc in red_cards %}
+<div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+    <h4 style="margin: 0 0 12px 0; color: #dc2626;">Piros lap #{{ forloop.counter }}</h4>
+    <table class="data-table" style="margin: 0;">
+        <tr>
+            <th>Idő</th>
+            <td>{{ rc.incident_time }}</td>
+        </tr>
+        <tr>
+            <th>Kód (614/)</th>
+            <td>{{ rc.get_violation_code_display }}</td>
+        </tr>
+        <tr>
+            <th>Elkövető</th>
+            <td>{{ rc.offender_name }}{% if rc.offender_jersey_number %} (#{{ rc.offender_jersey_number }}){% endif %}</td>
+        </tr>
+        <tr>
+            <th>Funkció</th>
+            <td>{{ rc.get_offender_function_display }}{% if rc.offender_function_other %} - {{ rc.offender_function_other }}{% endif %}</td>
+        </tr>
+        <tr>
+            <th>Leírás</th>
+            <td>{{ rc.incident_description }}</td>
+        </tr>
+        {% if rc.witnesses.exists %}
+        <tr>
+            <th>Tanúk</th>
+            <td>
+                {% for witness in rc.witnesses.all %}
+                {{ witness.name }} ({{ witness.phone }}){% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </td>
+        </tr>
+        {% endif %}
+    </table>
+</div>
+{% endfor %}
+{% endif %}
+
+<p style="text-align: center; margin-top: 20px;">
+    <a href="{{ site_url }}{% url 'matches:admin_feedback_list' %}" class="btn">Visszajelzések megtekintése</a>
+</p>
+{% endblock %}

@@ -13,7 +13,7 @@
     {% if match.is_tournament %}
     <tr>
         <th>Esemény típus</th>
-        <td style="color: #7c3aed; font-weight: 600;">Torna</td>
+        <td>Torna</td>
     </tr>
     {% endif %}
     <tr>
@@ -27,11 +27,11 @@
     {% if not match.is_tournament %}
     <tr>
         <th>Hazai csapat</th>
-        <td>{% if match.home_team %}{{ match.home_team.name }}{% else %}<span style="color: #dc2626;">Hiányzik!</span>{% endif %}</td>
+        <td>{% if match.home_team %}{{ match.home_team }}{% else %}<span style="color: #dc2626;">Hiányzik!</span>{% endif %}</td>
     </tr>
     <tr>
         <th>Vendég csapat</th>
-        <td>{% if match.away_team %}{{ match.away_team.name }}{% else %}<span style="color: #dc2626;">Hiányzik!</span>{% endif %}</td>
+        <td>{% if match.away_team %}{{ match.away_team }}{% else %}<span style="color: #dc2626;">Hiányzik!</span>{% endif %}</td>
     </tr>
     {% endif %}
     <tr>
@@ -43,6 +43,4 @@
         <td>{% if match.has_assigned_referees %}Kiírva{% else %}<span style="color: #dc2626;">Nincsenek kiírva!</span>{% endif %}</td>
     </tr>
 </table>
-
-<p style="margin-top: 24px;">Üdvözlettel,<br>JAR rendszer</p>
 {% endblock %}

@@ -50,6 +50,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'accounts.middleware.UserStatusMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -68,6 +69,9 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'accounts.context_processors.unread_notifications',
                 'accounts.context_processors.global_settings',
+                'accounts.context_processors.application_settings',
+                'accounts.context_processors.recent_logins',
+                'accounts.context_processors.match_badges',
             ],
         },
     },
@@ -152,13 +156,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Email settings
-# SendPulse SMTP configuration:
-#   EMAIL_HOST=smtp-pulse.com
+# Production SMTP configuration (Mailcow / Ruffnet):
+#   EMAIL_HOST=mailx01.ruffnet.hu
 #   EMAIL_PORT=587
-#   EMAIL_HOST_USER=your-sendpulse-username
-#   EMAIL_HOST_PASSWORD=your-sendpulse-password
+#   EMAIL_HOST_USER=noreply@floorballszovetseg.hu
+#   EMAIL_HOST_PASSWORD=your-password
 #   EMAIL_USE_TLS=True
-#   DEFAULT_FROM_EMAIL=JAR <noreply@yourdomain.com>
+#   DEFAULT_FROM_EMAIL=Magyar Floorball Szakszövetség <noreply@floorballszovetseg.hu>
 #   TEST_EMAIL=True  # Set to True to send real emails even in DEBUG mode
 
 # Use SMTP if not DEBUG, or if TEST_EMAIL is explicitly enabled
@@ -167,12 +171,22 @@ if DEBUG and not TEST_EMAIL:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp-pulse.com')
+
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'mailx01.ruffnet.hu')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'noreply@floorballszovetseg.hu')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Magyar Floorball Szakszövetség | Játékvezetői Testület <noreply@example.com>')
+EMAIL_USE_SSL = False  # Don't use SSL with port 587
+EMAIL_TIMEOUT = 20  # Connection timeout in seconds
+
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Magyar Floorball Szakszövetség <noreply@floorballszovetseg.hu>')
+SERVER_EMAIL = os.getenv('SERVER_EMAIL', 'noreply@floorballszovetseg.hu')
+
+# Admin notification emails (for traceback / error email)
+ADMINS = [('Admin', email) for email in os.getenv('ADMIN_EMAILS', 'vinczdav@gmail.com').split(',') if email.strip()]
+MANAGERS = ADMINS
+
 SITE_URL = os.getenv('SITE_URL', 'http://localhost:8000' if DEBUG else 'https://jar.hu')
 
 
@@ -195,6 +209,22 @@ CSRF_COOKIE_SECURE = not DEBUG
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'accounts:dashboard'
 LOGOUT_REDIRECT_URL = 'accounts:login'
+
+
+# Password reset token timeout
+# Regular password reset (forgot password): 15 minutes
+PASSWORD_RESET_TIMEOUT = 900  # 15 perc másodpercben
+# Initial password setup (new user): 24 hours - handled by custom token generator
+
+
+# Cache settings for rate limiting
+# Uses database cache for persistence across restarts
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'cache_table',
+    }
+}
 
 
 # Admin settings

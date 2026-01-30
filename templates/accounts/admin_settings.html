@@ -130,6 +130,26 @@
         color: var(--danger-color);
     }
 
+    .toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .toggle-label input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        accent-color: var(--primary-color);
+        cursor: pointer;
+    }
+
+    .toggle-text {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
     .danger-zone {
         border-color: var(--danger-color);
         background: linear-gradient(to right, rgba(220, 53, 69, 0.05), transparent);
@@ -345,6 +365,21 @@
 {% endblock %}
 
 {% block content %}
+<!-- Értesítés beállítások link -->
+<div class="settings-section" style="background: linear-gradient(to right, rgba(99, 102, 241, 0.05), transparent);">
+    <h3>
+        <span class="material-icons">notifications</span>
+        Értesítés beállítások
+    </h3>
+    <p class="section-description">
+        Állítsd be, hogy milyen típusú értesítéseket kapjanak a felhasználók.
+    </p>
+    <a href="{% url 'accounts:notification_settings' %}" class="btn btn-primary" style="text-decoration: none;">
+        <span class="material-icons">settings</span>
+        Értesítések kezelése
+    </a>
+</div>
+
 <!-- Lemondási beállítások -->
 <div class="settings-section">
     <h3>
@@ -369,6 +404,21 @@
                            class="form-input">
                     <span class="suffix">óra ({{ site_settings.get_cancellation_days }} nap)</span>
                 </div>
+            </div>
+        </div>
+
+        <div class="form-row" style="margin-top: 1rem;">
+            <div class="form-group">
+                <label class="toggle-label">
+                    <input type="checkbox"
+                           id="require_cancellation_reason"
+                           name="require_cancellation_reason"
+                           {% if site_settings.require_cancellation_reason %}checked{% endif %}>
+                    <span class="toggle-text">Lemondási indok kötelező</span>
+                </label>
+                <p class="help-text" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    Ha be van kapcsolva, a játékvezetőnek indokot kell megadnia lemondáskor.
+                </p>
             </div>
         </div>
 
@@ -448,6 +498,127 @@
     </div>
 </div>
 
+<!-- Biztonsági beállítások -->
+<div class="settings-section">
+    <h3>
+        <span class="material-icons">security</span>
+        Biztonsági beállítások
+    </h3>
+    <p class="section-description">
+        A rendszer biztonsági paramétereinek beállítása.
+    </p>
+
+    <form id="securitySettingsForm" class="settings-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="max_failed_login_attempts">Max. sikertelen bejelentkezés</label>
+                <div class="input-with-suffix">
+                    <input type="number"
+                           id="max_failed_login_attempts"
+                           name="max_failed_login_attempts"
+                           value="{{ site_settings.max_failed_login_attempts }}"
+                           min="1"
+                           max="100"
+                           class="form-input">
+                    <span class="suffix">próbálkozás</span>
+                </div>
+                <p class="help-text" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    Ennyi sikertelen bejelentkezés után kapnak értesítést az adminok.
+                </p>
+            </div>
+            <div class="form-group">
+                <label for="session_timeout_hours">Session időtartam</label>
+                <div class="input-with-suffix">
+                    <input type="number"
+                           id="session_timeout_hours"
+                           name="session_timeout_hours"
+                           value="{{ site_settings.session_timeout_hours }}"
+                           min="1"
+                           max="168"
+                           class="form-input">
+                    <span class="suffix">óra</span>
+                </div>
+                <p class="help-text" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    Ennyi óra inaktivitás után kijelentkezik a felhasználó.
+                </p>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">save</span>
+                Mentés
+            </button>
+            <span id="securitySaveStatus" class="save-status"></span>
+        </div>
+    </form>
+</div>
+
+<!-- Jelentkezési beállítások -->
+<div class="settings-section">
+    <h3>
+        <span class="material-icons">how_to_reg</span>
+        Meccsre jelentkezés
+    </h3>
+    <p class="section-description">
+        Engedélyezd, hogy a felhasználók jelentkezhessenek meccsekre. A konkrét bajnokságoknál/szakaszoknál külön be kell kapcsolni.
+    </p>
+
+    <form id="applicationSettingsForm" class="settings-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label class="toggle-label">
+                    <input type="checkbox"
+                           id="application_referees_enabled"
+                           name="application_referees_enabled"
+                           {% if site_settings.application_referees_enabled %}checked{% endif %}>
+                    <span class="toggle-text">Játékvezetők</span>
+                </label>
+                <p class="help-text" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    Játékvezetők jelentkezhetnek meccsekre
+                </p>
+            </div>
+            <div class="form-group">
+                <label class="toggle-label">
+                    <input type="checkbox"
+                           id="application_inspectors_enabled"
+                           name="application_inspectors_enabled"
+                           {% if site_settings.application_inspectors_enabled %}checked{% endif %}>
+                    <span class="toggle-text">Ellenőrök</span>
+                </label>
+                <p class="help-text" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    Ellenőrök jelentkezhetnek meccsekre
+                </p>
+            </div>
+            <div class="form-group">
+                <label class="toggle-label">
+                    <input type="checkbox"
+                           id="application_tournament_directors_enabled"
+                           name="application_tournament_directors_enabled"
+                           {% if site_settings.application_tournament_directors_enabled %}checked{% endif %}>
+                    <span class="toggle-text">Tornaigazgatók</span>
+                </label>
+                <p class="help-text" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    Tornaigazgatók jelentkezhetnek meccsekre
+                </p>
+            </div>
+        </div>
+
+        <div class="stat-box" style="margin-top: 1rem;">
+            <span class="label">Elérhető bajnokságok/szakaszok</span>
+            <span class="value" id="applicationPhaseCount">{{ application_phase_count|default:0 }}</span>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">save</span>
+                Mentés
+            </button>
+            <span id="applicationSaveStatus" class="save-status"></span>
+        </div>
+    </form>
+</div>
+
 <div class="settings-section">
     <h3>
         <span class="material-icons">info</span>
@@ -466,6 +637,129 @@
         <span class="value">{{ notification_count }}</span>
     </div>
 </div>
+
+{% if request.user.is_super_admin %}
+<!-- Super Admin Only Section -->
+<div class="settings-section" style="background: linear-gradient(to right, rgba(59, 130, 246, 0.1), transparent); border-color: var(--info-color);">
+    <h3 style="color: #3b82f6;">
+        <span class="material-icons">admin_panel_settings</span>
+        Szuper Admin beállítások
+    </h3>
+    <p class="section-description">
+        Ezek a beállítások csak a Szuper Admin számára láthatók és módosíthatók.
+    </p>
+
+    <form id="superAdminSettingsForm" class="settings-form">
+        <!-- Email toggle -->
+        <div class="form-row" style="margin-bottom: 1.5rem;">
+            <div class="form-group">
+                <label class="toggle-label">
+                    <input type="checkbox"
+                           id="email_enabled"
+                           name="email_enabled"
+                           {% if site_settings.email_enabled %}checked{% endif %}>
+                    <span class="toggle-text">E-mail küldés engedélyezve</span>
+                </label>
+                <p class="help-text" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    Ha kikapcsolod, a rendszer nem küld e-maileket senkinek. Teszteléshez hasznos.
+                </p>
+            </div>
+        </div>
+
+        <!-- Admin notification emails -->
+        <div class="form-row" style="margin-bottom: 1.5rem;">
+            <div class="form-group" style="flex: 1;">
+                <label for="admin_notification_emails">Admin értesítési e-mail címek</label>
+                <input type="text"
+                       id="admin_notification_emails"
+                       name="admin_notification_emails"
+                       value="{{ site_settings.admin_notification_emails }}"
+                       class="form-input"
+                       placeholder="email1@example.com, email2@example.com">
+                <p class="help-text" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    Vesszővel elválasztva. Ezek a címek kapják a kritikus rendszerértesítéseket.
+                </p>
+            </div>
+        </div>
+
+        <!-- Security alert settings -->
+        <h4 style="margin: 1.5rem 0 1rem 0; font-size: 0.95rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+            <span class="material-icons" style="font-size: 1.25rem; color: #f59e0b;">shield</span>
+            Biztonsági értesítések
+        </h4>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="toggle-label">
+                    <input type="checkbox"
+                           id="notify_security_alerts"
+                           name="notify_security_alerts"
+                           {% if site_settings.notify_security_alerts %}checked{% endif %}>
+                    <span class="toggle-text">Biztonsági figyelmeztetések</span>
+                </label>
+                <p class="help-text" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    Bot támadások, sok sikertelen bejelentkezés értesítése
+                </p>
+            </div>
+            <div class="form-group">
+                <label class="toggle-label">
+                    <input type="checkbox"
+                           id="notify_unusual_login_countries"
+                           name="notify_unusual_login_countries"
+                           {% if site_settings.notify_unusual_login_countries %}checked{% endif %}>
+                    <span class="toggle-text">Szokatlan bejelentkezések</span>
+                </label>
+                <p class="help-text" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    Értesítés ha valaki szokatlan országból jelentkezik be
+                </p>
+            </div>
+            <div class="form-group">
+                <label class="toggle-label">
+                    <input type="checkbox"
+                           id="notify_server_issues"
+                           name="notify_server_issues"
+                           {% if site_settings.notify_server_issues %}checked{% endif %}>
+                    <span class="toggle-text">Szerver problémák</span>
+                </label>
+                <p class="help-text" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
+                    Kritikus szerver állapot (RAM, CPU, tárhely)
+                </p>
+            </div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-primary">
+                <span class="material-icons">save</span>
+                Mentés
+            </button>
+            <span id="superAdminSaveStatus" class="save-status"></span>
+        </div>
+    </form>
+
+    <!-- Test Email Section -->
+    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+        <h4 style="margin: 0 0 1rem 0; font-size: 0.95rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+            <span class="material-icons" style="font-size: 1.25rem; color: #10b981;">mail</span>
+            E-mail teszt
+        </h4>
+        <p class="help-text" style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-secondary);">
+            Küldj teszt e-mailt, hogy ellenőrizd az e-mail beállítások működését.
+        </p>
+        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <input type="email"
+                   id="test_email_address"
+                   class="form-input"
+                   placeholder="teszt@example.com"
+                   style="max-width: 300px;">
+            <button type="button" class="btn btn-primary" onclick="sendTestEmail()">
+                <span class="material-icons">send</span>
+                Teszt e-mail küldése
+            </button>
+            <span id="testEmailStatus" class="save-status"></span>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="settings-section danger-zone">
     <h3>
@@ -535,7 +829,8 @@ document.getElementById('siteSettingsForm').addEventListener('submit', async fun
                 'X-CSRFToken': '{{ csrf_token }}'
             },
             body: JSON.stringify({
-                min_cancellation_hours: parseInt(document.getElementById('min_cancellation_hours').value)
+                min_cancellation_hours: parseInt(document.getElementById('min_cancellation_hours').value),
+                require_cancellation_reason: document.getElementById('require_cancellation_reason').checked
             })
         });
 
@@ -548,6 +843,95 @@ document.getElementById('siteSettingsForm').addEventListener('submit', async fun
             const hours = result.settings.min_cancellation_hours;
             const days = (hours / 24).toFixed(1);
             document.querySelector('.input-with-suffix .suffix').textContent = `óra (${days} nap)`;
+        } else {
+            statusEl.textContent = 'Hiba: ' + result.error;
+            statusEl.className = 'save-status error';
+        }
+    } catch (error) {
+        statusEl.textContent = 'Hiba: ' + error.message;
+        statusEl.className = 'save-status error';
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span class="material-icons">save</span> Mentés';
+});
+
+// Security Settings Form
+document.getElementById('securitySettingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const form = this;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const statusEl = document.getElementById('securitySaveStatus');
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Mentés...';
+    statusEl.textContent = '';
+    statusEl.className = 'save-status';
+
+    try {
+        const response = await fetch('{% url "accounts:api_save_site_settings" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                max_failed_login_attempts: parseInt(document.getElementById('max_failed_login_attempts').value),
+                session_timeout_hours: parseInt(document.getElementById('session_timeout_hours').value)
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            statusEl.textContent = 'Mentve!';
+            statusEl.className = 'save-status';
+        } else {
+            statusEl.textContent = 'Hiba: ' + result.error;
+            statusEl.className = 'save-status error';
+        }
+    } catch (error) {
+        statusEl.textContent = 'Hiba: ' + error.message;
+        statusEl.className = 'save-status error';
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span class="material-icons">save</span> Mentés';
+});
+
+// Application Settings Form
+document.getElementById('applicationSettingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const form = this;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const statusEl = document.getElementById('applicationSaveStatus');
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Mentés...';
+    statusEl.textContent = '';
+    statusEl.className = 'save-status';
+
+    try {
+        const response = await fetch('{% url "accounts:api_save_site_settings" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                application_referees_enabled: document.getElementById('application_referees_enabled').checked,
+                application_inspectors_enabled: document.getElementById('application_inspectors_enabled').checked,
+                application_tournament_directors_enabled: document.getElementById('application_tournament_directors_enabled').checked
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            statusEl.textContent = 'Mentve!';
+            statusEl.className = 'save-status';
         } else {
             statusEl.textContent = 'Hiba: ' + result.error;
             statusEl.className = 'save-status error';
@@ -628,7 +1012,7 @@ async function addCoordinator() {
 }
 
 async function deleteCoordinator(id, userId) {
-    if (!confirm('Biztosan törölni szeretnéd ezt a koordinátort?')) return;
+    if (!confirm('Biztosan törölni szeretnéd ezt a koordinátort?\n\nA törlés nem visszavonható!')) return;
 
     try {
         const response = await fetch(`{% url "accounts:api_delete_coordinator" 0 %}`.replace('/0/', `/${id}/`), {
@@ -817,5 +1201,93 @@ document.getElementById('confirmationModal').addEventListener('click', function(
         hideConfirmation();
     }
 });
+
+{% if request.user.is_super_admin %}
+// Super Admin Settings Form
+document.getElementById('superAdminSettingsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const form = this;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const statusEl = document.getElementById('superAdminSaveStatus');
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Mentés...';
+    statusEl.textContent = '';
+    statusEl.className = 'save-status';
+
+    try {
+        const response = await fetch('{% url "accounts:api_save_site_settings" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                email_enabled: document.getElementById('email_enabled').checked,
+                admin_notification_emails: document.getElementById('admin_notification_emails').value,
+                notify_security_alerts: document.getElementById('notify_security_alerts').checked,
+                notify_unusual_login_countries: document.getElementById('notify_unusual_login_countries').checked,
+                notify_server_issues: document.getElementById('notify_server_issues').checked
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            statusEl.textContent = 'Mentve!';
+            statusEl.className = 'save-status';
+        } else {
+            statusEl.textContent = 'Hiba: ' + result.error;
+            statusEl.className = 'save-status error';
+        }
+    } catch (error) {
+        statusEl.textContent = 'Hiba: ' + error.message;
+        statusEl.className = 'save-status error';
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span class="material-icons">save</span> Mentés';
+});
+
+// Test Email Function
+async function sendTestEmail() {
+    const emailInput = document.getElementById('test_email_address');
+    const statusEl = document.getElementById('testEmailStatus');
+    const email = emailInput.value.trim();
+
+    if (!email) {
+        alert('Kérlek adj meg egy e-mail címet!');
+        return;
+    }
+
+    statusEl.textContent = 'Küldés...';
+    statusEl.className = 'save-status';
+
+    try {
+        const response = await fetch('{% url "accounts:api_send_test_email" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ email: email })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            statusEl.textContent = 'Teszt e-mail elküldve!';
+            statusEl.className = 'save-status';
+        } else {
+            statusEl.textContent = 'Hiba: ' + result.error;
+            statusEl.className = 'save-status error';
+        }
+    } catch (error) {
+        statusEl.textContent = 'Hiba: ' + error.message;
+        statusEl.className = 'save-status error';
+    }
+}
+{% endif %}
 </script>
 {% endblock %}

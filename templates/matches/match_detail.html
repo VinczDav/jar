@@ -142,10 +142,10 @@
                 {% if match.is_tournament %}
                 <!-- Torna: rendező csapat + Torna badge -->
                 <div class="team-display">
-                    {% if match.home_team.logo %}
-                    <img src="{{ match.home_team.logo.url }}" alt="" class="team-logo-large">
+                    {% if match.home_team.effective_logo %}
+                    <img src="{{ match.home_team.effective_logo.url }}" alt="" class="team-logo-large">
                     {% else %}
-                    <div class="team-logo-placeholder-large">{{ match.home_team.short_name|default:match.home_team.name|slice:":3"|upper }}</div>
+                    <div class="team-logo-placeholder-large">{{ match.home_team.short_name|default:match.home_team|slice:":3"|upper }}</div>
                     {% endif %}
                     <span>{{ match.home_team|default:"TBD" }}</span>
                 </div>
@@ -161,19 +161,19 @@
                 {% else %}
                 <!-- Normal meccs: hazai vs vendég -->
                 <div class="team-display">
-                    {% if match.home_team.logo %}
-                    <img src="{{ match.home_team.logo.url }}" alt="" class="team-logo-large">
+                    {% if match.home_team.effective_logo %}
+                    <img src="{{ match.home_team.effective_logo.url }}" alt="" class="team-logo-large">
                     {% else %}
-                    <div class="team-logo-placeholder-large">{{ match.home_team.short_name|default:match.home_team.name|slice:":3"|upper }}</div>
+                    <div class="team-logo-placeholder-large">{{ match.home_team.short_name|default:match.home_team|slice:":3"|upper }}</div>
                     {% endif %}
                     <span>{{ match.home_team|default:"TBD" }}</span>
                 </div>
                 <span class="vs-text">vs</span>
                 <div class="team-display">
-                    {% if match.away_team.logo %}
-                    <img src="{{ match.away_team.logo.url }}" alt="" class="team-logo-large">
+                    {% if match.away_team.effective_logo %}
+                    <img src="{{ match.away_team.effective_logo.url }}" alt="" class="team-logo-large">
                     {% else %}
-                    <div class="team-logo-placeholder-large">{{ match.away_team.short_name|default:match.away_team.name|slice:":3"|upper }}</div>
+                    <div class="team-logo-placeholder-large">{{ match.away_team.short_name|default:match.away_team|slice:":3"|upper }}</div>
                     {% endif %}
                     <span>{{ match.away_team|default:"TBD" }}</span>
                 </div>
@@ -215,7 +215,11 @@
             <span class="meta-label">Helyszín</span>
             <span class="meta-value">
                 <span class="material-icons">location_on</span>
+                {% if match.venue.google_maps_url %}
+                <a href="{{ match.venue.google_maps_url }}" target="_blank" rel="noopener" style="color: var(--text-primary); text-decoration: underline; text-decoration-style: dotted;" title="Megnyitás Google Maps-ben">{{ match.venue.name }}</a>
+                {% else %}
                 {{ match.venue.name }}
+                {% endif %}
                 {% if match.court %}<small style="color: var(--text-secondary);"> ({{ match.court }})</small>{% endif %}
             </span>
         </div>

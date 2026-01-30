@@ -39,7 +39,7 @@
                     </td>
                     <td data-label="Mérkőzés">
                         <div>
-                            <div>{{ report.match.home_team.name|default:"TBD" }} - {{ report.match.away_team.name|default:"TBD" }}</div>
+                            <div>{{ report.match.home_team|default:"TBD" }} - {{ report.match.away_team|default:"TBD" }}</div>
                             {% if report.match.phase %}
                             <span class="badge" style="background-color: {{ report.match.phase.competition.color }}; color: white; font-size: 0.7rem;">
                                 {{ report.match.phase.competition.short_name }}

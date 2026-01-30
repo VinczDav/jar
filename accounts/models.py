@@ -52,6 +52,70 @@ class SiteSettings(models.Model):
         verbose_name='Minimum lemondási idő (óra)',
         help_text='Ha a mérkőzés ennyi órán belül van, a játékvezető nem mondhatja le önállóan.'
     )
+    require_cancellation_reason = models.BooleanField(
+        default=True,
+        verbose_name='Lemondási indok kötelező',
+        help_text='Ha be van kapcsolva, a játékvezetőnek indokot kell megadnia lemondáskor.'
+    )
+
+    # Security settings
+    max_failed_login_attempts = models.PositiveIntegerField(
+        default=10,
+        verbose_name='Max. hibás bejelentkezés',
+        help_text='Ennyi sikertelen bejelentkezés után értesítést kapnak az adminok.'
+    )
+    session_timeout_hours = models.PositiveIntegerField(
+        default=8,
+        verbose_name='Session időtartam (óra)',
+        help_text='Ennyi óra inaktivitás után automatikusan kijelentkezteti a felhasználót.'
+    )
+
+    # Match application settings
+    application_referees_enabled = models.BooleanField(
+        default=False,
+        verbose_name='Játékvezető jelentkezés',
+        help_text='Játékvezetők jelentkezhetnek meccsekre'
+    )
+    application_inspectors_enabled = models.BooleanField(
+        default=False,
+        verbose_name='Ellenőr jelentkezés',
+        help_text='Ellenőrök jelentkezhetnek meccsekre'
+    )
+    application_tournament_directors_enabled = models.BooleanField(
+        default=False,
+        verbose_name='Tornaigazgató jelentkezés',
+        help_text='Tornaigazgatók jelentkezhetnek meccsekre'
+    )
+
+    # === Super Admin only settings ===
+    # Email settings
+    email_enabled = models.BooleanField(
+        default=True,
+        verbose_name='E-mail küldés engedélyezve',
+        help_text='Ha kikapcsolod, a rendszer nem küld e-maileket senkinek.'
+    )
+    admin_notification_emails = models.TextField(
+        blank=True,
+        verbose_name='Admin értesítési e-mail címek',
+        help_text='Vesszővel elválasztott e-mail címek, akik kritikus értesítéseket kapnak.'
+    )
+
+    # Security alert settings
+    notify_server_issues = models.BooleanField(
+        default=True,
+        verbose_name='Szerver problémák értesítés',
+        help_text='Kritikus szerver állapot értesítések (RAM, CPU, tárhely)'
+    )
+    notify_security_alerts = models.BooleanField(
+        default=True,
+        verbose_name='Biztonsági figyelmeztetések',
+        help_text='Bot támadások, szokatlan bejelentkezések értesítése'
+    )
+    notify_unusual_login_countries = models.BooleanField(
+        default=True,
+        verbose_name='Szokatlan országból bejelentkezés',
+        help_text='Értesítés ha valaki szokatlan helyről jelentkezik be'
+    )
 
     class Meta:
         verbose_name = 'Rendszer beállítások'
@@ -76,6 +140,120 @@ class SiteSettings(models.Model):
         return self.min_cancellation_hours / 24
 
 
+class NotificationSettings(models.Model):
+    """
+    Singleton model for notification settings.
+    Controls which notifications are enabled/disabled.
+    """
+    # Match related notifications
+    notify_match_assignment = models.BooleanField(
+        default=True,
+        verbose_name='Új kiírás értesítés',
+        help_text='Értesítés új mérkőzés kiíráskor'
+    )
+    notify_match_reminder = models.BooleanField(
+        default=True,
+        verbose_name='Mérkőzés emlékeztető (elfogadott)',
+        help_text='Emlékeztető email az elfogadott mérkőzésekről'
+    )
+    notify_match_reminder_pending = models.BooleanField(
+        default=True,
+        verbose_name='Mérkőzés emlékeztető (nem elfogadott)',
+        help_text='Emlékeztető email a még nem elfogadott mérkőzésekről'
+    )
+    match_reminder_hours = models.PositiveIntegerField(
+        default=24,
+        verbose_name='Emlékeztető órával előtte',
+        help_text='Hány órával a mérkőzés előtt küldjön emlékeztetőt (alapértelmezett: 24 óra = 1 nap)'
+    )
+    # Deprecated - kept for backwards compatibility
+    match_reminder_days = models.PositiveIntegerField(
+        default=2,
+        verbose_name='Emlékeztető nappal előtte (régi)',
+        help_text='DEPRECATED - használd a match_reminder_hours mezőt'
+    )
+    notify_match_cancellation = models.BooleanField(
+        default=True,
+        verbose_name='Lemondás értesítés',
+        help_text='Értesítés mérkőzés lemondáskor (adminoknak)'
+    )
+    notify_match_modification = models.BooleanField(
+        default=True,
+        verbose_name='Mérkőzés módosítás értesítés',
+        help_text='Értesítés mérkőzés adatainak módosításakor'
+    )
+
+    # EFO/Declaration notifications
+    notify_efo = models.BooleanField(
+        default=True,
+        verbose_name='EFO értesítés',
+        help_text='EFO bejelentés értesítések'
+    )
+
+    # Travel expense notifications
+    notify_travel_expense = models.BooleanField(
+        default=True,
+        verbose_name='Útiköltség értesítés',
+        help_text='Útiköltség jóváhagyás/visszaküldés értesítések'
+    )
+
+    # News/Education notifications
+    notify_news = models.BooleanField(
+        default=True,
+        verbose_name='Hírek értesítés',
+        help_text='Új hír megjelenésekor értesítés'
+    )
+    notify_mandatory_news = models.BooleanField(
+        default=True,
+        verbose_name='Kötelező hírek értesítés',
+        help_text='Kötelező elolvasandó hírek értesítése'
+    )
+
+    # Document notifications
+    notify_report = models.BooleanField(
+        default=True,
+        verbose_name='Jelentés értesítés',
+        help_text='Ellenőri jelentés beérkezésekor értesítés'
+    )
+
+    # Medical/Certificate notifications
+    notify_medical_expiry = models.BooleanField(
+        default=True,
+        verbose_name='Orvosi lejárat értesítés',
+        help_text='Orvosi alkalmassági lejárat előtti emlékeztető'
+    )
+    medical_expiry_reminder_days = models.PositiveIntegerField(
+        default=30,
+        verbose_name='Orvosi lejárat emlékeztető (nap)',
+        help_text='Hány nappal a lejárat előtt küldjön emlékeztetőt'
+    )
+
+    # Security notifications (admin only)
+    notify_failed_logins = models.BooleanField(
+        default=True,
+        verbose_name='Sikertelen bejelentkezés értesítés',
+        help_text='Értesítés többszöri sikertelen bejelentkezéskor (adminoknak)'
+    )
+
+    class Meta:
+        verbose_name = 'Értesítés beállítások'
+        verbose_name_plural = 'Értesítés beállítások'
+
+    def __str__(self):
+        return 'Értesítés beállítások'
+
+    def save(self, *args, **kwargs):
+        # Ensure only one instance exists
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_settings(cls):
+        """Get or create the singleton settings instance."""
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class User(AbstractUser):
     """
     Custom User model for JAR system.
@@ -84,6 +262,7 @@ class User(AbstractUser):
 
     class Role(models.TextChoices):
         REFEREE = 'referee', 'Játékvezető'
+        TOURNAMENT_DIRECTOR = 'tournament_director', 'Tornaigazgató'
         JT_ADMIN = 'jt_admin', 'JT Admin'
         VB = 'vb', 'VB tag'
         INSPECTOR = 'inspector', 'Ellenőr'
@@ -110,6 +289,12 @@ class User(AbstractUser):
         max_length=20,
         blank=True,
         verbose_name='Telefonszám'
+    )
+    facebook_link = models.URLField(
+        max_length=255,
+        blank=True,
+        verbose_name='Facebook/Messenger link',
+        help_text='Facebook profil vagy Messenger link a gyors kapcsolatfelvételhez'
     )
 
     # === Address fields ===
@@ -262,6 +447,10 @@ class User(AbstractUser):
         default=False,
         verbose_name='Ellenőr jogosultság'
     )
+    is_tournament_director_flag = models.BooleanField(
+        default=False,
+        verbose_name='Tornaigazgató jogosultság'
+    )
     is_accountant_flag = models.BooleanField(
         default=False,
         verbose_name='Könyvelő jogosultság'
@@ -285,6 +474,25 @@ class User(AbstractUser):
         verbose_name='Bejelentkezés letiltva'
     )
 
+    # === Super Admin (csak Django adminból állítható) ===
+    is_super_admin = models.BooleanField(
+        default=False,
+        verbose_name='Szuper Admin',
+        help_text='Védett admin: nem kitiltható, végleges törlés, teljes napló. Csak Django adminból állítható!'
+    )
+
+    # === Archive fields (Kizárt felhasználó) ===
+    is_archived = models.BooleanField(
+        default=False,
+        verbose_name='Kizárt',
+        help_text='Ha be van jelölve, a felhasználó nem tud bejelentkezni'
+    )
+    archived_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Kizárás időpontja'
+    )
+
     # === Soft delete fields ===
     is_deleted = models.BooleanField(
         default=False,
@@ -297,6 +505,11 @@ class User(AbstractUser):
     )
 
     # === Security fields ===
+    must_change_password = models.BooleanField(
+        default=True,
+        verbose_name='Jelszó változtatás szükséges',
+        help_text='Első belépéskor kötelező jelszót változtatni'
+    )
     failed_login_count = models.PositiveIntegerField(
         default=0,
         verbose_name='Sikertelen bejelentkezések'
@@ -320,43 +533,98 @@ class User(AbstractUser):
         return full_name or self.username
 
     # Role checks - check both primary role AND role flags
+    # Note: Admin users do NOT automatically get all permissions,
+    # they must explicitly have the role or flag for each permission
     @property
     def is_referee(self):
         """Játékvezető - can see matches, statistics, colleagues"""
-        return self.role == self.Role.REFEREE or self.is_referee_flag or self.is_admin_user
+        return self.role == self.Role.REFEREE or self.is_referee_flag
 
     @property
     def is_jt_admin(self):
         """JT Admin / Koordinátor - can manage assignments, profiles, TIG"""
-        return self.role == self.Role.JT_ADMIN or self.is_jt_admin_flag or self.is_admin_user
+        return self.role == self.Role.JT_ADMIN or self.is_jt_admin_flag
 
     @property
     def is_vb(self):
         """VB tag - can approve travel costs"""
-        return self.role == self.Role.VB or self.is_vb_flag or self.is_admin_user
+        return self.role == self.Role.VB or self.is_vb_flag
 
     @property
     def is_inspector(self):
         """Ellenőr - can create reports"""
-        return self.role == self.Role.INSPECTOR or self.is_inspector_flag or self.is_admin_user
+        return self.role == self.Role.INSPECTOR or self.is_inspector_flag
+
+    @property
+    def is_tournament_director(self):
+        """Tornaigazgató - can be assigned as TIG"""
+        return self.role == self.Role.TOURNAMENT_DIRECTOR or self.is_tournament_director_flag
 
     @property
     def is_accountant(self):
         """Könyvelő - can manage EFO/EKHO"""
-        return self.role == self.Role.ACCOUNTANT or self.is_accountant_flag or self.is_admin_user
+        return self.role == self.Role.ACCOUNTANT or self.is_accountant_flag
 
     @property
     def is_admin_user(self):
-        """Full admin access"""
-        return self.role == self.Role.ADMIN or self.is_admin_flag
+        """Full admin access - for Django admin and admin-only features"""
+        return self.role == self.Role.ADMIN or self.is_admin_flag or self.is_super_admin
+
+    @property
+    def can_hard_delete(self):
+        """Only super admins can permanently delete items"""
+        return self.is_super_admin
+
+    @property
+    def can_grant_admin(self):
+        """Only super admins can grant admin privileges to others"""
+        return self.is_super_admin
+
+    @property
+    def can_view_full_audit_log(self):
+        """Super admins see full audit log, regular admins see limited view"""
+        return self.is_super_admin
 
     @property
     def is_visible_to_colleagues(self):
         """Should this user be visible in the colleagues list?"""
-        if self.is_hidden_from_colleagues or self.is_deleted:
+        # Hidden if login disabled, hidden flag, archived, or deleted
+        if self.is_login_disabled or self.is_hidden_from_colleagues or self.is_archived or self.is_deleted:
             return False
-        # Visible if primary role is referee/jt_admin OR has referee flag
-        return self.role in [self.Role.REFEREE, self.Role.JT_ADMIN] or self.is_referee_flag
+        # Visible if primary role is referee/jt_admin/tournament_director OR has referee flag
+        return self.role in [self.Role.REFEREE, self.Role.JT_ADMIN, self.Role.TOURNAMENT_DIRECTOR] or self.is_referee_flag
+
+    def save(self, *args, **kwargs):
+        """Override save to sync primary role with flags."""
+        # Map roles to their corresponding flag fields
+        role_flag_map = {
+            self.Role.REFEREE: 'is_referee_flag',
+            self.Role.TOURNAMENT_DIRECTOR: 'is_tournament_director_flag',
+            self.Role.JT_ADMIN: 'is_jt_admin_flag',
+            self.Role.VB: 'is_vb_flag',
+            self.Role.INSPECTOR: 'is_inspector_flag',
+            self.Role.ACCOUNTANT: 'is_accountant_flag',
+            self.Role.ADMIN: 'is_admin_flag',
+        }
+
+        # Set the flag for the primary role to True
+        if self.role in role_flag_map:
+            setattr(self, role_flag_map[self.role], True)
+
+        # Super admin protection: cannot be disabled, archived, or deleted
+        if self.is_super_admin:
+            self.is_login_disabled = False
+            self.is_archived = False
+            self.archived_at = None
+            self.is_deleted = False
+            self.deleted_at = None
+            self.is_admin_flag = True  # Ensure admin flag is always set
+
+        # If login is disabled, also hide from colleagues
+        if self.is_login_disabled:
+            self.is_hidden_from_colleagues = True
+
+        super().save(*args, **kwargs)
 
     @property
     def medical_days_until_expiry(self):
@@ -380,3 +648,45 @@ class User(AbstractUser):
                 (self.Role.ADMIN, 'Admin nézet'),
             ]
         return []
+
+    def hide_user(self):
+        """Hide this user from lists (can still login)."""
+        self.is_active = False
+        self.is_hidden_from_colleagues = True
+        self.save(update_fields=['is_active', 'is_hidden_from_colleagues'])
+
+    def exclude_user(self):
+        """Exclude/ban this user (cannot login, sees 'Fiókod le lett tiltva')."""
+        from django.utils import timezone
+        if self.is_super_admin:
+            return  # Super admin cannot be excluded
+        self.is_archived = True
+        self.archived_at = timezone.now()
+        self.is_hidden_from_colleagues = True
+        self.save(update_fields=['is_archived', 'archived_at', 'is_hidden_from_colleagues'])
+
+    def soft_delete(self):
+        """Soft delete this user (appears as if doesn't exist on login)."""
+        from django.utils import timezone
+        if self.is_super_admin:
+            return  # Super admin cannot be deleted
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.is_hidden_from_colleagues = True
+        # Convert user's assignments to "Hiányzik" placeholder
+        from matches.models import MatchAssignment
+        for assignment in self.match_assignments.all():
+            assignment.user = None
+            assignment.placeholder_type = 'hianyzik'
+            assignment.save(update_fields=['user', 'placeholder_type'])
+        self.save(update_fields=['is_deleted', 'deleted_at', 'is_hidden_from_colleagues'])
+
+    def restore(self):
+        """Restore this user from archive or trash."""
+        self.is_archived = False
+        self.archived_at = None
+        self.is_deleted = False
+        self.deleted_at = None
+        self.is_active = True
+        self.is_hidden_from_colleagues = False
+        self.save(update_fields=['is_archived', 'archived_at', 'is_deleted', 'deleted_at', 'is_active', 'is_hidden_from_colleagues'])

@@ -31,7 +31,7 @@
     </tr>
     <tr{% if changes and 'venue' in changes %} class="highlight"{% endif %}>
         <th>Helyszín</th>
-        <td>{{ match.venue.name }}{% if match.venue.city %}, {{ match.venue.city }}{% endif %}</td>
+        <td>{% if match.venue.google_maps_url %}<a href="{{ match.venue.google_maps_url }}" target="_blank" style="color: #2563eb; text-decoration: underline;">{{ match.venue.name }}</a>{% else %}{{ match.venue.name }}{% endif %}{% if match.venue.city %}, {{ match.venue.city }}{% endif %}</td>
     </tr>
     {% if match.phase and match.phase.competition %}
     <tr{% if changes and 'competition' in changes %} class="highlight"{% endif %}>
@@ -42,16 +42,16 @@
     {% if not match.is_tournament %}
     <tr{% if changes and 'home_team' in changes %} class="highlight"{% endif %}>
         <th>Hazai csapat</th>
-        <td>{{ match.home_team.name|default:"TBD" }}</td>
+        <td>{{ match.home_team|default:"TBD" }}</td>
     </tr>
     <tr{% if changes and 'away_team' in changes %} class="highlight"{% endif %}>
         <th>Vendég csapat</th>
-        <td>{{ match.away_team.name|default:"TBD" }}</td>
+        <td>{{ match.away_team|default:"TBD" }}</td>
     </tr>
     {% else %}
     <tr>
         <th>Esemény típus</th>
-        <td style="color: #7c3aed; font-weight: 600;">Torna</td>
+        <td>Torna</td>
     </tr>
     <tr>
         <th>Mérkőzések száma</th>
@@ -68,13 +68,25 @@
     <!-- Only show referee info for new/modified, not for removed -->
     {% if notify_type != 'removed' %}
     <tr class="section-divider">
-        <th colspan="2" style="background: #1a365d; color: white; text-align: center; font-size: 13px; padding: 8px;">Játékvezetők</th>
+        <th colspan="2" style="background: #1a365d; color: white; text-align: center; font-size: 13px; padding: 8px;">Közreműködők</th>
     </tr>
     {% if all_assignments %}
     {% for assign in all_assignments %}
-    <tr{% if assign.user.id == user.id and notify_type == 'new' %} class="highlight"{% elif assign.user.id in new_user_ids %} class="highlight"{% endif %}>
+    <tr{% if assign.user and assign.user.id == user.id and notify_type == 'new' %} class="highlight"{% elif assign.user and assign.user.id in new_user_ids %} class="highlight"{% endif %}>
         <th>{{ assign.get_role_display }}</th>
-        <td>{{ assign.user.get_full_name }}</td>
+        <td>
+            {% if assign.user %}
+                {{ assign.user.get_full_name }}
+            {% elif assign.placeholder_type == 'hianyzik' %}
+                <span style="color: #dc2626; font-weight: 600;">Hiányzik</span>
+            {% elif assign.placeholder_type == 'szukseges' %}
+                <span style="color: #d97706; font-weight: 600;">Szükséges</span>
+            {% elif assign.placeholder_type == 'nincs' %}
+                <span style="color: #1e293b;">Nincs</span>
+            {% else %}
+                -
+            {% endif %}
+        </td>
     </tr>
     {% endfor %}
     {% else %}

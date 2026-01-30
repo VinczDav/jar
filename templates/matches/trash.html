@@ -1,0 +1,571 @@
+{% extends 'base.html' %}
+
+{% block title %}Kuka{% endblock %}
+{% block page_title %}Kuka{% endblock %}
+
+{% block extra_css %}
+<style>
+    .trash-header {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .trash-header .material-icons {
+        font-size: 2.5rem;
+    }
+    .trash-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+    .trash-header p {
+        margin: 0.25rem 0 0 0;
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+    .trash-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .trash-tab {
+        padding: 0.75rem 1.25rem;
+        border-radius: 10px;
+        background: var(--card-bg);
+        border: 2px solid var(--border-color);
+        color: var(--text-primary);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .trash-tab:hover {
+        border-color: var(--danger-color);
+    }
+    .trash-tab.active {
+        background: var(--danger-color);
+        border-color: var(--danger-color);
+        color: white;
+    }
+    .trash-tab .count {
+        background: var(--border-color);
+        color: var(--text-primary);
+        padding: 0.15rem 0.5rem;
+        border-radius: 10px;
+        font-size: 0.8rem;
+    }
+    .trash-tab.active .count {
+        background: rgba(255,255,255,0.3);
+        color: white;
+    }
+    /* Dark mode fixes - override base.html link color */
+    [data-theme="dark"] .trash-tab {
+        color: var(--text-primary) !important;
+    }
+    [data-theme="dark"] .trash-tab .count {
+        background: rgba(255,255,255,0.15);
+        color: var(--text-primary) !important;
+    }
+    [data-theme="dark"] .trash-tab.active {
+        color: white !important;
+    }
+    [data-theme="dark"] .trash-tab.active .count {
+        color: white !important;
+    }
+    [data-theme="dark"] .trash-tab .material-icons {
+        color: inherit !important;
+    }
+    .trash-section {
+        margin-bottom: 2rem;
+    }
+    .trash-section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        background: rgba(239, 68, 68, 0.1);
+        border-radius: 12px 12px 0 0;
+        border: 1px solid var(--danger-color);
+        border-bottom: none;
+    }
+    .trash-section-header .material-icons {
+        color: var(--danger-color);
+    }
+    .trash-section-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: var(--danger-color);
+    }
+    .trash-section-count {
+        background: var(--bg-color);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .trash-list {
+        background: var(--card-bg);
+        border: 1px solid var(--danger-color);
+        border-radius: 0 0 12px 12px;
+    }
+    .trash-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+        gap: 1rem;
+        background: rgba(239, 68, 68, 0.02);
+    }
+    .trash-item:last-child {
+        border-bottom: none;
+    }
+    .trash-item-info {
+        flex: 1;
+    }
+    .trash-item-name {
+        font-weight: 500;
+        color: var(--danger-color);
+    }
+    .trash-item-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+    }
+    .trash-item-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .empty-state {
+        padding: 3rem;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+    .empty-state .material-icons {
+        font-size: 3rem;
+        opacity: 0.3;
+        margin-bottom: 0.5rem;
+    }
+    .badge-deleted {
+        background: var(--danger-color);
+        color: white;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .btn-restore {
+        background: var(--success-color);
+        color: white;
+    }
+    .btn-restore:hover {
+        background: #059669;
+    }
+    .btn-hard-delete {
+        background: #7f1d1d;
+        color: white;
+    }
+    .btn-hard-delete:hover {
+        background: #450a0a;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="trash-header">
+    <span class="material-icons">delete_forever</span>
+    <div>
+        <h2>Kuka</h2>
+        <p>{{ counts.total }} törölt elem | A véglegesen törölt elemek nem állíthatók vissza!</p>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="trash-tabs">
+    <a href="?tab=matches" class="trash-tab {% if active_tab == 'matches' %}active{% endif %}">
+        <span class="material-icons">sports</span>
+        Mérkőzések
+        <span class="count">{{ counts.deleted_matches }}</span>
+    </a>
+    <a href="?tab=seasons" class="trash-tab {% if active_tab == 'seasons' %}active{% endif %}">
+        <span class="material-icons">date_range</span>
+        Szezonok
+        <span class="count">{{ counts.deleted_seasons }}</span>
+    </a>
+    <a href="?tab=competitions" class="trash-tab {% if active_tab == 'competitions' %}active{% endif %}">
+        <span class="material-icons">emoji_events</span>
+        Bajnokságok
+        <span class="count">{{ counts.deleted_competitions }}</span>
+    </a>
+    <a href="?tab=venues" class="trash-tab {% if active_tab == 'venues' %}active{% endif %}">
+        <span class="material-icons">location_on</span>
+        Helyszínek
+        <span class="count">{{ counts.deleted_venues }}</span>
+    </a>
+    <a href="?tab=clubs" class="trash-tab {% if active_tab == 'clubs' %}active{% endif %}">
+        <span class="material-icons">domain</span>
+        Klubbok
+        <span class="count">{{ counts.deleted_clubs }}</span>
+    </a>
+    <a href="?tab=users" class="trash-tab {% if active_tab == 'users' %}active{% endif %}">
+        <span class="material-icons">people</span>
+        Felhasználók
+        <span class="count">{{ counts.deleted_users }}</span>
+    </a>
+</div>
+
+<!-- Matches Tab -->
+{% if active_tab == 'matches' %}
+<div class="trash-section">
+    <div class="trash-section-header">
+        <span class="material-icons">sports</span>
+        <span class="trash-section-title">Törölt mérkőzések</span>
+        <span class="trash-section-count">{{ deleted_matches|length }} elem</span>
+    </div>
+    <div class="trash-list">
+        {% for match in deleted_matches %}
+        <div class="trash-item">
+            <div class="trash-item-info">
+                <div class="trash-item-name">
+                    {% if match.is_tournament %}
+                        Torna: {{ match.home_team|default:"?" }}
+                    {% else %}
+                        {{ match.home_team|default:"?" }} vs {{ match.away_team|default:"?" }}
+                    {% endif %}
+                    <span class="badge-deleted">Törölve</span>
+                </div>
+                <div class="trash-item-meta">
+                    {{ match.date|date:"Y.m.d" }} {{ match.time|time:"H:i" }}
+                    {% if match.phase %}| {{ match.phase.competition.short_name }}{% endif %}
+                    | Törölve: {{ match.deleted_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            <div class="trash-item-actions">
+                <button class="btn btn-sm btn-restore" onclick="restoreItem('match', {{ match.id }})" title="Visszaállítás">
+                    <span class="material-icons">restore</span>
+                </button>
+                <button class="btn btn-sm btn-hard-delete" onclick="permanentlyDelete('match', {{ match.id }}, 'mérkőzés')" title="Végleges törlés">
+                    <span class="material-icons">delete_forever</span>
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs törölt mérkőzés</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Seasons Tab -->
+{% if active_tab == 'seasons' %}
+<div class="trash-section">
+    <div class="trash-section-header">
+        <span class="material-icons">date_range</span>
+        <span class="trash-section-title">Törölt szezonok</span>
+        <span class="trash-section-count">{{ deleted_seasons|length }} elem</span>
+    </div>
+    <div class="trash-list">
+        {% for season in deleted_seasons %}
+        <div class="trash-item">
+            <div class="trash-item-info">
+                <div class="trash-item-name">
+                    {{ season.name }}
+                    <span class="badge-deleted">Törölve</span>
+                </div>
+                <div class="trash-item-meta">
+                    {{ season.start_date|date:"Y.m.d" }} - {{ season.end_date|date:"Y.m.d" }}
+                    | Törölve: {{ season.deleted_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            <div class="trash-item-actions">
+                <button class="btn btn-sm btn-restore" onclick="restoreWithCascadeQuestion('season', {{ season.id }}, '{{ season.name|escapejs }}')" title="Visszaállítás">
+                    <span class="material-icons">restore</span>
+                </button>
+                <button class="btn btn-sm btn-hard-delete" onclick="permanentlyDelete('season', {{ season.id }}, '{{ season.name|escapejs }}')" title="Végleges törlés">
+                    <span class="material-icons">delete_forever</span>
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs törölt szezon</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Competitions Tab -->
+{% if active_tab == 'competitions' %}
+<div class="trash-section">
+    <div class="trash-section-header">
+        <span class="material-icons">emoji_events</span>
+        <span class="trash-section-title">Törölt bajnokságok</span>
+        <span class="trash-section-count">{{ deleted_competitions|length }} elem</span>
+    </div>
+    <div class="trash-list">
+        {% for comp in deleted_competitions %}
+        <div class="trash-item">
+            <div class="trash-item-info">
+                <div class="trash-item-name">
+                    {{ comp.name }}
+                    <span class="badge-deleted">Törölve</span>
+                </div>
+                <div class="trash-item-meta">
+                    Szezon: {{ comp.season.name }}
+                    | Törölve: {{ comp.deleted_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            <div class="trash-item-actions">
+                <button class="btn btn-sm btn-restore" onclick="restoreWithCascadeQuestion('competition', {{ comp.id }}, '{{ comp.name|escapejs }}')" title="Visszaállítás">
+                    <span class="material-icons">restore</span>
+                </button>
+                <button class="btn btn-sm btn-hard-delete" onclick="permanentlyDelete('competition', {{ comp.id }}, '{{ comp.name|escapejs }}')" title="Végleges törlés">
+                    <span class="material-icons">delete_forever</span>
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs törölt bajnokság</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Venues Tab -->
+{% if active_tab == 'venues' %}
+<div class="trash-section">
+    <div class="trash-section-header">
+        <span class="material-icons">location_on</span>
+        <span class="trash-section-title">Törölt helyszínek</span>
+        <span class="trash-section-count">{{ deleted_venues|length }} elem</span>
+    </div>
+    <div class="trash-list">
+        {% for venue in deleted_venues %}
+        <div class="trash-item">
+            <div class="trash-item-info">
+                <div class="trash-item-name">
+                    {{ venue.name }}
+                    <span class="badge-deleted">Törölve</span>
+                </div>
+                <div class="trash-item-meta">
+                    {{ venue.city }}
+                    | Törölve: {{ venue.deleted_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            <div class="trash-item-actions">
+                <button class="btn btn-sm btn-restore" onclick="restoreItem('venue', {{ venue.id }})" title="Visszaállítás">
+                    <span class="material-icons">restore</span>
+                </button>
+                <button class="btn btn-sm btn-hard-delete" onclick="permanentlyDelete('venue', {{ venue.id }}, '{{ venue.name|escapejs }}')" title="Végleges törlés">
+                    <span class="material-icons">delete_forever</span>
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs törölt helyszín</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Clubs Tab -->
+{% if active_tab == 'clubs' %}
+<div class="trash-section">
+    <div class="trash-section-header">
+        <span class="material-icons">domain</span>
+        <span class="trash-section-title">Törölt klubbok és csapatok</span>
+        <span class="trash-section-count">{{ deleted_clubs|length }} klub, {{ deleted_teams|length }} csapat</span>
+    </div>
+    <div class="trash-list">
+        {% for club in deleted_clubs %}
+        <div class="trash-item">
+            <div class="trash-item-info">
+                <div class="trash-item-name">
+                    {{ club.name }}
+                    <span class="badge-deleted">Törölve</span>
+                </div>
+                <div class="trash-item-meta">
+                    {{ club.city|default:"-" }}
+                    | Törölve: {{ club.deleted_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            <div class="trash-item-actions">
+                <button class="btn btn-sm btn-restore" onclick="restoreWithCascadeQuestion('club', {{ club.id }}, '{{ club.name|escapejs }}')" title="Visszaállítás">
+                    <span class="material-icons">restore</span>
+                </button>
+                <button class="btn btn-sm btn-hard-delete" onclick="permanentlyDelete('club', {{ club.id }}, '{{ club.name|escapejs }}')" title="Végleges törlés">
+                    <span class="material-icons">delete_forever</span>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% for team in deleted_teams %}
+        <div class="trash-item" style="padding-left: 3rem;">
+            <div class="trash-item-info">
+                <div class="trash-item-name">
+                    {{ team }}
+                    <span class="badge-deleted">Törölve</span>
+                </div>
+                <div class="trash-item-meta">
+                    Klub: {{ team.club.name|default:"-" }}
+                    | Törölve: {{ team.deleted_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            <div class="trash-item-actions">
+                <button class="btn btn-sm btn-restore" onclick="restoreItem('team', {{ team.id }})" title="Visszaállítás">
+                    <span class="material-icons">restore</span>
+                </button>
+                <button class="btn btn-sm btn-hard-delete" onclick="permanentlyDelete('team', {{ team.id }}, '{{ team|escapejs }}')" title="Végleges törlés">
+                    <span class="material-icons">delete_forever</span>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if not deleted_clubs and not deleted_teams %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs törölt klub vagy csapat</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Users Tab -->
+{% if active_tab == 'users' %}
+<div class="trash-section">
+    <div class="trash-section-header">
+        <span class="material-icons">people</span>
+        <span class="trash-section-title">Törölt felhasználók</span>
+        <span class="trash-section-count">{{ deleted_users|length }} elem</span>
+    </div>
+    <div class="trash-list">
+        {% for user in deleted_users %}
+        <div class="trash-item">
+            <div class="trash-item-info">
+                <div class="trash-item-name">
+                    {{ user.get_full_name }}
+                    <span class="badge-deleted">Törölve</span>
+                </div>
+                <div class="trash-item-meta">
+                    {{ user.email }} | {{ user.get_role_display }}
+                    | Törölve: {{ user.deleted_at|date:"Y.m.d H:i" }}
+                </div>
+            </div>
+            <div class="trash-item-actions">
+                <button class="btn btn-sm btn-restore" onclick="restoreItem('user', {{ user.id }})" title="Visszaállítás">
+                    <span class="material-icons">restore</span>
+                </button>
+                <button class="btn btn-sm btn-hard-delete" onclick="permanentlyDelete('user', {{ user.id }}, '{{ user.get_full_name|escapejs }}')" title="Végleges törlés">
+                    <span class="material-icons">delete_forever</span>
+                </button>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <span class="material-icons">check_circle</span>
+            <p>Nincs törölt felhasználó</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+           document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+}
+
+// Simple restore (no cascade question)
+async function restoreItem(type, id) {
+    if (!confirm('Biztosan vissza szeretnéd állítani ezt az elemet?')) return;
+    try {
+        const response = await fetch(`/matches/api/${type}/${id}/restore/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ cascade: false })
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Hiba történt!');
+        }
+    } catch (e) {
+        alert('Hiba történt!');
+    }
+}
+
+// Restore with cascade question
+async function restoreWithCascadeQuestion(type, id, name) {
+    const cascade = confirm(`"${name}" visszaállítása.\n\nMinden tartalmat is vissza akarsz állítani?\n\n- OK: Minden kapcsolódó elem is visszaáll\n- Mégse: Csak ez az egy elem áll vissza`);
+
+    try {
+        const response = await fetch(`/matches/api/${type}/${id}/restore/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ cascade: cascade })
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Hiba történt!');
+        }
+    } catch (e) {
+        alert('Hiba történt!');
+    }
+}
+
+// Permanently delete
+async function permanentlyDelete(type, id, name) {
+    if (!confirm(`FIGYELEM! "${name}" véglegesen törlődik!\n\nEz a művelet NEM vonható vissza!`)) return;
+
+    try {
+        const response = await fetch(`/matches/api/${type}/${id}/permanently-delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Hiba történt!');
+        }
+    } catch (e) {
+        alert('Hiba történt!');
+    }
+}
+</script>
+{% endblock %}

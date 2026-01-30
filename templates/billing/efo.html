@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load format_filters %}
 
 {% block title %}EFO Bejelentés{% endblock %}
 {% block page_title %}EFO Bejelentés{% endblock %}
@@ -492,7 +493,7 @@
                 <div class="item-header">
                     <div class="match-info">
                         <div class="match-teams">
-                            {{ match.home_team.name|default:"TBD" }} - {{ match.away_team.name|default:"TBD" }}
+                            {{ match.home_team|default:"TBD" }} - {{ match.away_team|default:"TBD" }}
                         </div>
                         <div class="match-meta">
                             <span>{{ match.date|date:"Y.m.d" }}</span>
@@ -501,9 +502,9 @@
                         </div>
                     </div>
                     <div class="item-actions">
-                        {% if item.is_urgent %}<span class="urgent-badge">5 NAPON BELÜL</span>{% endif %}
+                        {% if item.is_urgent %}<span class="urgent-badge">{% if declaration_type == 'ekho' %}HATÁRIDŐ LEJÁRT{% else %}5 NAPON BELÜL{% endif %}</span>{% endif %}
                         <span class="changes-badge {% if item.is_resigned %}resigned{% endif %}">{% if item.is_orphaned %}TÖRÖLVE{% elif item.is_resigned %}LEMONDTA{% else %}MÓDOSÍTVA{% endif %}</span>
-                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">{{ item.gross_amount|floatformat:0 }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">{{ item.fee_amount|floatformat:0 }} Ft</span>{% endif %}
+                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">Br. {{ item.gross_amount|hu_number }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">Nt. {{ item.fee_amount|hu_number }} Ft</span>{% endif %}
                         <span class="referee-name" onclick="showUserDetails({{ user.id }})">
                             {{ user.last_name }} {{ user.first_name }}
                             <span class="material-icons" style="font-size: 0.9rem;">info</span>
@@ -546,7 +547,7 @@
                 <div class="item-header">
                     <div class="match-info">
                         <div class="match-teams">
-                            {{ item.assignment.match.home_team.name|default:"TBD" }} - {{ item.assignment.match.away_team.name|default:"TBD" }}
+                            {{ item.assignment.match.home_team|default:"TBD" }} - {{ item.assignment.match.away_team|default:"TBD" }}
                         </div>
                         <div class="match-meta">
                             <span>{{ item.assignment.match.date|date:"Y.m.d" }}</span>
@@ -555,8 +556,8 @@
                         </div>
                     </div>
                     <div class="item-actions">
-                        {% if item.is_urgent %}<span class="urgent-badge">5 NAPON BELÜL</span>{% endif %}
-                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">{{ item.gross_amount|floatformat:0 }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">{{ item.fee_amount|floatformat:0 }} Ft</span>{% endif %}
+                        {% if item.is_urgent %}<span class="urgent-badge">{% if declaration_type == 'ekho' %}HATÁRIDŐ LEJÁRT{% else %}5 NAPON BELÜL{% endif %}</span>{% endif %}
+                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">Br. {{ item.gross_amount|hu_number }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">Nt. {{ item.fee_amount|hu_number }} Ft</span>{% endif %}
                         <span class="referee-name" onclick="showUserDetails({{ item.assignment.user.id }})">
                             {{ item.assignment.user.last_name }} {{ item.assignment.user.first_name }}
                             <span class="material-icons" style="font-size: 0.9rem;">info</span>
@@ -597,7 +598,7 @@
                 <div class="item-header">
                     <div class="match-info">
                         <div class="match-teams">
-                            {{ match.home_team.name|default:"TBD" }} - {{ match.away_team.name|default:"TBD" }}
+                            {{ match.home_team|default:"TBD" }} - {{ match.away_team|default:"TBD" }}
                         </div>
                         <div class="match-meta">
                             <span>{{ match.date|date:"Y.m.d" }}</span>
@@ -606,7 +607,7 @@
                         </div>
                     </div>
                     <div class="item-actions">
-                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">{{ item.gross_amount|floatformat:0 }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">{{ item.fee_amount|floatformat:0 }} Ft</span>{% endif %}
+                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">Br. {{ item.gross_amount|hu_number }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">Nt. {{ item.fee_amount|hu_number }} Ft</span>{% endif %}
                         <span class="referee-name" onclick="showUserDetails({{ user.id }})">
                             {{ user.last_name }} {{ user.first_name }}
                             <span class="material-icons" style="font-size: 0.9rem;">info</span>
@@ -652,7 +653,7 @@
                 <div class="item-header">
                     <div class="match-info">
                         <div class="match-teams">
-                            {{ match.home_team.name|default:"TBD" }} - {{ match.away_team.name|default:"TBD" }}
+                            {{ match.home_team|default:"TBD" }} - {{ match.away_team|default:"TBD" }}
                         </div>
                         <div class="match-meta">
                             <span>{{ match.date|date:"Y.m.d" }}</span>
@@ -662,7 +663,7 @@
                     </div>
                     <div class="item-actions">
                         {% if item.declaration.status == 'modified' %}<span class="changes-badge">MÓDOSÍTVA</span>{% endif %}
-                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">{{ item.gross_amount|floatformat:0 }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">{{ item.fee_amount|floatformat:0 }} Ft</span>{% endif %}
+                        {% if declaration_type == 'ekho' and item.gross_amount %}<span class="fee-amount">Br. {{ item.gross_amount|hu_number }} Ft</span>{% elif declaration_type == 'efo' and item.fee_amount %}<span class="fee-amount">Nt. {{ item.fee_amount|hu_number }} Ft</span>{% endif %}
                         <span class="referee-name" onclick="showUserDetails({{ user.id }})">
                             {{ user.last_name }} {{ user.first_name }}
                             <span class="material-icons" style="font-size: 0.9rem;">info</span>

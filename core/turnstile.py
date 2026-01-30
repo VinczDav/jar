@@ -16,22 +16,27 @@ import requests
 from django.conf import settings
 
 
-def verify_turnstile(token, ip_address=None):
+def verify_turnstile(token, ip_address=None, fail_open=False):
     """
     Cloudflare Turnstile token ellenőrzése.
 
     Args:
         token: A cf-turnstile-response mező értéke a formból
         ip_address: Opcionális - a kliens IP címe
+        fail_open: Ha True, hálózati hiba esetén átengedi (alapértelmezett: False - szigorú mód)
 
     Returns:
         bool: True ha sikeres, False ha sikertelen
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     # Ha nincs beállítva a secret key, akkor átengedjük (dev mód)
     if not settings.TURNSTILE_SECRET_KEY:
         return True
 
     if not token:
+        logger.warning(f"Turnstile: no token provided from IP {ip_address}")
         return False
 
     try:
@@ -50,14 +55,24 @@ def verify_turnstile(token, ip_address=None):
         )
 
         result = response.json()
+
+        if not result.get('success', False):
+            error_codes = result.get('error-codes', [])
+            logger.warning(f"Turnstile verification failed from IP {ip_address}: {error_codes}")
+
         return result.get('success', False)
 
-    except requests.RequestException:
-        # Hálózati hiba esetén engedjük át (fail-open)
-        # Producition-ben lehet fail-close is, de az rossz UX
-        return True
-    except Exception:
-        return True
+    except requests.Timeout:
+        logger.error(f"Turnstile verification timeout from IP {ip_address}")
+        return fail_open
+
+    except requests.RequestException as e:
+        logger.error(f"Turnstile network error from IP {ip_address}: {e}")
+        return fail_open
+
+    except Exception as e:
+        logger.error(f"Turnstile unexpected error from IP {ip_address}: {e}")
+        return fail_open
 
 
 def get_turnstile_context():

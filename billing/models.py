@@ -619,7 +619,7 @@ class TaxDeclaration(models.Model):
 
         # Build notification message
         date_str = match.date.strftime('%Y.%m.%d') if match.date else ''
-        teams = f"{match.home_team.name if match.home_team else 'TBD'} - {match.away_team.name if match.away_team else 'TBD'}"
+        teams = f"{str(match.home_team) if match.home_team else 'TBD'} - {str(match.away_team) if match.away_team else 'TBD'}"
         # Get referee name - from assignment if exists, otherwise from stored user
         if self.assignment:
             referee_name = self.assignment.user.get_full_name()

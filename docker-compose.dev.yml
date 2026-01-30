@@ -1,0 +1,95 @@
+services:
+  web:
+    build: .
+    container_name: jar-web-dev
+    restart: unless-stopped
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-not-for-production
+      - ALLOWED_HOSTS=localhost,127.0.0.1
+      - DB_ENGINE=postgresql
+      - DB_NAME=jar_db
+      - DB_USER=jar_user
+      - DB_PASSWORD=jar_password
+      - DB_HOST=db
+      - DB_PORT=5432
+      - EMAIL_HOST=mailpit
+      - EMAIL_PORT=1025
+      - EMAIL_USE_TLS=False
+      - EMAIL_HOST_USER=
+      - EMAIL_HOST_PASSWORD=
+      - DEFAULT_FROM_EMAIL=JAR <noreply@localhost>
+      - TEST_EMAIL=True
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    depends_on:
+      - db
+      - mailpit
+    networks:
+      - jar-network
+    ports:
+      - "8000:8000"
+    command: python manage.py runserver 0.0.0.0:8000
+
+  db:
+    image: postgres:16-alpine
+    container_name: jar-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jar_db
+      POSTGRES_USER: jar_user
+      POSTGRES_PASSWORD: jar_password
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - jar-network
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: jar-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"  # Web UI
+      - "1025:1025"  # SMTP
+    networks:
+      - jar-network
+
+  # Scheduler service for cron jobs (optional for dev)
+  scheduler:
+    build: .
+    container_name: jar-scheduler-dev
+    restart: unless-stopped
+    profiles:
+      - scheduler  # Only starts with: docker compose --profile scheduler up
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-not-for-production
+      - DB_ENGINE=postgresql
+      - DB_NAME=jar_db
+      - DB_USER=jar_user
+      - DB_PASSWORD=jar_password
+      - DB_HOST=db
+      - DB_PORT=5432
+      - EMAIL_HOST=mailpit
+      - EMAIL_PORT=1025
+      - EMAIL_USE_TLS=False
+    volumes:
+      - .:/app
+      - ./scripts:/app/scripts:ro
+    depends_on:
+      - db
+      - mailpit
+    networks:
+      - jar-network
+    command: bash /app/scripts/scheduler.sh
+
+volumes:
+  postgres_data_dev:
+  static_volume:
+  media_volume:
+
+networks:
+  jar-network:
+    driver: bridge

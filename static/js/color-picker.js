@@ -208,11 +208,13 @@
         wrapper.className = 'color-picker-wrapper-custom';
         input.parentNode.insertBefore(wrapper, input);
 
-        // Create color button
+        // Create color button with palette icon
         const colorBtn = document.createElement('button');
         colorBtn.type = 'button';
         colorBtn.className = 'color-picker-btn';
-        colorBtn.innerHTML = `<span class="color-preview" style="background: ${input.value || '#6366f1'}"></span>`;
+        colorBtn.innerHTML = `<span class="material-icons" style="font-size: 1.25rem;">palette</span>`;
+        colorBtn.style.background = input.value || '#6366f1';
+        colorBtn.style.color = 'white';
 
         // Create popup
         const popup = createColorPickerPopup();
@@ -222,7 +224,8 @@
 
         wrapper.appendChild(input);
         wrapper.appendChild(colorBtn);
-        wrapper.appendChild(popup);
+        // Append popup to body to avoid modal overflow clipping
+        document.body.appendChild(popup);
 
         // State
         let currentHue = 240;
@@ -257,7 +260,7 @@
         function updateUI() {
             previewBox.style.background = currentColor;
             hexInput.value = currentColor.toUpperCase();
-            colorBtn.querySelector('.color-preview').style.background = currentColor;
+            colorBtn.style.background = currentColor;
             input.value = currentColor;
         }
 
@@ -454,12 +457,32 @@
             updateSlMarker();
             updateUI();
 
+            // Use fixed positioning to avoid modal overflow clipping
+            const btnRect = colorBtn.getBoundingClientRect();
+            popup.style.position = 'fixed';
+            popup.style.top = (btnRect.bottom + 8) + 'px';
+            popup.style.left = btnRect.left + 'px';
+
+            // Ensure popup doesn't overflow viewport
             popup.classList.add('show');
+
+            // Adjust if overflowing right
+            const popupRect = popup.getBoundingClientRect();
+            if (popupRect.right > window.innerWidth - 16) {
+                popup.style.left = (window.innerWidth - popupRect.width - 16) + 'px';
+            }
+            // Adjust if overflowing bottom
+            if (popupRect.bottom > window.innerHeight - 16) {
+                popup.style.top = (btnRect.top - popupRect.height - 8) + 'px';
+            }
         }
 
         function hidePopup() {
             popup.classList.remove('show');
             saveForm.style.display = 'none';
+            // Reset positioning - move off-screen
+            popup.style.top = '-9999px';
+            popup.style.left = '-9999px';
         }
 
         colorBtn.addEventListener('click', (e) => {
@@ -474,7 +497,8 @@
 
         // Close on outside click
         document.addEventListener('click', (e) => {
-            if (!wrapper.contains(e.target)) {
+            // Check if click is outside both wrapper and popup (popup is now in body)
+            if (!wrapper.contains(e.target) && !popup.contains(e.target)) {
                 hidePopup();
             }
         });
@@ -503,42 +527,43 @@
             .color-picker-btn {
                 width: 36px;
                 height: 36px;
-                padding: 3px;
+                padding: 0;
                 border: 2px solid var(--border-color, #e2e8f0);
                 border-radius: 6px;
-                background: var(--card-bg, #fff);
                 cursor: pointer;
                 transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                text-shadow: 0 1px 3px rgba(0,0,0,0.5);
             }
 
             .color-picker-btn:hover {
                 border-color: var(--accent-color, #3b82f6);
-            }
-
-            .color-picker-btn .color-preview {
-                display: block;
-                width: 100%;
-                height: 100%;
-                border-radius: 3px;
+                transform: scale(1.05);
             }
 
             .color-picker-popup {
-                position: absolute;
-                top: 100%;
-                right: 0;
+                position: fixed;
+                top: -9999px;
+                left: -9999px;
                 z-index: 10000;
                 width: 260px;
+                max-width: calc(100vw - 2rem);
                 background: var(--card-bg, #ffffff);
                 border: 1px solid var(--border-color, #e2e8f0);
                 border-radius: 12px;
                 box-shadow: 0 8px 30px rgba(0,0,0,0.2);
                 padding: 0;
-                margin-top: 8px;
-                display: none;
+                visibility: hidden;
+                opacity: 0;
+                transition: opacity 0.15s ease;
             }
 
             .color-picker-popup.show {
-                display: block;
+                visibility: visible;
+                opacity: 1;
             }
 
             .color-picker-header {

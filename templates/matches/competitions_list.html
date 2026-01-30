@@ -5,105 +5,195 @@
 
 {% block extra_css %}
 <style>
+    .page-intro {
+        background: linear-gradient(135deg, var(--primary-color) 0%, #4f46e5 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    .page-intro::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 60%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+        transform: rotate(25deg);
+    }
+    .page-intro h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .page-intro h2 .material-icons {
+        font-size: 2rem;
+        opacity: 0.9;
+    }
+    .page-intro p {
+        opacity: 0.9;
+        font-size: 0.95rem;
+        margin: 0;
+        max-width: 600px;
+    }
+    .stats-row {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    .stat-chip {
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .stat-chip .material-icons {
+        font-size: 1.1rem;
+    }
+
     .data-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+        display: flex;
+        flex-direction: column;
         gap: 1.5rem;
     }
     .data-section {
         background: var(--card-bg);
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        overflow: hidden;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+        overflow: visible !important;
+        border: 1px solid var(--border-color);
     }
     .data-section-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 1rem 1.25rem;
-        background: var(--bg-color);
+        padding: 1.25rem 1.5rem;
+        background: linear-gradient(to right, var(--bg-color), transparent);
         border-bottom: 1px solid var(--border-color);
+        border-radius: 16px 16px 0 0;
     }
     .data-section-title {
-        font-weight: 600;
+        font-weight: 700;
+        font-size: 1.1rem;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
     }
     .data-section-title .material-icons {
-        color: var(--accent-color);
+        font-size: 1.5rem;
+        padding: 0.5rem;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary-color), #4f46e5);
+        color: white;
+    }
+    .data-section-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
     }
     .data-section-count {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        background: var(--border-color);
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: white;
+        background: linear-gradient(135deg, var(--primary-color), #4f46e5);
+        padding: 0.35rem 0.85rem;
+        border-radius: 50px;
+        min-width: 36px;
+        text-align: center;
     }
     .data-list {
-        max-height: 400px;
-        overflow-y: auto;
+        overflow: visible !important;
+        max-height: none !important;
+        padding: 0.5rem 0;
     }
     .data-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 0.75rem 1.25rem;
-        border-bottom: 1px solid var(--border-color);
-    }
-    .data-item:last-child {
-        border-bottom: none;
+        padding: 1rem 1.5rem;
+        margin: 0.25rem 0.75rem;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        overflow: visible !important;
+        border: 1px solid transparent;
     }
     .data-item:hover {
         background: var(--bg-color);
+        border-color: var(--border-color);
     }
     .data-item-info {
         flex: 1;
     }
     .data-item-name {
-        font-weight: 500;
+        font-weight: 600;
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        position: relative;
     }
     .data-item-meta {
         font-size: 0.85rem;
         color: var(--text-secondary);
+        margin-top: 0.25rem;
     }
     .add-form {
-        padding: 1rem 1.25rem;
-        background: var(--bg-color);
+        padding: 1.5rem;
+        background: linear-gradient(to top, var(--bg-color), transparent);
         border-top: 1px solid var(--border-color);
+        border-radius: 0 0 16px 16px;
     }
     .add-form-row {
         display: flex;
-        gap: 0.5rem;
+        gap: 0.75rem;
         flex-wrap: wrap;
+        align-items: center;
     }
     .add-form input,
     .add-form select {
         flex: 1;
         min-width: 120px;
-        padding: 0.5rem 0.75rem;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
+        padding: 0.65rem 1rem;
+        border: 2px solid var(--border-color);
+        border-radius: 10px;
         background: var(--card-bg);
         color: var(--text-primary);
         font-size: 0.9rem;
+        transition: all 0.2s;
     }
     .add-form input:focus,
     .add-form select:focus {
         outline: none;
-        border-color: var(--accent-color);
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+    .add-form input::placeholder {
+        color: var(--text-secondary);
     }
     .add-form button {
-        padding: 0.5rem 1rem;
+        padding: 0.65rem 1.25rem;
         white-space: nowrap;
+        border-radius: 10px;
+        font-weight: 600;
     }
     .empty-list {
-        padding: 2rem;
+        padding: 3rem;
         text-align: center;
         color: var(--text-secondary);
+    }
+    .empty-list .material-icons {
+        font-size: 3rem;
+        opacity: 0.3;
+        margin-bottom: 0.75rem;
     }
     .checkbox-label {
         display: flex;
@@ -111,86 +201,78 @@
         gap: 0.5rem;
         font-size: 0.9rem;
         cursor: pointer;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        transition: background 0.2s;
+    }
+    .checkbox-label:hover {
+        background: var(--card-bg);
     }
     .checkbox-label input {
         width: auto;
         min-width: auto;
         flex: none;
+        accent-color: var(--primary-color);
     }
     .phase-list {
-        margin-left: 1.5rem;
-        margin-top: 0.25rem;
+        margin-left: 0.5rem;
+        margin-top: 0.75rem;
+        padding-left: 1rem;
+        border-left: 2px solid var(--border-color);
     }
     .phase-item {
         font-size: 0.85rem;
         color: var(--text-secondary);
-        padding: 0.25rem 0;
+        padding: 0.35rem 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
+    .phase-item span:first-child {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .phase-item span:first-child::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        opacity: 0.5;
+    }
     .phase-payment {
         font-size: 0.8rem;
         color: var(--success-color);
-        font-weight: 500;
+        font-weight: 600;
+        background: rgba(34, 197, 94, 0.1);
+        padding: 0.2rem 0.6rem;
+        border-radius: 50px;
     }
     .date-field-group {
         display: flex;
         align-items: center;
-        gap: 0.25rem;
+        gap: 0.5rem;
         flex: 1;
-        min-width: 140px;
+        min-width: 160px;
     }
     .date-field-group label {
         font-size: 0.85rem;
         color: var(--text-secondary);
         white-space: nowrap;
+        font-weight: 500;
     }
     .date-field-group input {
         flex: 1;
-    }
-    .payment-input-group {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .payment-input-group input[type="number"] {
-        width: 100px;
-        min-width: 100px;
-    }
-    .payment-input-group select {
-        min-width: 140px;
-    }
-    /* Allow color picker popup to overflow */
-    .data-section {
-        overflow: visible !important;
-    }
-    .data-list {
-        overflow: visible !important;
-        max-height: none !important;
-    }
-    .data-item {
-        overflow: visible !important;
-    }
-    .data-item-name {
-        position: relative;
-    }
-    .color-badge {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 3px;
-        margin-right: 0.5rem;
-        vertical-align: middle;
     }
     .btn-icon {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 28px;
-        height: 28px;
+        width: 32px;
+        height: 32px;
         border: none;
-        border-radius: 6px;
+        border-radius: 8px;
         background: var(--bg-color);
         color: var(--text-secondary);
         cursor: pointer;
@@ -208,8 +290,22 @@
         background: #fee2e2;
         color: var(--danger-color);
     }
-    /* Inline edit popup */
-    .edit-popup-overlay {
+    .btn-icon-small {
+        width: 24px;
+        height: 24px;
+    }
+    .btn-icon-small .material-icons {
+        font-size: 0.85rem;
+    }
+    .order-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        margin-right: 0.5rem;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
         display: none;
         position: fixed;
         top: 0;
@@ -220,166 +316,375 @@
         z-index: 9999;
         align-items: center;
         justify-content: center;
+        padding: 1rem;
     }
-    .edit-popup-overlay.show {
+    .modal-overlay.show {
         display: flex;
     }
-    .edit-popup {
+    .modal-content {
         background: var(--card-bg);
-        border-radius: 12px;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         width: 100%;
-        max-width: 450px;
+        max-width: 600px;
         max-height: 90vh;
-        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
-    .edit-popup-header {
+    .modal-body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 1.5rem;
+        min-height: 0;
+    }
+    .modal-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 1rem 1.25rem;
+        padding: 1.25rem 1.5rem;
         border-bottom: 1px solid var(--border-color);
+        background: var(--bg-color);
+        border-radius: 16px 16px 0 0;
+        flex-shrink: 0;
     }
-    .edit-popup-title {
-        font-weight: 600;
+    .modal-title {
+        font-weight: 700;
         font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
-    .edit-popup-close {
+    .modal-close {
         background: none;
         border: none;
         font-size: 1.5rem;
         cursor: pointer;
         color: var(--text-secondary);
         line-height: 1;
-    }
-    .edit-popup-body {
-        padding: 1.25rem;
-    }
-    .edit-popup .form-group {
-        margin-bottom: 1rem;
-    }
-    .edit-popup .form-group label {
-        display: block;
-        font-weight: 500;
-        margin-bottom: 0.4rem;
-        font-size: 0.9rem;
-    }
-    .edit-popup .form-group input,
-    .edit-popup .form-group select {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        border: 1px solid var(--border-color);
+        padding: 0.25rem;
         border-radius: 6px;
-        font-size: 0.9rem;
-        background: var(--card-bg);
+        transition: all 0.2s;
+    }
+    .modal-close:hover {
+        background: var(--border-color);
         color: var(--text-primary);
     }
-    .edit-popup .form-row {
+    .modal-footer {
         display: flex;
         gap: 0.75rem;
-    }
-    .edit-popup .form-row .form-group {
-        flex: 1;
-    }
-    .edit-popup-actions {
-        display: flex;
-        gap: 0.5rem;
-        padding: 1rem 1.25rem;
+        padding: 1rem 1.5rem;
         border-top: 1px solid var(--border-color);
         background: var(--bg-color);
-        border-radius: 0 0 12px 12px;
+        border-radius: 0 0 16px 16px;
+        align-items: center;
+        flex-shrink: 0;
     }
-    .edit-popup-actions .btn-danger {
-        margin-left: auto;
-        background: var(--danger-color);
-        color: white;
+    .save-status {
+        flex: 1;
+        font-size: 0.85rem;
+        font-weight: 500;
     }
-    .edit-popup-actions .btn-danger:hover {
-        background: #dc2626;
+    .save-status.saving {
+        color: var(--warning-color);
     }
-    /* Phase items in popup */
-    .phase-edit-item {
+    .save-status.saved {
+        color: var(--success-color);
+    }
+    .save-status.error {
+        color: var(--danger-color);
+    }
+
+    /* Form styles in modal */
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    .form-group:last-child {
+        margin-bottom: 0;
+    }
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+    .form-group .help-text {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.35rem;
+    }
+    .form-group input:not([type="color"]):not([type="checkbox"]),
+    .form-group select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid var(--border-color);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        background: var(--card-bg);
+        color: var(--text-primary);
+        transition: all 0.2s;
+    }
+    .form-group input:not([type="color"]):not([type="checkbox"]):focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    @media (max-width: 500px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+    .form-section {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border-color);
+    }
+    .form-section-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-primary);
+    }
+    .form-section-title .material-icons {
+        font-size: 1.25rem;
+        color: var(--accent-color);
+    }
+
+    /* Checkboxes inline */
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    .checkbox-group label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
         background: var(--bg-color);
         border-radius: 8px;
-        padding: 0.75rem;
-        margin-bottom: 0.5rem;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .checkbox-group label:hover {
+        border-color: var(--border-color);
+    }
+    .checkbox-group label:has(input:checked) {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: var(--accent-color);
+    }
+    .checkbox-group input {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--accent-color);
+    }
+
+    /* Phase edit styles */
+    .phases-container {
+        margin-top: 0.75rem;
+        width: 100%;
+        overflow: hidden;
+    }
+    .phase-edit-item {
+        background: var(--bg-color);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
     }
     .phase-edit-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
     }
     .phase-edit-name {
-        font-weight: 500;
         flex: 1;
+        margin-right: 0.5rem;
     }
     .phase-edit-name input {
         width: 100%;
-        padding: 0.35rem 0.5rem;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
-        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
         background: var(--card-bg);
         color: var(--text-primary);
     }
-    .phase-edit-fields {
+    .phase-counts-row {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 0.5rem;
-        margin-top: 0.5rem;
+        margin-bottom: 0.75rem;
     }
-    .phase-edit-fields label {
-        font-size: 0.75rem;
+    .phase-counts-row > div {
+        min-width: 0;
+    }
+    .phase-counts-row > div label {
+        font-size: 0.7rem;
         color: var(--text-secondary);
         display: block;
         margin-bottom: 0.15rem;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
-    .phase-edit-fields input,
-    .phase-edit-fields select {
+    .phase-counts-row > div input {
         width: 100%;
-        padding: 0.35rem 0.5rem;
+        min-width: 0;
+        padding: 0.4rem 0.5rem;
         border: 1px solid var(--border-color);
-        border-radius: 4px;
+        border-radius: 6px;
         font-size: 0.85rem;
         background: var(--card-bg);
         color: var(--text-primary);
-    }
-    .phase-payment-row {
-        display: flex;
-        gap: 0.5rem;
-        grid-column: span 3;
-        margin-top: 0.25rem;
-    }
-    .phase-payment-row > div:first-child {
-        flex: 1;
-    }
-    .phase-payment-row > div:last-child {
-        flex: 1.2;
-    }
-    .empty-phases {
         text-align: center;
-        padding: 1rem;
+        box-sizing: border-box;
+    }
+    .phase-payment-section {
+        background: var(--card-bg);
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+    .phase-payment-section-title {
+        font-size: 0.75rem;
+        font-weight: 600;
         color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .phase-payment-section-title .material-icons {
         font-size: 0.9rem;
+    }
+    .phase-payment-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.5rem;
+    }
+    .phase-payment-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 0;
+    }
+    .phase-payment-item label {
+        font-size: 0.65rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .phase-payment-item input {
+        width: 100%;
+        min-width: 0;
+        padding: 0.35rem 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.8rem;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        box-sizing: border-box;
+    }
+    .phase-payment-item select {
+        width: 100%;
+        min-width: 0;
+        padding: 0.25rem 0.35rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.7rem;
+        background: var(--bg-color);
+        color: var(--text-secondary);
+        margin-top: 0.15rem;
+        box-sizing: border-box;
+    }
+    .phase-options-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .phase-options-row label {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.8rem;
+        cursor: pointer;
+        padding: 0.35rem 0.6rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .phase-options-row label:has(input:checked) {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: var(--accent-color);
+    }
+    .phase-options-row input {
+        width: 14px;
+        height: 14px;
+        accent-color: var(--accent-color);
     }
     .phase-delete-btn {
         background: none;
         border: none;
         color: var(--text-secondary);
         cursor: pointer;
-        padding: 0.25rem;
-        border-radius: 4px;
+        padding: 0.35rem;
+        border-radius: 6px;
         transition: all 0.2s;
     }
     .phase-delete-btn:hover {
         background: #fee2e2;
         color: var(--danger-color);
     }
-    .phase-status {
-        font-size: 0.75rem;
-        color: var(--success-color);
-        margin-left: 0.5rem;
+    .empty-phases {
+        text-align: center;
+        padding: 1.5rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    .add-phase-btn {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px dashed var(--border-color);
+        border-radius: 10px;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+    }
+    .add-phase-btn:hover {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+        background: rgba(99, 102, 241, 0.05);
     }
 </style>
 {% endblock %}
@@ -388,12 +693,32 @@
 {% if messages %}
 <div style="margin-bottom: 1rem;">
     {% for message in messages %}
-    <div style="padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; background: rgba(40, 167, 69, 0.1); border: 1px solid var(--success-color);">
+    <div style="padding: 1rem; border-radius: 12px; margin-bottom: 0.5rem; background: rgba(34, 197, 94, 0.1); border: 1px solid var(--success-color); display: flex; align-items: center; gap: 0.75rem;">
+        <span class="material-icons" style="color: var(--success-color);">check_circle</span>
         {{ message }}
     </div>
     {% endfor %}
 </div>
 {% endif %}
+
+<!-- Page Intro -->
+<div class="page-intro">
+    <h2>
+        <span class="material-icons">settings</span>
+        Bajnokság kezelés
+    </h2>
+    <p>Szezonok, bajnokságok és szakaszok kezelése. A szakaszokhoz díjazást és játékvezető összetételt rendelhetsz.</p>
+    <div class="stats-row">
+        <div class="stat-chip">
+            <span class="material-icons">date_range</span>
+            {{ seasons|length }} szezon
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">emoji_events</span>
+            {{ competitions|length }} bajnokság
+        </div>
+    </div>
+</div>
 
 <div class="data-grid">
     <!-- Szezonok -->
@@ -412,32 +737,38 @@
                     <div class="data-item-name">
                         {{ season.name }}
                         {% if season.is_active %}
-                        <span class="badge badge-success" style="font-size: 0.7rem;">Aktív</span>
+                        <span class="badge badge-success" style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 50px;">Aktív</span>
                         {% endif %}
                     </div>
-                    <div class="data-item-meta">{{ season.start_date|date:"Y.m.d" }} - {{ season.end_date|date:"Y.m.d" }}</div>
+                    <div class="data-item-meta">
+                        <span class="material-icons" style="font-size: 0.9rem; vertical-align: middle; margin-right: 0.25rem;">calendar_today</span>
+                        {{ season.start_date|date:"Y.m.d" }} - {{ season.end_date|date:"Y.m.d" }}
+                    </div>
                 </div>
             </div>
             {% empty %}
-            <div class="empty-list">Nincs szezon</div>
+            <div class="empty-list">
+                <span class="material-icons">event_busy</span>
+                <p>Még nincs szezon létrehozva</p>
+            </div>
             {% endfor %}
         </div>
         <form method="post" action="{% url 'matches:add_season' %}" class="add-form">
             {% csrf_token %}
-            <div class="add-form-row" style="margin-bottom: 0.5rem;">
+            <div class="add-form-row" style="margin-bottom: 0.75rem;">
                 <input type="text" name="name" placeholder="Szezon neve (pl. 2025/26)" required>
             </div>
-            <div class="add-form-row" style="margin-bottom: 0.5rem;">
+            <div class="add-form-row" style="margin-bottom: 0.75rem;">
                 <div class="date-field-group">
-                    <label>Tól:</label>
+                    <label>Kezdés:</label>
                     <input type="date" name="start_date" required>
                 </div>
                 <div class="date-field-group">
-                    <label>Ig:</label>
+                    <label>Befejezés:</label>
                     <input type="date" name="end_date" required>
                 </div>
             </div>
-            <div class="add-form-row">
+            <div class="add-form-row" style="justify-content: space-between;">
                 <label class="checkbox-label">
                     <input type="checkbox" name="is_active">
                     Aktív szezon
@@ -457,28 +788,38 @@
                 <span class="material-icons">emoji_events</span>
                 Bajnokságok
             </div>
-            <span class="data-section-count">{{ competitions|length }}</span>
+            <div class="data-section-actions">
+                <span class="data-section-count">{{ competitions|length }}</span>
+                <button type="button" class="btn btn-primary btn-sm" onclick="openNewCompetitionModal()">
+                    <span class="material-icons">add</span>
+                    Új bajnokság
+                </button>
+            </div>
         </div>
-        <div class="data-list">
+        <div class="data-list" id="competitionsList">
             {% for competition in competitions %}
-            <div class="data-item" style="flex-direction: column; align-items: flex-start;">
+            <div class="data-item" data-competition-id="{{ competition.id }}" style="flex-direction: column; align-items: flex-start;">
                 <div class="data-item-info" style="width: 100%;">
                     <div class="data-item-name" style="justify-content: space-between; width: 100%;">
-                        <div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div class="order-buttons">
+                                <button type="button" class="btn-icon btn-icon-small" onclick="reorderCompetition({{ competition.id }}, 'up')" title="Fel">
+                                    <span class="material-icons">keyboard_arrow_up</span>
+                                </button>
+                                <button type="button" class="btn-icon btn-icon-small" onclick="reorderCompetition({{ competition.id }}, 'down')" title="Le">
+                                    <span class="material-icons">keyboard_arrow_down</span>
+                                </button>
+                            </div>
                             {% if competition.short_name %}
-                            <span class="badge" style="background: {{ competition.color }}; color: white;">{{ competition.short_name }}</span>
+                            <span class="badge" style="background: {{ competition.color }}; color: white; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 6px;">{{ competition.short_name }}</span>
                             {% endif %}
-                            {{ competition.name }}
+                            <span style="font-weight: 600;">{{ competition.name }}</span>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 0.25rem;">
-                            <form method="post" action="{% url 'matches:update_competition_color' competition.id %}" style="margin: 0;">
-                                {% csrf_token %}
-                                <input type="color" name="color" value="{{ competition.color }}" data-autosubmit title="Szín módosítása">
-                            </form>
-                            <button type="button" class="btn-icon" title="Szerkesztés" onclick="openEditPopup({{ competition.id }}, '{{ competition.name|escapejs }}', '{{ competition.short_name|escapejs }}', {{ competition.season_id }}, '{{ competition.color }}', {{ competition.match_duration|default:60 }})">
+                        <div style="display: flex; align-items: center; gap: 0.35rem;">
+                            <button type="button" class="btn-icon" title="Szerkesztés" onclick="openEditPopup({{ competition.id }}, '{{ competition.name|escapejs }}', '{{ competition.short_name|escapejs }}', {{ competition.season_id }}, '{{ competition.color }}', {{ competition.match_duration|default:60 }}, {{ competition.referee_application_default|yesno:'true,false' }}, {{ competition.inspector_application_default|yesno:'true,false' }}, {{ competition.tournament_director_application_default|yesno:'true,false' }})">
                                 <span class="material-icons">edit</span>
                             </button>
-                            <form method="post" action="{% url 'matches:delete_competition' competition.id %}" style="margin: 0;" onsubmit="return confirm('Biztosan törölni szeretnéd a {{ competition.short_name|default:competition.name }} bajnokságot?');">
+                            <form method="post" action="{% url 'matches:delete_competition' competition.id %}" style="margin: 0;" onsubmit="return confirm('Biztosan törölni szeretnéd a {{ competition.short_name|default:competition.name }} bajnokságot?\n\nA törlés nem visszavonható!');">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-icon btn-icon-danger" title="Törlés">
                                     <span class="material-icons">delete</span>
@@ -486,12 +827,15 @@
                             </form>
                         </div>
                     </div>
-                    <div class="data-item-meta">{{ competition.season.name }}</div>
+                    <div class="data-item-meta" style="margin-top: 0.35rem; margin-left: 60px;">
+                        <span class="material-icons" style="font-size: 0.9rem; vertical-align: middle; margin-right: 0.25rem;">folder</span>
+                        {{ competition.season.name }}
+                    </div>
                     {% if competition.phases.exists %}
-                    <div class="phase-list">
+                    <div class="phase-list" style="margin-left: 60px;">
                         {% for phase in competition.phases.all %}
                         <div class="phase-item">
-                            <span>- {{ phase.name }} <span style="font-size: 0.75rem; color: var(--text-secondary);">({{ phase.get_composition_display }})</span></span>
+                            <span>{{ phase.name }} <span style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.8;">({{ phase.get_composition_display }})</span></span>
                             <span class="phase-payment">{{ phase.get_payment_display }}</span>
                         </div>
                         {% endfor %}
@@ -500,131 +844,156 @@
                 </div>
             </div>
             {% empty %}
-            <div class="empty-list">Nincs bajnokság</div>
+            <div class="empty-list">
+                <span class="material-icons">emoji_events</span>
+                <p>Még nincs bajnokság létrehozva</p>
+            </div>
             {% endfor %}
         </div>
-        <form method="post" action="{% url 'matches:add_competition' %}" class="add-form">
-            {% csrf_token %}
-            <div class="add-form-row" style="margin-bottom: 0.5rem;">
-                <input type="text" name="name" placeholder="Bajnokság neve" required>
-                <input type="text" name="short_name" placeholder="Rövid" style="max-width: 80px;">
-                <div class="color-picker-wrapper">
-                    <input type="color" name="color" value="#6366f1" class="color-picker" title="Bajnokság színe">
-                </div>
-            </div>
-            <div class="add-form-row">
-                <select name="season" required>
-                    <option value="">Válassz szezont...</option>
-                    {% for season in seasons %}
-                    <option value="{{ season.id }}">{{ season.name }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn btn-primary">
-                    <span class="material-icons">add</span>
-                    Hozzáadás
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Szakaszok -->
-    <div class="data-section" style="grid-column: 1 / -1;">
-        <div class="data-section-header">
-            <div class="data-section-title">
-                <span class="material-icons">format_list_numbered</span>
-                Szakaszok hozzáadása
-            </div>
-        </div>
-        <form method="post" action="{% url 'matches:add_phase' %}" class="add-form">
-            {% csrf_token %}
-            <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
-                Adj hozzá szakaszt egy bajnoksághoz (pl. Alapszakasz, Rájátszás, Középszakasz).
-            </p>
-            <div class="add-form-row" style="margin-bottom: 0.5rem;">
-                <select name="competition" required>
-                    <option value="">Válassz bajnokságot...</option>
-                    {% for competition in competitions %}
-                    <option value="{{ competition.id }}">{{ competition.short_name }} - {{ competition.name }} ({{ competition.season.name }})</option>
-                    {% endfor %}
-                </select>
-                <input type="text" name="name" placeholder="Szakasz neve" required>
-            </div>
-            <div class="add-form-row">
-                <div class="payment-input-group">
-                    <label style="font-size: 0.85rem; color: var(--text-secondary);">Díjazás:</label>
-                    <input type="number" name="payment_amount" value="0" min="0" step="100" placeholder="Ft">
-                    <select name="payment_type">
-                        <option value="per_person">Ft / fő</option>
-                        <option value="total">Ft összesen</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">
-                    <span class="material-icons">add</span>
-                    Hozzáadás
-                </button>
-            </div>
-        </form>
     </div>
 </div>
 
-<!-- Edit Competition Popup -->
-<div class="edit-popup-overlay" id="editPopup">
-    <div class="edit-popup" style="max-width: 550px;">
-        <div class="edit-popup-header">
-            <span class="edit-popup-title">Bajnokság szerkesztése</span>
-            <button type="button" class="edit-popup-close" onclick="closeEditPopup()">&times;</button>
+<!-- New Competition Modal -->
+<div class="modal-overlay" id="newCompetitionModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-title">
+                <span class="material-icons">add_circle</span>
+                Új bajnokság
+            </span>
+            <button type="button" class="modal-close" onclick="closeNewCompetitionModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="new_name">Bajnokság neve *</label>
+                    <input type="text" id="new_name" placeholder="pl. OB1 Férfi" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="new_short_name">Rövid név</label>
+                    <input type="text" id="new_short_name" placeholder="pl. OB1">
+                </div>
+                <div class="form-group">
+                    <label for="new_season">Szezon *</label>
+                    <select id="new_season" required>
+                        <option value="">Válassz...</option>
+                        {% for season in seasons %}
+                        <option value="{{ season.id }}" {% if season.is_active %}selected{% endif %}>{{ season.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Szín</label>
+                    <input type="color" id="new_color" name="color" value="#6366f1">
+                </div>
+                <div class="form-group">
+                    <label for="new_match_duration">Meccs időtartam (perc)</label>
+                    <input type="number" id="new_match_duration" value="60" min="1" max="300">
+                    <span class="help-text">EFO/EKHO számításhoz</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="createCompetition()">
+                <span class="material-icons">add</span>
+                Létrehozás
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="closeNewCompetitionModal()">
+                Mégse
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Competition Modal -->
+<div class="modal-overlay" id="editCompetitionModal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <span class="modal-title">
+                <span class="material-icons">edit</span>
+                Bajnokság szerkesztése
+            </span>
+            <button type="button" class="modal-close" onclick="closeEditPopup()">&times;</button>
         </div>
         <form method="post" id="editForm">
             {% csrf_token %}
-            <div class="edit-popup-body">
+            <div class="modal-body">
                 <div class="form-row">
-                    <div class="form-group" style="flex: 2;">
-                        <label for="edit_name">Bajnokság neve</label>
+                    <div class="form-group">
+                        <label for="edit_name">Bajnokság neve *</label>
                         <input type="text" id="edit_name" name="name" required>
                     </div>
-                    <div class="form-group" style="flex: 1;">
+                    <div class="form-group">
                         <label for="edit_short_name">Rövid név</label>
                         <input type="text" id="edit_short_name" name="short_name">
                     </div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group" style="flex: 2;">
-                        <label for="edit_season">Szezon</label>
+                    <div class="form-group">
+                        <label for="edit_season">Szezon *</label>
                         <select id="edit_season" name="season" required>
                             {% for season in seasons %}
                             <option value="{{ season.id }}">{{ season.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="form-group" style="flex: 1;">
+                    <div class="form-group">
                         <label>Szín</label>
-                        <input type="color" id="edit_color" name="color" style="width: 100%; height: 38px;">
+                        <input type="color" id="edit_color" name="color">
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="edit_match_duration">Meccs időtartam (perc)</label>
-                    <input type="number" id="edit_match_duration" name="match_duration" min="1" max="300" placeholder="60">
-                    <small style="color: var(--text-secondary); font-size: 0.8rem;">Egy mérkőzés átlagos időtartama - megjelenik az EFO/EKHO-nál</small>
+                    <input type="number" id="edit_match_duration" name="match_duration" min="1" max="300">
+                    <span class="help-text">Egy mérkőzés átlagos időtartama - megjelenik az EFO/EKHO-nál</span>
+                </div>
+
+                <!-- Application Defaults -->
+                <div class="form-section">
+                    <div class="form-section-title">
+                        <span class="material-icons">how_to_reg</span>
+                        Jelentkezés alapértelmezett
+                    </div>
+                    <span class="help-text" style="display: block; margin-bottom: 0.75rem;">Új szakaszok automatikusan öröklik ezeket a beállításokat</span>
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="edit_referee_application_default" name="referee_application_default">
+                            Játékvezetők
+                        </label>
+                        <label>
+                            <input type="checkbox" id="edit_inspector_application_default" name="inspector_application_default">
+                            Ellenőrök
+                        </label>
+                        <label>
+                            <input type="checkbox" id="edit_tournament_director_application_default" name="tournament_director_application_default">
+                            TIG-ek
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Phases Section -->
-                <div class="phases-section" style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                <div class="form-section">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                        <label style="font-weight: 600; font-size: 0.95rem;">Szakaszok</label>
-                        <button type="button" class="btn btn-sm btn-secondary" onclick="addNewPhase()" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
-                            <span class="material-icons" style="font-size: 1rem;">add</span>
-                            Új szakasz
-                        </button>
-                    </div>
-                    <div id="phasesContainer">
-                        <!-- Phases will be loaded dynamically -->
-                        <div class="loading-phases" style="text-align: center; padding: 1rem; color: var(--text-secondary);">
-                            Betöltés...
+                        <div class="form-section-title" style="margin: 0;">
+                            <span class="material-icons">layers</span>
+                            Szakaszok
                         </div>
                     </div>
+                    <div id="phasesContainer" class="phases-container">
+                        <div class="empty-phases">Betöltés...</div>
+                    </div>
+                    <button type="button" class="add-phase-btn" onclick="addNewPhase()">
+                        <span class="material-icons">add</span>
+                        Új szakasz hozzáadása
+                    </button>
                 </div>
             </div>
-            <div class="edit-popup-actions">
+            <div class="modal-footer">
+                <span id="globalSaveStatus" class="save-status"></span>
                 <button type="submit" class="btn btn-primary">
                     <span class="material-icons">save</span>
                     Mentés
@@ -642,7 +1011,69 @@
 <script>
 let currentCompetitionId = null;
 
-function openEditPopup(id, name, shortName, seasonId, color, matchDuration) {
+// New Competition Modal
+function openNewCompetitionModal() {
+    document.getElementById('new_name').value = '';
+    document.getElementById('new_short_name').value = '';
+    document.getElementById('new_color').value = '#6366f1';
+    document.getElementById('new_match_duration').value = 60;
+    document.getElementById('newCompetitionModal').classList.add('show');
+    document.getElementById('new_name').focus();
+    // Reinitialize color picker for the modal
+    if (window.ColorPicker) {
+        window.ColorPicker.initAll();
+    }
+}
+
+function closeNewCompetitionModal() {
+    document.getElementById('newCompetitionModal').classList.remove('show');
+}
+
+function createCompetition() {
+    const name = document.getElementById('new_name').value.trim();
+    const shortName = document.getElementById('new_short_name').value.trim();
+    const seasonId = document.getElementById('new_season').value;
+    const color = document.getElementById('new_color').value;
+    const matchDuration = parseInt(document.getElementById('new_match_duration').value) || 60;
+
+    if (!name) {
+        alert('A bajnokság neve kötelező!');
+        return;
+    }
+    if (!seasonId) {
+        alert('Válassz szezont!');
+        return;
+    }
+
+    fetch('/matches/api/competition/create/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            name: name,
+            short_name: shortName,
+            season_id: parseInt(seasonId),
+            color: color,
+            match_duration: matchDuration
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Hiba történt a mentés során.');
+        }
+    })
+    .catch(error => {
+        alert('Hiba történt: ' + error);
+    });
+}
+
+// Edit Competition Modal
+function openEditPopup(id, name, shortName, seasonId, color, matchDuration, refAppDefault, inspAppDefault, tigAppDefault) {
     currentCompetitionId = id;
     document.getElementById('editForm').action = '/matches/admin/competition/' + id + '/';
     document.getElementById('edit_name').value = name;
@@ -650,21 +1081,26 @@ function openEditPopup(id, name, shortName, seasonId, color, matchDuration) {
     document.getElementById('edit_season').value = seasonId;
     document.getElementById('edit_color').value = color;
     document.getElementById('edit_match_duration').value = matchDuration || 60;
-    document.getElementById('editPopup').classList.add('show');
+    document.getElementById('edit_referee_application_default').checked = refAppDefault || false;
+    document.getElementById('edit_inspector_application_default').checked = inspAppDefault || false;
+    document.getElementById('edit_tournament_director_application_default').checked = tigAppDefault || false;
+    document.getElementById('editCompetitionModal').classList.add('show');
     document.getElementById('edit_name').focus();
-
-    // Load phases
+    // Reinitialize color picker for the modal
+    if (window.ColorPicker) {
+        window.ColorPicker.initAll();
+    }
     loadPhases(id);
 }
 
 function closeEditPopup() {
-    document.getElementById('editPopup').classList.remove('show');
+    document.getElementById('editCompetitionModal').classList.remove('show');
     currentCompetitionId = null;
 }
 
 function loadPhases(competitionId) {
     const container = document.getElementById('phasesContainer');
-    container.innerHTML = '<div class="loading-phases" style="text-align: center; padding: 1rem; color: var(--text-secondary);">Betöltés...</div>';
+    container.innerHTML = '<div class="empty-phases">Betöltés...</div>';
 
     fetch('/matches/api/competition/' + competitionId + '/phases/')
         .then(response => response.json())
@@ -698,12 +1134,13 @@ function createPhaseHTML(phase) {
                 <div class="phase-edit-name">
                     <input type="text" value="${escapeHtml(phase.name)}" placeholder="Szakasz neve" onchange="updatePhase(${phase.id}, 'name', this.value)">
                 </div>
-                <span class="phase-status" id="status-${phase.id}"></span>
                 <button type="button" class="phase-delete-btn" onclick="deletePhase(${phase.id})" title="Törlés">
-                    <span class="material-icons" style="font-size: 1rem;">close</span>
+                    <span class="material-icons" style="font-size: 1.1rem;">close</span>
                 </button>
             </div>
-            <div class="phase-edit-fields">
+
+            <!-- Létszám -->
+            <div class="phase-counts-row">
                 <div>
                     <label>Játékvezetők</label>
                     <input type="number" min="0" max="10" value="${phase.referee_count}" onchange="updatePhase(${phase.id}, 'referee_count', this.value)">
@@ -716,25 +1153,72 @@ function createPhaseHTML(phase) {
                     <label>Ellenőrök</label>
                     <input type="number" min="0" max="10" value="${phase.inspector_count}" onchange="updatePhase(${phase.id}, 'inspector_count', this.value)">
                 </div>
-                <div class="phase-payment-row">
-                    <div>
-                        <label>Díjazás (Ft)</label>
-                        <input type="number" min="0" step="100" value="${phase.payment_amount}" onchange="updatePhase(${phase.id}, 'payment_amount', this.value)">
+                <div>
+                    <label>TIG-ek</label>
+                    <input type="number" min="0" max="10" value="${phase.tournament_director_count}" onchange="updatePhase(${phase.id}, 'tournament_director_count', this.value)">
+                </div>
+            </div>
+
+            <!-- Díjazás -->
+            <div class="phase-payment-section">
+                <div class="phase-payment-section-title">
+                    <span class="material-icons">payments</span>
+                    Díjazás
+                </div>
+                <div class="phase-payment-grid">
+                    <div class="phase-payment-item">
+                        <label>JV díj (Ft)</label>
+                        <input type="number" min="0" step="100" value="${phase.referee_payment || 0}" onchange="updatePhase(${phase.id}, 'referee_payment', this.value)">
+                        <select onchange="updatePhase(${phase.id}, 'referee_payment_type', this.value)">
+                            <option value="per_person" ${phase.referee_payment_type === 'per_person' ? 'selected' : ''}>/fő</option>
+                            <option value="total" ${phase.referee_payment_type === 'total' ? 'selected' : ''}>/esemény</option>
+                        </select>
                     </div>
-                    <div>
-                        <label>Díjazás típusa</label>
-                        <select onchange="updatePhase(${phase.id}, 'payment_type', this.value)">
-                            <option value="per_person" ${phase.payment_type === 'per_person' ? 'selected' : ''}>Ft / fő</option>
-                            <option value="total" ${phase.payment_type === 'total' ? 'selected' : ''}>Ft összesen</option>
+                    <div class="phase-payment-item">
+                        <label>Tartalék díj (Ft)</label>
+                        <input type="number" min="0" step="100" value="${phase.reserve_payment || 0}" onchange="updatePhase(${phase.id}, 'reserve_payment', this.value)">
+                        <select onchange="updatePhase(${phase.id}, 'reserve_payment_type', this.value)">
+                            <option value="per_person" ${phase.reserve_payment_type === 'per_person' ? 'selected' : ''}>/fő</option>
+                            <option value="total" ${phase.reserve_payment_type === 'total' ? 'selected' : ''}>/esemény</option>
+                        </select>
+                    </div>
+                    <div class="phase-payment-item">
+                        <label>Ellenőr díj (Ft)</label>
+                        <input type="number" min="0" step="100" value="${phase.inspector_payment || 0}" onchange="updatePhase(${phase.id}, 'inspector_payment', this.value)">
+                        <select onchange="updatePhase(${phase.id}, 'inspector_payment_type', this.value)">
+                            <option value="per_person" ${phase.inspector_payment_type === 'per_person' ? 'selected' : ''}>/fő</option>
+                            <option value="total" ${phase.inspector_payment_type === 'total' ? 'selected' : ''}>/esemény</option>
+                        </select>
+                    </div>
+                    <div class="phase-payment-item">
+                        <label>TIG díj (Ft)</label>
+                        <input type="number" min="0" step="100" value="${phase.tournament_director_payment || 0}" onchange="updatePhase(${phase.id}, 'tournament_director_payment', this.value)">
+                        <select onchange="updatePhase(${phase.id}, 'tournament_director_payment_type', this.value)">
+                            <option value="per_person" ${phase.tournament_director_payment_type === 'per_person' ? 'selected' : ''}>/fő</option>
+                            <option value="total" ${phase.tournament_director_payment_type === 'total' ? 'selected' : ''}>/esemény</option>
                         </select>
                     </div>
                 </div>
-                <div style="grid-column: span 3; margin-top: 0.5rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                        <input type="checkbox" ${phase.requires_mfsz_declaration ? 'checked' : ''} onchange="updatePhase(${phase.id}, 'requires_mfsz_declaration', this.checked)">
-                        MFSZ bejelentés szükséges
-                    </label>
-                </div>
+            </div>
+
+            <!-- Opciók -->
+            <div class="phase-options-row">
+                <label title="MFSZ bejelentés szükséges">
+                    <input type="checkbox" ${phase.requires_mfsz_declaration ? 'checked' : ''} onchange="updatePhase(${phase.id}, 'requires_mfsz_declaration', this.checked)">
+                    MFSZ bejelentés
+                </label>
+                <label title="Játékvezetők jelentkezhetnek">
+                    <input type="checkbox" ${phase.referee_application_enabled ? 'checked' : ''} onchange="updatePhase(${phase.id}, 'referee_application_enabled', this.checked)">
+                    JV jelentkezés
+                </label>
+                <label title="Ellenőrök jelentkezhetnek">
+                    <input type="checkbox" ${phase.inspector_application_enabled ? 'checked' : ''} onchange="updatePhase(${phase.id}, 'inspector_application_enabled', this.checked)">
+                    Ellenőr jelentkezés
+                </label>
+                <label title="TIG-ek jelentkezhetnek">
+                    <input type="checkbox" ${phase.tournament_director_application_enabled ? 'checked' : ''} onchange="updatePhase(${phase.id}, 'tournament_director_application_enabled', this.checked)">
+                    TIG jelentkezés
+                </label>
             </div>
         </div>
     `;
@@ -746,12 +1230,29 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+let saveStatusTimeout = null;
+
+function showSaveStatus(message, type) {
+    const statusEl = document.getElementById('globalSaveStatus');
+    statusEl.textContent = message;
+    statusEl.className = 'save-status ' + type;
+
+    if (saveStatusTimeout) clearTimeout(saveStatusTimeout);
+    if (type === 'saved') {
+        saveStatusTimeout = setTimeout(() => {
+            statusEl.textContent = '';
+            statusEl.className = 'save-status';
+        }, 2000);
+    }
+}
+
 function updatePhase(phaseId, field, value) {
-    const statusEl = document.getElementById('status-' + phaseId);
-    statusEl.textContent = 'Mentés...';
+    showSaveStatus('Mentés...', 'saving');
 
     const data = {};
-    data[field] = field.includes('count') || field === 'payment_amount' ? parseInt(value) || 0 : value;
+    const numericFields = ['referee_count', 'reserve_count', 'inspector_count', 'tournament_director_count',
+                           'payment_amount', 'referee_payment', 'reserve_payment', 'inspector_payment', 'tournament_director_payment'];
+    data[field] = numericFields.includes(field) ? parseInt(value) || 0 : value;
 
     fetch('/matches/api/phase/' + phaseId + '/update/', {
         method: 'POST',
@@ -764,16 +1265,13 @@ function updatePhase(phaseId, field, value) {
     .then(response => response.json())
     .then(data => {
         if (data.error) {
-            statusEl.textContent = 'Hiba!';
-            statusEl.style.color = 'var(--danger-color)';
+            showSaveStatus('Hiba!', 'error');
         } else {
-            statusEl.textContent = 'Mentve';
-            setTimeout(() => { statusEl.textContent = ''; }, 1500);
+            showSaveStatus('Mentve ✓', 'saved');
         }
     })
     .catch(error => {
-        statusEl.textContent = 'Hiba!';
-        statusEl.style.color = 'var(--danger-color)';
+        showSaveStatus('Hiba!', 'error');
     });
 }
 
@@ -803,7 +1301,6 @@ function addNewPhase() {
     .then(data => {
         if (data.id) {
             container.insertAdjacentHTML('beforeend', createPhaseHTML(data));
-            // Focus the name input of the new phase
             const newItem = container.querySelector(`[data-phase-id="${data.id}"] input`);
             if (newItem) {
                 newItem.select();
@@ -828,7 +1325,6 @@ function deletePhase(phaseId) {
             const item = document.querySelector(`[data-phase-id="${phaseId}"]`);
             if (item) item.remove();
 
-            // Show empty message if no phases left
             const container = document.getElementById('phasesContainer');
             if (!container.querySelector('.phase-edit-item')) {
                 container.innerHTML = '<div class="empty-phases">Nincs szakasz hozzáadva.</div>';
@@ -837,16 +1333,36 @@ function deletePhase(phaseId) {
     });
 }
 
-// Close on overlay click
-document.getElementById('editPopup').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeEditPopup();
-    }
+// Reorder competition
+function reorderCompetition(competitionId, direction) {
+    fetch('/matches/api/competition/' + competitionId + '/reorder/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ direction: direction })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+// Close modals on overlay click
+document.getElementById('newCompetitionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeNewCompetitionModal();
+});
+document.getElementById('editCompetitionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditPopup();
 });
 
 // Close on Escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
+        closeNewCompetitionModal();
         closeEditPopup();
     }
 });

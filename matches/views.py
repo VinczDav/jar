@@ -10,7 +10,7 @@ from django.utils.crypto import get_random_string
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 
-from .models import Match, MatchAssignment, Season, Competition, SavedColor, Team
+from .models import Match, MatchAssignment, MatchApplication, Season, Competition, SavedColor, Team, Club, Venue
 from .forms import MatchForm, MatchAssignmentForm, MatchResponseForm, MatchFilterForm
 from audit.utils import log_action
 
@@ -18,12 +18,17 @@ from audit.utils import log_action
 def _notify_admins_about_decline(assignment, declining_user):
     """
     Send notification to all JT Admin / Koordinátor users when someone declines an assignment.
+    Also sends email notifications.
     """
     from django.contrib.auth import get_user_model
     from documents.models import Notification
+    from core.email_utils import send_templated_email
 
     User = get_user_model()
-    match = assignment.match
+    # Reload match with all related objects for email template
+    match = Match.objects.select_related(
+        'venue', 'phase', 'phase__competition', 'home_team', 'away_team'
+    ).get(pk=assignment.match_id)
 
     # Get all JT Admin / Koordinátor and Admin users (primary role OR secondary flag)
     admins = User.objects.filter(
@@ -40,15 +45,19 @@ def _notify_admins_about_decline(assignment, declining_user):
     user_name = declining_user.get_full_name() or declining_user.username
     date_str = match.date.strftime('%Y.%m.%d') if match.date else 'Nincs dátum'
     time_str = match.time.strftime('%H:%M') if match.time else ''
-    teams = f"{match.home_team.name if match.home_team else 'TBD'} - {match.away_team.name if match.away_team else 'TBD'}"
+    teams = f"{str(match.home_team) if match.home_team else 'TBD'} - {str(match.away_team) if match.away_team else 'TBD'}"
 
     title = f"{user_name} lemondta a kijelölést"
     message = f"{date_str} {time_str}\n{teams}"
     if assignment.decline_reason:
         message += f"\nIndok: {assignment.decline_reason}"
 
-    # Send notification to all admins
+    # Get all assignments for this match for the email template
+    all_assignments = match.assignments.select_related('user').order_by('role', 'created_at')
+
+    # Send notification and email to all admins
     for admin in admins:
+        # In-app notification
         Notification.objects.create(
             recipient=admin,
             title=title,
@@ -56,6 +65,20 @@ def _notify_admins_about_decline(assignment, declining_user):
             notification_type=Notification.Type.WARNING,
             link="/matches/assignments/"
         )
+
+        # Email notification
+        if admin.email:
+            send_templated_email(
+                to_email=admin.email,
+                subject=f'{user_name} lemondta a mérkőzést!',
+                template_name='assignment_declined',
+                context={
+                    'declining_user': declining_user,
+                    'match': match,
+                    'assignment': assignment,
+                    'all_assignments': all_assignments,
+                }
+            )
 
 
 @login_required
@@ -72,7 +95,7 @@ def my_matches(request):
     competition_id = request.GET.get('competition', '')
     team_id = request.GET.get('team', '')
 
-    # Default date range: today to today + 7 days (for upcoming), or last 7 days (for past)
+    # Default date range: today to today + 14 days (for upcoming), or last 14 days (for past)
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
 
@@ -80,9 +103,9 @@ def my_matches(request):
     if not date_from and not date_to:
         if tab == 'upcoming':
             date_from = str(today)
-            date_to = str(today + timedelta(days=7))
+            date_to = str(today + timedelta(days=14))
         elif tab == 'past':
-            date_from = str(today - timedelta(days=7))
+            date_from = str(today - timedelta(days=14))
             date_to = str(today)
 
     # Get current/selected season
@@ -159,14 +182,14 @@ def my_matches(request):
             Q(match__date=today, match__time__gt=one_min_ago)
         ).order_by('match__date', 'match__time')
 
-    # Get seasons for filter
-    seasons = Season.objects.all().order_by('-start_date')
+    # Get seasons for filter (exclude soft-deleted)
+    seasons = Season.objects.filter(is_deleted=False).order_by('-start_date')
 
-    # Get competitions for filter (based on selected season)
-    competitions = Competition.objects.filter(season=selected_season) if selected_season else Competition.objects.none()
+    # Get competitions for filter (based on selected season, exclude soft-deleted)
+    competitions = Competition.objects.filter(season=selected_season, is_deleted=False) if selected_season else Competition.objects.none()
 
-    # Get teams for filter
-    teams = Team.objects.all().order_by('name')
+    # Get teams for filter (exclude soft-deleted)
+    teams = Team.objects.filter(is_deleted=False).order_by('name')
 
     # Get site settings and coordinators for cancellation check
     from accounts.models import SiteSettings, Coordinator
@@ -193,6 +216,7 @@ def my_matches(request):
         'teams': teams,
         'selected_team': team_id,
         'min_cancellation_hours': site_settings.min_cancellation_hours,
+        'require_cancellation_reason': getattr(site_settings, 'require_cancellation_reason', True),
         'coordinators': coordinators,
     }
     return render(request, 'matches/my_matches.html', context)
@@ -208,14 +232,14 @@ def all_matches(request):
     now = timezone.localtime(timezone.now())
     today = now.date()
 
-    # Set default dates if not provided
+    # Set default dates if not provided (14 days range)
     form_data = request.GET.copy() if request.GET else {}
     if not request.GET.get('date_from') and not request.GET.get('date_to'):
         if tab == 'upcoming':
             form_data['date_from'] = str(today)
-            form_data['date_to'] = str(today + timedelta(days=7))
+            form_data['date_to'] = str(today + timedelta(days=14))
         elif tab == 'past':
-            form_data['date_from'] = str(today - timedelta(days=7))
+            form_data['date_from'] = str(today - timedelta(days=14))
             form_data['date_to'] = str(today)
 
     filter_form = MatchFilterForm(form_data or None)
@@ -338,12 +362,14 @@ def assignments(request):
     filter_date_to = request.GET.get('date_to', '')
 
     # Set default dates if not provided
+    # For upcoming: only set date_from to today (no date_to limit - show all future matches)
+    # For past: set 14 days range
     if not filter_date_from and not filter_date_to:
         if tab == 'upcoming':
             filter_date_from = str(today)
-            filter_date_to = str(today + timedelta(days=7))
+            # No date_to for upcoming - show all future matches
         elif tab == 'past':
-            filter_date_from = str(today - timedelta(days=7))
+            filter_date_from = str(today - timedelta(days=14))
             filter_date_to = str(today)
 
     # Get matches that need assignments (draft or scheduled without confirmed referees)
@@ -413,11 +439,11 @@ def assignments(request):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    # Get options for sidebar selects - TBD teams first, then alphabetically
-    teams = Team.objects.filter(is_active=True).order_by('-is_tbd', 'name')
-    venues = Venue.objects.filter(is_active=True).order_by('city', 'name')
-    phases = CompetitionPhase.objects.select_related('competition')
-    competitions = Competition.objects.all()
+    # Get options for sidebar selects - TBD teams first, then alphabetically (exclude deleted)
+    teams = Team.objects.filter(is_active=True, is_deleted=False).order_by('-is_tbd', 'name')
+    venues = Venue.objects.filter(is_active=True, is_deleted=False).order_by('city', 'name')
+    phases = CompetitionPhase.objects.select_related('competition').filter(competition__is_deleted=False)
+    competitions = Competition.objects.filter(is_deleted=False)
     if current_season:
         phases = phases.filter(competition__season=current_season)
         competitions = competitions.filter(season=current_season)
@@ -455,6 +481,8 @@ def assignments(request):
         'filter_competition': filter_competition,
         'filter_date_from': filter_date_from,
         'filter_date_to': filter_date_to,
+        # Super admin flag for no-notification option
+        'is_super_admin': request.user.is_super_admin,
     }
     return render(request, 'matches/assignments.html', context)
 
@@ -553,6 +581,8 @@ def edit_match(request, match_id):
 @require_POST
 def respond_to_assignment(request, assignment_id):
     """Respond to a match assignment (accept/decline)."""
+    from accounts.models import SiteSettings
+
     assignment = get_object_or_404(
         MatchAssignment,
         id=assignment_id,
@@ -563,7 +593,8 @@ def respond_to_assignment(request, assignment_id):
         messages.error(request, 'Erre a kijelölésre már válaszoltál.')
         return redirect('matches:my_matches')
 
-    form = MatchResponseForm(request.POST)
+    site_settings = SiteSettings.get_settings()
+    form = MatchResponseForm(request.POST, require_reason=site_settings.require_cancellation_reason)
     if form.is_valid():
         assignment.response_status = form.cleaned_data['response']
         assignment.response_date = timezone.now()
@@ -596,6 +627,11 @@ def respond_to_assignment(request, assignment_id):
         if match.is_all_confirmed and match.status == Match.Status.SCHEDULED:
             match.status = Match.Status.CONFIRMED
             match.save()
+    else:
+        # Form validation failed
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(request, f'{error}')
 
     return redirect('matches:my_matches')
 
@@ -651,13 +687,21 @@ def decline_accepted_assignment(request, assignment_id):
             return redirect('matches:my_matches')
 
     decline_reason = request.POST.get('decline_reason', '').strip()
-    if not decline_reason:
+
+    # Check if reason is required based on site settings
+    if not hasattr(site_settings, 'require_cancellation_reason'):
+        # For backwards compatibility - if setting doesn't exist yet
+        require_reason = True
+    else:
+        require_reason = site_settings.require_cancellation_reason
+
+    if require_reason and not decline_reason:
         messages.error(request, 'Kérlek add meg a lemondás okát.')
         return redirect('matches:my_matches')
 
     assignment.response_status = MatchAssignment.ResponseStatus.DECLINED
     assignment.response_date = timezone.now()
-    assignment.decline_reason = decline_reason
+    assignment.decline_reason = decline_reason if decline_reason else 'Nem megadott'
     # Set placeholder_type so the slot shows as "Hiányzik!" in admin panel
     assignment.placeholder_type = 'hianyzik'
     assignment.save()
@@ -713,7 +757,7 @@ def get_competitions(request):
     """AJAX endpoint to get competitions for a season."""
     season_id = request.GET.get('season_id')
     if season_id:
-        competitions = Competition.objects.filter(season_id=season_id).values('id', 'short_name', 'name')
+        competitions = Competition.objects.filter(season_id=season_id, is_deleted=False).values('id', 'short_name', 'name')
         return JsonResponse(list(competitions), safe=False)
     return JsonResponse([], safe=False)
 
@@ -764,10 +808,10 @@ def match_data(request):
     from .models import Team, Venue, Season, Competition, CompetitionPhase
 
     context = {
-        'seasons': Season.objects.all().order_by('-start_date'),
-        'competitions': Competition.objects.select_related('season').order_by('-season__start_date', 'name'),
-        'teams': Team.objects.all().order_by('name'),
-        'venues': Venue.objects.all().order_by('city', 'name'),
+        'seasons': Season.objects.filter(is_deleted=False).order_by('-start_date'),
+        'competitions': Competition.objects.filter(is_deleted=False).select_related('season').order_by('-season__start_date', 'name'),
+        'teams': Team.objects.filter(is_deleted=False).order_by('name'),
+        'venues': Venue.objects.filter(is_deleted=False).order_by('city', 'name'),
     }
     return render(request, 'matches/match_data.html', context)
 
@@ -957,12 +1001,18 @@ def edit_competition(request, competition_id):
                 competition.match_duration = int(match_duration) if match_duration else 60
             except ValueError:
                 competition.match_duration = 60
+
+            # Application defaults
+            competition.referee_application_default = request.POST.get('referee_application_default') == 'on'
+            competition.inspector_application_default = request.POST.get('inspector_application_default') == 'on'
+            competition.tournament_director_application_default = request.POST.get('tournament_director_application_default') == 'on'
+
             competition.save()
             messages.success(request, f'Bajnokság frissítve: {name}')
 
         return redirect('matches:competitions_list')
 
-    seasons = Season.objects.all().order_by('-start_date')
+    seasons = Season.objects.filter(is_deleted=False).order_by('-start_date')
     return render(request, 'matches/competition_edit.html', {
         'competition': competition,
         'seasons': seasons,
@@ -972,15 +1022,20 @@ def edit_competition(request, competition_id):
 @login_required
 @require_POST
 def delete_competition(request, competition_id):
-    """Admin: Delete a competition."""
+    """Admin: Soft delete a competition."""
     if not request.user.is_admin_user:
         return HttpResponseForbidden('Nincs jogosultságod.')
 
-    from .models import Competition
+    from django.utils import timezone
 
     competition = get_object_or_404(Competition, id=competition_id)
     name = competition.short_name or competition.name
-    competition.delete()
+
+    # Soft delete
+    competition.is_deleted = True
+    competition.deleted_at = timezone.now()
+    competition.save()
+
     messages.success(request, f'Bajnokság törölve: {name}')
 
     return redirect('matches:competitions_list')
@@ -1018,13 +1073,62 @@ def api_get_phases(request, competition_id):
             'name': phase.name,
             'payment_amount': phase.payment_amount,
             'payment_type': phase.payment_type,
+            'referee_payment': phase.referee_payment,
+            'referee_payment_type': phase.referee_payment_type,
+            'reserve_payment': phase.reserve_payment,
+            'reserve_payment_type': phase.reserve_payment_type,
+            'inspector_payment': phase.inspector_payment,
+            'inspector_payment_type': phase.inspector_payment_type,
+            'tournament_director_payment': phase.tournament_director_payment,
+            'tournament_director_payment_type': phase.tournament_director_payment_type,
             'referee_count': phase.referee_count,
             'reserve_count': phase.reserve_count,
             'inspector_count': phase.inspector_count,
+            'tournament_director_count': phase.tournament_director_count,
             'requires_mfsz_declaration': phase.requires_mfsz_declaration,
+            'referee_application_enabled': phase.referee_application_enabled,
+            'inspector_application_enabled': phase.inspector_application_enabled,
+            'tournament_director_application_enabled': phase.tournament_director_application_enabled,
         })
 
     return JsonResponse({'phases': phases_data})
+
+
+@login_required
+def api_get_teams_by_competition(request, competition_id):
+    """API: Get teams enrolled in a competition."""
+    from .models import Competition, Team
+
+    competition = get_object_or_404(Competition, id=competition_id)
+    teams = Team.objects.filter(
+        competitions=competition,
+        is_active=True,
+        is_deleted=False
+    ).order_by('-is_tbd', 'club__name', 'suffix')
+
+    teams_data = []
+    for team in teams:
+        teams_data.append({
+            'id': team.id,
+            'name': str(team),
+            'display_name': team.display_name,
+            'is_tbd': team.is_tbd,
+        })
+
+    return JsonResponse({'teams': teams_data})
+
+
+@login_required
+def api_get_phase_competition(request, phase_id):
+    """API: Get competition ID for a phase."""
+    from .models import CompetitionPhase
+
+    phase = get_object_or_404(CompetitionPhase, id=phase_id)
+    return JsonResponse({
+        'phase_id': phase.id,
+        'competition_id': phase.competition_id,
+        'competition_name': str(phase.competition)
+    })
 
 
 @login_required
@@ -1040,6 +1144,7 @@ def api_add_phase(request, competition_id):
         data = json.loads(request.body)
         competition = get_object_or_404(Competition, id=competition_id)
 
+        # Use competition defaults for application settings
         phase = CompetitionPhase.objects.create(
             competition=competition,
             name=data.get('name', 'Új szakasz'),
@@ -1048,6 +1153,9 @@ def api_add_phase(request, competition_id):
             referee_count=int(data.get('referee_count', 2)),
             reserve_count=int(data.get('reserve_count', 0)),
             inspector_count=int(data.get('inspector_count', 0)),
+            referee_application_enabled=competition.referee_application_default,
+            inspector_application_enabled=competition.inspector_application_default,
+            tournament_director_application_enabled=competition.tournament_director_application_default,
         )
 
         return JsonResponse({
@@ -1055,9 +1163,17 @@ def api_add_phase(request, competition_id):
             'name': phase.name,
             'payment_amount': phase.payment_amount,
             'payment_type': phase.payment_type,
+            'referee_payment': phase.referee_payment,
+            'inspector_payment': phase.inspector_payment,
+            'tournament_director_payment': phase.tournament_director_payment,
             'referee_count': phase.referee_count,
             'reserve_count': phase.reserve_count,
             'inspector_count': phase.inspector_count,
+            'tournament_director_count': phase.tournament_director_count,
+            'requires_mfsz_declaration': phase.requires_mfsz_declaration,
+            'referee_application_enabled': phase.referee_application_enabled,
+            'inspector_application_enabled': phase.inspector_application_enabled,
+            'tournament_director_application_enabled': phase.tournament_director_application_enabled,
         })
     except (json.JSONDecodeError, ValueError) as e:
         return JsonResponse({'error': str(e)}, status=400)
@@ -1082,14 +1198,38 @@ def api_update_phase(request, phase_id):
             phase.payment_amount = int(data['payment_amount'])
         if 'payment_type' in data:
             phase.payment_type = data['payment_type']
+        if 'referee_payment' in data:
+            phase.referee_payment = int(data['referee_payment'])
+        if 'referee_payment_type' in data:
+            phase.referee_payment_type = data['referee_payment_type']
+        if 'reserve_payment' in data:
+            phase.reserve_payment = int(data['reserve_payment'])
+        if 'reserve_payment_type' in data:
+            phase.reserve_payment_type = data['reserve_payment_type']
+        if 'inspector_payment' in data:
+            phase.inspector_payment = int(data['inspector_payment'])
+        if 'inspector_payment_type' in data:
+            phase.inspector_payment_type = data['inspector_payment_type']
+        if 'tournament_director_payment' in data:
+            phase.tournament_director_payment = int(data['tournament_director_payment'])
+        if 'tournament_director_payment_type' in data:
+            phase.tournament_director_payment_type = data['tournament_director_payment_type']
         if 'referee_count' in data:
             phase.referee_count = int(data['referee_count'])
         if 'reserve_count' in data:
             phase.reserve_count = int(data['reserve_count'])
         if 'inspector_count' in data:
             phase.inspector_count = int(data['inspector_count'])
+        if 'tournament_director_count' in data:
+            phase.tournament_director_count = int(data['tournament_director_count'])
         if 'requires_mfsz_declaration' in data:
             phase.requires_mfsz_declaration = bool(data['requires_mfsz_declaration'])
+        if 'referee_application_enabled' in data:
+            phase.referee_application_enabled = bool(data['referee_application_enabled'])
+        if 'inspector_application_enabled' in data:
+            phase.inspector_application_enabled = bool(data['inspector_application_enabled'])
+        if 'tournament_director_application_enabled' in data:
+            phase.tournament_director_application_enabled = bool(data['tournament_director_application_enabled'])
 
         phase.save()
 
@@ -1098,10 +1238,22 @@ def api_update_phase(request, phase_id):
             'name': phase.name,
             'payment_amount': phase.payment_amount,
             'payment_type': phase.payment_type,
+            'referee_payment': phase.referee_payment,
+            'referee_payment_type': phase.referee_payment_type,
+            'reserve_payment': phase.reserve_payment,
+            'reserve_payment_type': phase.reserve_payment_type,
+            'inspector_payment': phase.inspector_payment,
+            'inspector_payment_type': phase.inspector_payment_type,
+            'tournament_director_payment': phase.tournament_director_payment,
+            'tournament_director_payment_type': phase.tournament_director_payment_type,
             'referee_count': phase.referee_count,
             'reserve_count': phase.reserve_count,
             'inspector_count': phase.inspector_count,
+            'tournament_director_count': phase.tournament_director_count,
             'requires_mfsz_declaration': phase.requires_mfsz_declaration,
+            'referee_application_enabled': phase.referee_application_enabled,
+            'inspector_application_enabled': phase.inspector_application_enabled,
+            'tournament_director_application_enabled': phase.tournament_director_application_enabled,
         })
     except (json.JSONDecodeError, ValueError) as e:
         return JsonResponse({'error': str(e)}, status=400)
@@ -1120,6 +1272,104 @@ def api_delete_phase(request, phase_id):
     phase.delete()
 
     return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_reorder_competition(request, competition_id):
+    """API: Move competition up or down in order."""
+    if not request.user.is_admin_user:
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        direction = data.get('direction')  # 'up' or 'down'
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    competition = get_object_or_404(Competition, id=competition_id, is_deleted=False)
+
+    # Get all competitions in the same season, ordered
+    competitions = list(Competition.objects.filter(
+        season=competition.season,
+        is_deleted=False
+    ).order_by('order', 'name'))
+
+    current_index = next((i for i, c in enumerate(competitions) if c.id == competition_id), None)
+    if current_index is None:
+        return JsonResponse({'error': 'Competition not found.'}, status=404)
+
+    if direction == 'up' and current_index > 0:
+        # Swap with previous
+        other = competitions[current_index - 1]
+        competition.order, other.order = other.order, competition.order
+        # Ensure they're different
+        if competition.order == other.order:
+            competition.order = current_index - 1
+            other.order = current_index
+        competition.save()
+        other.save()
+    elif direction == 'down' and current_index < len(competitions) - 1:
+        # Swap with next
+        other = competitions[current_index + 1]
+        competition.order, other.order = other.order, competition.order
+        # Ensure they're different
+        if competition.order == other.order:
+            competition.order = current_index + 1
+            other.order = current_index
+        competition.save()
+        other.save()
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_create_competition(request):
+    """API: Create a new competition."""
+    if not request.user.is_admin_user:
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    name = data.get('name', '').strip()
+    short_name = data.get('short_name', '').strip()
+    season_id = data.get('season_id')
+    color = data.get('color', '#6366f1')
+    match_duration = data.get('match_duration', 60)
+
+    if not name or not season_id:
+        return JsonResponse({'error': 'Név és szezon megadása kötelező.'}, status=400)
+
+    season = get_object_or_404(Season, id=season_id)
+
+    # Get max order for this season
+    max_order = Competition.objects.filter(season=season, is_deleted=False).aggregate(
+        max_order=Max('order')
+    )['max_order'] or 0
+
+    competition = Competition.objects.create(
+        name=name,
+        short_name=short_name,
+        season=season,
+        color=color,
+        match_duration=match_duration,
+        order=max_order + 1
+    )
+
+    return JsonResponse({
+        'success': True,
+        'id': competition.id,
+        'name': competition.name,
+        'short_name': competition.short_name,
+        'color': competition.color,
+        'season_id': competition.season_id,
+        'match_duration': competition.match_duration,
+        'order': competition.order,
+    })
 
 
 # ==================== MATCH API ====================
@@ -1152,6 +1402,7 @@ def api_get_match(request, match_id):
             'placeholder_type': assignment.placeholder_type or None,
             'response_status': assignment.response_status,
             'decline_reason': assignment.decline_reason or '',
+            'application_enabled': assignment.application_enabled,
         }
         if assignment.role == MatchAssignment.Role.REFEREE:
             referees.append(assignment_data)
@@ -1162,12 +1413,43 @@ def api_get_match(request, match_id):
         elif assignment.role == MatchAssignment.Role.TOURNAMENT_DIRECTOR:
             tournament_directors.append(assignment_data)
 
+    # Get site-level application settings
+    from accounts.models import SiteSettings
+    site_settings = SiteSettings.get_settings()
+
     # Get phase settings for pre-populating slots
+    # Application toggles are controlled by site-level settings only
+    # Per-position toggle (application_enabled field) controls individual positions
     phase_settings = {
         'referee_count': match.phase.referee_count if match.phase else 2,
         'reserve_count': match.phase.reserve_count if match.phase else 0,
         'inspector_count': match.phase.inspector_count if match.phase else 0,
+        'tournament_director_count': match.phase.tournament_director_count if match.phase else 0,
+        # Application settings: only site-level settings control toggle clickability
+        # Per-position toggle controls which specific positions are open for applications
+        'referee_application_enabled': site_settings.application_referees_enabled,
+        'inspector_application_enabled': site_settings.application_inspectors_enabled,
+        'tournament_director_application_enabled': site_settings.application_tournament_directors_enabled,
     }
+
+    # Get applicants for this match, categorized by role
+    applications = MatchApplication.objects.filter(
+        match=match,
+        status=MatchApplication.Status.PENDING
+    ).values('user_id', 'role')
+
+    applicants_by_role = {
+        'referee': [],
+        'inspector': [],
+        'tournament_director': [],
+    }
+    for app in applications:
+        role = app['role']
+        if role in applicants_by_role:
+            applicants_by_role[role].append(app['user_id'])
+
+    # Also provide flat list for backwards compatibility
+    applicants = list(set(app['user_id'] for app in applications))
 
     return JsonResponse({
         'id': match.id,
@@ -1198,6 +1480,8 @@ def api_get_match(request, match_id):
         'reserves': reserves,
         'inspectors': inspectors,
         'tournament_directors': tournament_directors,
+        'applicants': applicants,
+        'applicants_by_role': applicants_by_role,
     })
 
 
@@ -1222,8 +1506,8 @@ def api_update_match(request, match_id):
             'date': str(match.date) if match.date else None,
             'time': str(match.time) if match.time else None,
             'venue': match.venue.name if match.venue else None,
-            'home_team': match.home_team.name if match.home_team else None,
-            'away_team': match.away_team.name if match.away_team else None,
+            'home_team': str(match.home_team) if match.home_team else None,
+            'away_team': str(match.away_team) if match.away_team else None,
             'court': match.court,
             'notes': match.notes,
             'is_tournament': match.is_tournament,
@@ -1304,8 +1588,8 @@ def api_update_match(request, match_id):
             'date': str(match.date) if match.date else None,
             'time': str(match.time) if match.time else None,
             'venue': match.venue.name if match.venue else None,
-            'home_team': match.home_team.name if match.home_team else None,
-            'away_team': match.away_team.name if match.away_team else None,
+            'home_team': str(match.home_team) if match.home_team else None,
+            'away_team': str(match.away_team) if match.away_team else None,
             'court': match.court,
             'notes': match.notes,
             'is_tournament': match.is_tournament,
@@ -1401,6 +1685,15 @@ def api_update_match_assignments(request, match_id):
         # Track newly assigned users during this update
         newly_assigned_user_ids = set()
 
+        # Capture original assignment state for change detection (including placeholders)
+        # This is used to detect if ANY assignment configuration changed, not just user changes
+        original_assignment_snapshot = set()
+        for a in match.assignments.all():
+            if a.user_id:
+                original_assignment_snapshot.add(f"user_{a.user_id}_{a.role}")
+            elif a.placeholder_type:
+                original_assignment_snapshot.add(f"placeholder_{a.placeholder_type}_{a.role}_{a.id}")
+
         # Keep track of ALL existing assignments by status
         declined_assignments = {
             (a.user_id, a.role): a
@@ -1435,7 +1728,17 @@ def api_update_match_assignments(request, match_id):
         kept_placeholder_ids = set()
 
         # Helper to process assignment
-        def process_assignment(value, role, order):
+        def process_assignment(item, role, order):
+            # Support both old format (simple value) and new format (object with value and application_enabled)
+            if isinstance(item, dict):
+                value = item.get('value', '')
+                application_enabled = item.get('application_enabled', False)
+                pre_accepted = item.get('pre_accepted', False)
+            else:
+                value = item
+                application_enabled = False
+                pre_accepted = False
+
             if not value:
                 return
 
@@ -1462,15 +1765,19 @@ def api_update_match_assignments(request, match_id):
                             break
 
                     if reusable:
-                        # Reuse existing placeholder
+                        # Reuse existing placeholder, update application_enabled if needed
                         kept_placeholder_ids.add(reusable.id)
+                        if reusable.application_enabled != application_enabled:
+                            reusable.application_enabled = application_enabled
+                            reusable.save(update_fields=['application_enabled'])
                     else:
                         # Create new placeholder
                         MatchAssignment.objects.create(
                             match=match,
                             user=None,
                             placeholder_type=value,
-                            role=role
+                            role=role,
+                            application_enabled=application_enabled if value == 'szukseges' else False
                         )
             else:
                 # It's a user ID
@@ -1498,18 +1805,29 @@ def api_update_match_assignments(request, match_id):
                     elif key in pending_assignments and key not in kept_pending:
                         # Assignment already exists with same user and role - keep it
                         kept_pending.add(key)
+                        # If pre-accepted, update status to ACCEPTED
+                        if pre_accepted:
+                            assignment = pending_assignments[key]
+                            assignment.response_status = MatchAssignment.ResponseStatus.ACCEPTED
+                            assignment.response_date = timezone.now()
+                            assignment.save()
                         # Track as newly assigned if they weren't in the original state
                         # (This handles the case where auto-save created the assignment)
                         if user_id not in existing_assigned_user_ids:
                             newly_assigned_user_ids.add(user_id)
                     else:
                         # Create new assignment
-                        MatchAssignment.objects.create(
+                        new_assignment = MatchAssignment.objects.create(
                             match=match,
                             user_id=user_id,
                             placeholder_type='',
                             role=role
                         )
+                        # If pre-accepted, set response_status to ACCEPTED
+                        if pre_accepted:
+                            new_assignment.response_status = MatchAssignment.ResponseStatus.ACCEPTED
+                            new_assignment.response_date = timezone.now()
+                            new_assignment.save()
                         # Track as newly assigned (if not previously assigned)
                         if user_id not in existing_assigned_user_ids:
                             newly_assigned_user_ids.add(user_id)
@@ -1557,6 +1875,17 @@ def api_update_match_assignments(request, match_id):
         # Refresh match from database to get latest assignment data (avoids ORM cache issues)
         match = Match.objects.get(pk=match_id)
 
+        # Capture new assignment state and compare to detect ANY configuration change
+        new_assignment_snapshot = set()
+        for a in match.assignments.all():
+            if a.user_id:
+                new_assignment_snapshot.add(f"user_{a.user_id}_{a.role}")
+            elif a.placeholder_type:
+                new_assignment_snapshot.add(f"placeholder_{a.placeholder_type}_{a.role}_{a.id}")
+
+        # Detect if assignment configuration changed (including placeholder additions/removals)
+        has_assignment_config_changed = original_assignment_snapshot != new_assignment_snapshot
+
         # Update match status based on confirmation state
         if match.status == Match.Status.SCHEDULED and match.is_all_confirmed:
             # Upgrade to confirmed when all are accepted
@@ -1569,10 +1898,17 @@ def api_update_match_assignments(request, match_id):
 
         # Send notifications when saving a published match
         # skip_notifications: Used by auto-save to avoid duplicate notifications
+        # no_notification: Super admin option to skip ALL notifications (internal + email)
         # Internal notifications: Sent when explicitly saving (not auto-save)
         # Email notifications: Only when send_email=True
         skip_notifications = data.get('skip_notifications', False)
+        no_notification = data.get('no_notification', False)
         send_email = data.get('send_email', False)
+
+        # If no_notification is True, skip all notifications entirely
+        if no_notification:
+            skip_notifications = True
+            send_email = False
 
         # Initialize removed_user_ids for logging (calculated below if notifications are sent)
         removed_user_ids = set()
@@ -1613,14 +1949,15 @@ def api_update_match_assignments(request, match_id):
             # Determine if any personnel change happened
             has_personnel_changed = bool(newly_assigned_user_ids) or bool(removed_user_ids)
 
-            # Substantive change = match details changed OR personnel changed
-            has_substantive_change = has_match_details_changed or has_personnel_changed
-            logger.info(f"[NOTIF DEBUG] has_personnel_changed={has_personnel_changed}, has_substantive_change={has_substantive_change}")
+            # Substantive change = match details changed OR personnel changed OR assignment configuration changed
+            # has_assignment_config_changed includes adding/removing placeholder slots
+            has_substantive_change = has_match_details_changed or has_personnel_changed or has_assignment_config_changed
+            logger.info(f"[NOTIF DEBUG] has_personnel_changed={has_personnel_changed}, has_assignment_config_changed={has_assignment_config_changed}, has_substantive_change={has_substantive_change}")
 
             # Build notification message for internal notifications
             date_str = match.date.strftime('%Y.%m.%d (%A)') if match.date else 'Nincs dátum'
             time_str = match.time.strftime('%H:%M') if match.time else ''
-            teams = f"{match.home_team.name if match.home_team else 'TBD'} - {match.away_team.name if match.away_team else 'TBD'}"
+            teams = f"{str(match.home_team) if match.home_team else 'TBD'} - {str(match.away_team) if match.away_team else 'TBD'}"
             venue = match.venue.name if match.venue else 'Nincs helyszín'
             message = f"{date_str} {time_str}\n{teams}\n{venue}"
             match_link = f"/matches/{match.id}/"
@@ -1702,9 +2039,6 @@ def api_update_match_assignments(request, match_id):
                     logger.info(f"[NOTIF DEBUG] -> No notification for user_id={assignment.user_id} (has_substantive_change={has_substantive_change})")
 
         # Audit log - track ALL changes with full details
-        skip_notifications = data.get('skip_notifications', False)
-        send_email = data.get('send_email', False)
-
         # Get current assignment info for logging
         current_assignments = match.assignments.filter(user__isnull=False).select_related('user')
         assigned_users_info = []
@@ -1716,7 +2050,10 @@ def api_update_match_assignments(request, match_id):
                 email_list.append(a.user.email)
 
         # Build log message based on action type
-        if skip_notifications:
+        if no_notification:
+            # Super admin saved without any notifications
+            log_description = f"Mérkőzés játékvezetői módosítva (értesítés nélkül - super admin)"
+        elif skip_notifications:
             # Auto-save (no notifications sent)
             log_description = f"Mérkőzés játékvezetői módosítva (auto-mentés)"
         elif not match.is_assignment_published:
@@ -1775,18 +2112,21 @@ def api_publish_match(request, match_id):
     if not match.assignments.exists():
         return JsonResponse({'error': 'Legalább egy játékvezetőt ki kell jelölni!'}, status=400)
 
-    # Check if we should send emails
+    # Check if we should send emails and/or skip all notifications
     try:
         data = json.loads(request.body)
         send_email = data.get('send_email', False)
+        no_notification = data.get('no_notification', False)
     except (json.JSONDecodeError, ValueError):
         send_email = False
+        no_notification = False
 
     match.status = Match.Status.SCHEDULED
     match.is_assignment_published = True  # Automatikusan láthatóvá teszi a kiírást
     match.save()
 
-    # Always send internal notifications to ALL assigned users when publishing
+    # If no_notification is True (super admin), skip ALL notifications
+    # Otherwise: Always send internal notifications to ALL assigned users when publishing
     # Email notifications only when send_email=True
     from documents.models import Notification
     from core.email_utils import send_match_assignment_notification
@@ -1795,10 +2135,10 @@ def api_publish_match(request, match_id):
     match = Match.objects.select_related('home_team', 'away_team', 'venue', 'phase__competition').get(pk=match_id)
     assignments = match.assignments.filter(user__isnull=False).select_related('user')
 
-    if assignments.exists():
+    if assignments.exists() and not no_notification:
         date_str = match.date.strftime('%Y.%m.%d (%A)') if match.date else 'Nincs dátum'
         time_str = match.time.strftime('%H:%M') if match.time else ''
-        teams = f"{match.home_team.name if match.home_team else 'TBD'} - {match.away_team.name if match.away_team else 'TBD'}"
+        teams = f"{str(match.home_team) if match.home_team else 'TBD'} - {str(match.away_team) if match.away_team else 'TBD'}"
         venue = match.venue.name if match.venue else 'Nincs helyszín'
         message = f"{date_str} {time_str}\n{teams}\n{venue}"
         title = "Új mérkőzésre lettél kiírva"
@@ -1806,7 +2146,7 @@ def api_publish_match(request, match_id):
         match_link = f"/matches/{match.id}/"
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"[PUBLISH EMAIL DEBUG] send_email={send_email}, assignments count={assignments.count()}")
+        logger.info(f"[PUBLISH EMAIL DEBUG] send_email={send_email}, no_notification={no_notification}, assignments count={assignments.count()}")
 
         for assignment in assignments:
             logger.info(f"[PUBLISH EMAIL DEBUG] Processing assignment: user={assignment.user.email}")
@@ -1839,7 +2179,9 @@ def api_publish_match(request, match_id):
         if a.user.email:
             email_list.append(a.user.email)
 
-    if send_email and email_list:
+    if no_notification:
+        log_description = f"Mérkőzés publikálva (értesítés nélkül - super admin)"
+    elif send_email and email_list:
         emails_str = " + ".join(email_list)
         log_description = f"Mérkőzés publikálva ÉS email küldve -> {emails_str}"
     else:
@@ -1856,8 +2198,9 @@ def api_publish_match(request, match_id):
             'match_date': str(match.date) if match.date else None,
             'match_time': str(match.time) if match.time else None,
             'send_email': send_email,
+            'no_notification': no_notification,
             'assigned_users': assigned_users_info,
-            'emails_sent_to': email_list if send_email else [],
+            'emails_sent_to': email_list if (send_email and not no_notification) else [],
         }
     )
 
@@ -1995,6 +2338,9 @@ def api_get_referees(request):
     from django.contrib.auth import get_user_model
     User = get_user_model()
 
+    # Get optional match_id for application info
+    match_id = request.GET.get('match_id')
+
     # Only return users who are referees (by role or by flag)
     # Exclude deleted users and hidden users
     users = User.objects.filter(
@@ -2003,84 +2349,400 @@ def api_get_referees(request):
         is_hidden_from_colleagues=False
     ).order_by('last_name', 'first_name')
 
+    # Get applications for this match if match_id is provided
+    applied_user_ids = set()
+    if match_id:
+        applied_user_ids = set(
+            MatchApplication.objects.filter(
+                match_id=match_id,
+                status=MatchApplication.Status.PENDING
+            ).values_list('user_id', flat=True)
+        )
+
     return JsonResponse({
         'referees': [
             {
                 'id': user.id,
                 'name': user.get_full_name() or user.username,
+                'has_applied': user.id in applied_user_ids,
             }
             for user in users
         ]
     })
 
 
-# ==================== TEAMS ====================
+@login_required
+def api_get_users_by_position(request):
+    """API: Get list of available users by position type."""
+    if not request.user.is_jt_admin:
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    position = request.GET.get('position', 'referee')
+    match_id = request.GET.get('match_id')
+
+    # Build query based on position type
+    if position == 'referee':
+        users = User.objects.filter(
+            Q(role=User.Role.REFEREE) | Q(is_referee_flag=True),
+            is_deleted=False,
+            is_hidden_from_colleagues=False
+        )
+    elif position == 'inspector':
+        users = User.objects.filter(
+            Q(role=User.Role.INSPECTOR) | Q(is_inspector_flag=True),
+            is_deleted=False,
+            is_hidden_from_colleagues=False
+        )
+    elif position == 'tournament_director':
+        users = User.objects.filter(
+            Q(role=User.Role.TOURNAMENT_DIRECTOR) | Q(is_tournament_director_flag=True),
+            is_deleted=False,
+            is_hidden_from_colleagues=False
+        )
+    else:
+        return JsonResponse({'users': []})
+
+    users = users.order_by('last_name', 'first_name')
+
+    # Get applications for this match if match_id is provided
+    applied_user_ids = set()
+    if match_id:
+        applied_user_ids = set(
+            MatchApplication.objects.filter(
+                match_id=match_id,
+                status=MatchApplication.Status.PENDING,
+                role=position
+            ).values_list('user_id', flat=True)
+        )
+
+    return JsonResponse({
+        'users': [
+            {
+                'id': user.id,
+                'name': user.get_full_name() or user.username,
+                'has_applied': user.id in applied_user_ids,
+            }
+            for user in users
+        ]
+    })
+
+
+# ==================== CLUBS & TEAMS ====================
 
 @login_required
-def teams_list(request):
-    """Admin: List all teams."""
+def clubs_list(request):
+    """Admin: List all clubs with their teams."""
     if not request.user.is_admin_user:
         return HttpResponseForbidden('Nincs jogosultságod.')
 
-    from .models import Team
+    from django.db.models import Prefetch, Min
 
     show_inactive = request.GET.get('show_inactive') == '1'
-    teams = Team.objects.prefetch_related('alternative_names').order_by('name')
+
+    # Order competitions by their order field
+    competitions_qs = Competition.objects.filter(is_deleted=False).order_by('order', 'name')
+
+    # Teams ordered by their first competition's order, then by name
+    # Filter out deleted and archived teams
+    teams_qs = Team.objects.filter(is_deleted=False, is_archived=False).prefetch_related(
+        Prefetch('competitions', queryset=competitions_qs)
+    ).annotate(
+        first_comp_order=Min('competitions__order')
+    ).order_by('first_comp_order', 'custom_name')
+
+    # Filter out deleted and archived clubs
+    clubs = Club.objects.filter(is_deleted=False, is_archived=False).prefetch_related(
+        Prefetch('teams', queryset=teams_qs)
+    ).order_by('name')
 
     if not show_inactive:
-        teams = teams.filter(is_active=True)
+        clubs = clubs.filter(is_active=True)
 
     context = {
-        'teams': teams,
+        'clubs': clubs,
         'show_inactive': show_inactive,
-        'total_count': Team.objects.count(),
-        'active_count': Team.objects.filter(is_active=True).count(),
+        'total_clubs': Club.objects.filter(is_deleted=False, is_archived=False).count(),
+        'active_clubs': Club.objects.filter(is_deleted=False, is_archived=False, is_active=True).count(),
+        'total_teams': Team.objects.filter(is_deleted=False, is_archived=False).count(),
+        'active_teams': Team.objects.filter(is_deleted=False, is_archived=False, is_active=True).count(),
     }
-    return render(request, 'matches/teams_list.html', context)
+    return render(request, 'matches/clubs_list.html', context)
 
 
 @login_required
-def team_edit(request, team_id=None):
-    """Admin: Create or edit a team."""
+def club_edit(request, club_id=None):
+    """Admin: Create or edit a club."""
     if not request.user.is_admin_user:
         return HttpResponseForbidden('Nincs jogosultságod.')
 
-    from .models import Team, TeamAlternativeName, Competition
+    from .models import ClubContact
 
-    team = None
-    if team_id:
-        team = get_object_or_404(Team, id=team_id)
+    club = None
+    if club_id:
+        club = get_object_or_404(Club, id=club_id, is_deleted=False)
 
     if request.method == 'POST':
+        # Basic fields
         name = request.POST.get('name', '').strip()
         short_name = request.POST.get('short_name', '').strip()
+
+        # Address fields
+        country = request.POST.get('country', '').strip()
         city = request.POST.get('city', '').strip()
-        is_active = request.POST.get('is_active') == 'on'
+        postal_code = request.POST.get('postal_code', '').strip()
+        address = request.POST.get('address', '').strip()
+
+        # Representative fields
+        representative_name = request.POST.get('representative_name', '').strip()
+        representative_phone = request.POST.get('representative_phone', '').strip()
+        representative_email = request.POST.get('representative_email', '').strip()
+
+        # Contact fields
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        website = request.POST.get('website', '').strip()
+        facebook = request.POST.get('facebook', '').strip()
 
         if name:
-            if team:
-                team.name = name
-                team.short_name = short_name
-                team.city = city
-                team.is_active = is_active
+            if club:
+                club.name = name
+                club.short_name = short_name
+                # is_active is managed via archive page, not here
+                club.country = country
+                club.city = city
+                club.postal_code = postal_code
+                club.address = address
+                club.representative_name = representative_name
+                club.representative_phone = representative_phone
+                club.representative_email = representative_email
+                club.email = email
+                club.phone = phone
+                club.website = website
+                club.facebook = facebook
                 if 'logo' in request.FILES:
-                    team.logo = request.FILES['logo']
-                team.save()
-                messages.success(request, f'Csapat frissítve: {name}')
+                    club.logo = request.FILES['logo']
+                club.save()
+
+                # Handle additional contacts
+                # Delete removed contacts
+                deleted_contacts = request.POST.get('deleted_contacts', '')
+                if deleted_contacts:
+                    for contact_id in deleted_contacts.split(','):
+                        if contact_id:
+                            ClubContact.objects.filter(id=contact_id, club=club).delete()
+
+                # Update existing contacts
+                existing_contacts = request.POST.get('existing_contacts', '')
+                if existing_contacts:
+                    for contact_id in existing_contacts.split(','):
+                        if contact_id:
+                            try:
+                                contact = ClubContact.objects.get(id=contact_id, club=club)
+                                contact.contact_type = request.POST.get(f'contact_type_{contact_id}', 'email')
+                                contact.label = request.POST.get(f'contact_label_{contact_id}', '').strip()
+                                contact.value = request.POST.get(f'contact_value_{contact_id}', '').strip()
+                                if contact.value:
+                                    contact.save()
+                            except ClubContact.DoesNotExist:
+                                pass
+
+                # Create new contacts
+                new_contacts = request.POST.get('new_contacts', '')
+                if new_contacts:
+                    for new_id in new_contacts.split(','):
+                        if new_id:
+                            contact_type = request.POST.get(f'contact_type_{new_id}', 'email')
+                            label = request.POST.get(f'contact_label_{new_id}', '').strip()
+                            value = request.POST.get(f'contact_value_{new_id}', '').strip()
+                            if value:
+                                ClubContact.objects.create(
+                                    club=club,
+                                    contact_type=contact_type,
+                                    label=label,
+                                    value=value
+                                )
+
+                messages.success(request, f'Klub frissítve: {name}')
             else:
-                team = Team.objects.create(
+                club = Club.objects.create(
                     name=name,
                     short_name=short_name,
+                    is_active=True,  # New clubs are always active
+                    country=country,
                     city=city,
-                    is_active=is_active,
+                    postal_code=postal_code,
+                    address=address,
+                    representative_name=representative_name,
+                    representative_phone=representative_phone,
+                    representative_email=representative_email,
+                    email=email,
+                    phone=phone,
+                    website=website,
+                    facebook=facebook,
                     logo=request.FILES.get('logo')
                 )
-                messages.success(request, f'Csapat létrehozva: {name}')
-            return redirect('matches:team_edit', team_id=team.id)
+                messages.success(request, f'Klub létrehozva: {name}')
+            return redirect('matches:club_edit', club_id=club.id)
+
+    # Get non-deleted teams for the club
+    teams = club.teams.filter(is_deleted=False) if club else []
 
     context = {
+        'club': club,
+        'teams': teams,
+    }
+    return render(request, 'matches/club_edit.html', context)
+
+
+@login_required
+def club_toggle_active(request, club_id):
+    """Admin: Toggle club active status."""
+    if not request.user.is_admin_user:
+        return HttpResponseForbidden('Nincs jogosultságod.')
+
+    from .models import Club
+
+    if request.method == 'POST':
+        club = get_object_or_404(Club, id=club_id)
+        club.is_active = not club.is_active
+        club.save()
+        status = 'aktiválva' if club.is_active else 'deaktiválva'
+        messages.success(request, f'Klub {status}: {club.name}')
+
+    return redirect('matches:clubs_list')
+
+
+@login_required
+def club_delete(request, club_id):
+    """Admin: Soft delete a club and all its teams."""
+    if not request.user.is_admin_user:
+        if request.headers.get('Content-Type') == 'application/json':
+            return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+        return HttpResponseForbidden('Nincs jogosultságod.')
+
+    if request.method == 'POST':
+        club = get_object_or_404(Club, id=club_id)
+        club_name = club.name
+
+        # Use the model's soft_delete method with cascade
+        club.soft_delete(cascade=True)
+
+        # Audit log
+        log_action(request, 'match', 'soft_delete', f'Klub törölve: {club_name}', obj=club)
+
+        # Return JSON for AJAX calls
+        if request.headers.get('Content-Type') == 'application/json':
+            return JsonResponse({'success': True, 'message': f'Klub törölve: {club_name}'})
+
+        messages.success(request, f'Klub törölve: {club_name}')
+
+    return redirect('matches:clubs_list')
+
+
+@login_required
+def api_archive_club(request, club_id):
+    """API: Archive a club and all its teams."""
+    if not request.user.is_admin_user:
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    club = get_object_or_404(Club, id=club_id)
+    club_name = club.name
+
+    # Use the model's archive method with cascade
+    club.archive(cascade=True)
+
+    # Audit log
+    log_action(request, 'match', 'archive', f'Klub archiválva: {club_name}', obj=club)
+
+    return JsonResponse({'success': True, 'message': f'Klub archiválva: {club_name}'})
+
+
+@login_required
+def team_edit(request, club_id, team_id=None):
+    """Admin: Create or edit a team within a club."""
+    if not request.user.is_admin_user:
+        return HttpResponseForbidden('Nincs jogosultságod.')
+
+    club = get_object_or_404(Club, id=club_id, is_deleted=False)
+    team = None
+    if team_id:
+        team = get_object_or_404(Team, id=team_id, club=club, is_deleted=False)
+
+    if request.method == 'POST':
+        custom_name = request.POST.get('custom_name', '').strip()
+        short_name = request.POST.get('short_name', '').strip()
+        is_active = request.POST.get('is_active') == 'on'
+
+        # Manager fields
+        manager_name = request.POST.get('manager_name', '').strip()
+        manager_phone = request.POST.get('manager_phone', '').strip()
+        manager_email = request.POST.get('manager_email', '').strip()
+
+        # Competition IDs
+        competition_ids = request.POST.getlist('competitions')
+
+        if not custom_name:
+            messages.error(request, 'A csapat neve kötelező!')
+            return redirect('matches:team_edit', club_id=club.id, team_id=team.id if team else None)
+
+        if team:
+            team.custom_name = custom_name
+            team.short_name = short_name
+            team.is_active = is_active
+            team.manager_name = manager_name
+            team.manager_phone = manager_phone
+            team.manager_email = manager_email
+            if 'logo' in request.FILES:
+                team.logo = request.FILES['logo']
+            team.save()
+
+            # Update competitions
+            team.competitions.set(competition_ids)
+
+            messages.success(request, f'Csapat frissítve: {team}')
+        else:
+            team = Team.objects.create(
+                club=club,
+                custom_name=custom_name,
+                short_name=short_name,
+                is_active=is_active,
+                manager_name=manager_name,
+                manager_phone=manager_phone,
+                manager_email=manager_email,
+                logo=request.FILES.get('logo')
+            )
+
+            # Set competitions
+            team.competitions.set(competition_ids)
+
+            messages.success(request, f'Csapat létrehozva: {team}')
+        return redirect('matches:team_edit', club_id=club.id, team_id=team.id)
+
+    # Get competitions grouped by season
+    from collections import OrderedDict
+    seasons = Season.objects.filter(is_deleted=False).order_by('-is_active', '-start_date')
+    competitions_by_season = OrderedDict()
+    for season in seasons:
+        comps = Competition.objects.filter(season=season, is_deleted=False).order_by('order', 'name')
+        if comps.exists():
+            competitions_by_season[season] = comps
+
+    # Get current team's competition IDs
+    team_competition_ids = []
+    if team:
+        team_competition_ids = list(team.competitions.values_list('id', flat=True))
+
+    context = {
+        'club': club,
         'team': team,
-        'competitions': Competition.objects.select_related('season').order_by('-season__start_date', 'name'),
+        'competitions_by_season': competitions_by_season,
+        'team_competition_ids': team_competition_ids,
     }
     return render(request, 'matches/team_edit.html', context)
 
@@ -2098,9 +2760,59 @@ def team_toggle_active(request, team_id):
         team.is_active = not team.is_active
         team.save()
         status = 'aktiválva' if team.is_active else 'deaktiválva'
-        messages.success(request, f'Csapat {status}: {team.name}')
+        messages.success(request, f'Csapat {status}: {team}')
 
-    return redirect('matches:teams_list')
+    return redirect('matches:clubs_list')
+
+
+@login_required
+def team_delete(request, team_id):
+    """Admin: Soft delete a team."""
+    if not request.user.is_admin_user:
+        if request.headers.get('Content-Type') == 'application/json':
+            return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+        return HttpResponseForbidden('Nincs jogosultságod.')
+
+    if request.method == 'POST':
+        team = get_object_or_404(Team, id=team_id)
+        club_id = team.club_id
+        team_name = str(team)
+
+        # Use the model's soft_delete method
+        team.soft_delete()
+
+        # Audit log
+        log_action(request, 'match', 'soft_delete', f'Csapat törölve: {team_name}', obj=team)
+
+        # Return JSON for AJAX calls
+        if request.headers.get('Content-Type') == 'application/json':
+            return JsonResponse({'success': True, 'message': f'Csapat törölve: {team_name}'})
+
+        messages.success(request, f'Csapat törölve: {team_name}')
+        return redirect('matches:club_edit', club_id=club_id)
+
+    return redirect('matches:clubs_list')
+
+
+@login_required
+def api_archive_team(request, team_id):
+    """API: Archive a team."""
+    if not request.user.is_admin_user:
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    team = get_object_or_404(Team, id=team_id)
+    team_name = str(team)
+
+    # Use the model's archive method
+    team.archive()
+
+    # Audit log
+    log_action(request, 'match', 'archive', f'Csapat archiválva: {team_name}', obj=team)
+
+    return JsonResponse({'success': True, 'message': f'Csapat archiválva: {team_name}'})
 
 
 @login_required
@@ -2128,7 +2840,7 @@ def team_add_alternative(request, team_id):
             )
             messages.success(request, f'Alternatív név hozzáadva: {name}')
 
-    return redirect('matches:team_edit', team_id=team_id)
+    return redirect('matches:team_edit', club_id=team.club_id, team_id=team_id)
 
 
 @login_required
@@ -2141,12 +2853,12 @@ def team_delete_alternative(request, alt_id):
 
     if request.method == 'POST':
         alt = get_object_or_404(TeamAlternativeName, id=alt_id)
-        team_id = alt.team_id
+        team = alt.team
         alt.delete()
         messages.success(request, 'Alternatív név törölve.')
-        return redirect('matches:team_edit', team_id=team_id)
+        return redirect('matches:team_edit', club_id=team.club_id, team_id=team.id)
 
-    return redirect('matches:teams_list')
+    return redirect('matches:clubs_list')
 
 
 # ==================== VENUES ====================
@@ -2157,10 +2869,9 @@ def venues_list(request):
     if not request.user.is_admin_user:
         return HttpResponseForbidden('Nincs jogosultságod.')
 
-    from .models import Venue
-
     show_inactive = request.GET.get('show_inactive') == '1'
-    venues = Venue.objects.order_by('city', 'name')
+    # Filter out deleted and archived venues (archived are in Archive page)
+    venues = Venue.objects.filter(is_deleted=False, is_archived=False).order_by('city', 'name')
 
     if not show_inactive:
         venues = venues.filter(is_active=True)
@@ -2168,8 +2879,8 @@ def venues_list(request):
     context = {
         'venues': venues,
         'show_inactive': show_inactive,
-        'total_count': Venue.objects.count(),
-        'active_count': Venue.objects.filter(is_active=True).count(),
+        'total_count': Venue.objects.filter(is_deleted=False, is_archived=False).count(),
+        'active_count': Venue.objects.filter(is_deleted=False, is_archived=False, is_active=True).count(),
     }
     return render(request, 'matches/venues_list.html', context)
 
@@ -2180,23 +2891,25 @@ def venue_edit(request, venue_id=None):
     if not request.user.is_admin_user:
         return HttpResponseForbidden('Nincs jogosultságod.')
 
-    from .models import Venue
-
     venue = None
     if venue_id:
-        venue = get_object_or_404(Venue, id=venue_id)
+        venue = get_object_or_404(Venue, id=venue_id, is_deleted=False)
 
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         city = request.POST.get('city', '').strip()
+        postal_code = request.POST.get('postal_code', '').strip()
         address = request.POST.get('address', '').strip()
+        google_maps_url = request.POST.get('google_maps_url', '').strip()
         is_active = request.POST.get('is_active') == 'on'
 
         if name and city:
             if venue:
                 venue.name = name
                 venue.city = city
+                venue.postal_code = postal_code
                 venue.address = address
+                venue.google_maps_url = google_maps_url
                 venue.is_active = is_active
                 venue.save()
                 messages.success(request, f'Helyszín frissítve: {name}')
@@ -2204,7 +2917,9 @@ def venue_edit(request, venue_id=None):
                 venue = Venue.objects.create(
                     name=name,
                     city=city,
+                    postal_code=postal_code,
                     address=address,
+                    google_maps_url=google_maps_url,
                     is_active=is_active
                 )
                 messages.success(request, f'Helyszín létrehozva: {name}')
@@ -2234,6 +2949,48 @@ def venue_toggle_active(request, venue_id):
     return redirect('matches:venues_list')
 
 
+@login_required
+def api_archive_venue(request, venue_id):
+    """API: Archive a venue."""
+    if not request.user.is_admin_user:
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    venue = get_object_or_404(Venue, id=venue_id)
+    venue_name = venue.name
+
+    # Use the model's archive method
+    venue.archive()
+
+    # Audit log
+    log_action(request, 'match', 'archive', f'Helyszín archiválva: {venue_name}', obj=venue)
+
+    return JsonResponse({'success': True, 'message': f'Helyszín archiválva: {venue_name}'})
+
+
+@login_required
+def api_delete_venue(request, venue_id):
+    """API: Soft delete a venue."""
+    if not request.user.is_admin_user:
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    venue = get_object_or_404(Venue, id=venue_id)
+    venue_name = venue.name
+
+    # Use the model's soft_delete method
+    venue.soft_delete()
+
+    # Audit log
+    log_action(request, 'match', 'soft_delete', f'Helyszín törölve: {venue_name}', obj=venue)
+
+    return JsonResponse({'success': True, 'message': f'Helyszín törölve: {venue_name}'})
+
+
 # ==================== COMPETITIONS ====================
 
 @login_required
@@ -2242,11 +2999,9 @@ def competitions_list(request):
     if not request.user.is_admin_user:
         return HttpResponseForbidden('Nincs jogosultságod.')
 
-    from .models import Season, Competition
-
     context = {
-        'seasons': Season.objects.all().order_by('-start_date'),
-        'competitions': Competition.objects.select_related('season').prefetch_related('phases').order_by('-season__start_date', 'name'),
+        'seasons': Season.objects.filter(is_deleted=False).order_by('-start_date'),
+        'competitions': Competition.objects.filter(is_deleted=False).select_related('season').prefetch_related('phases').order_by('-season__start_date', 'name'),
     }
     return render(request, 'matches/competitions_list.html', context)
 
@@ -2401,7 +3156,7 @@ def api_toggle_assignment_published(request, match_id):
             # Format match details
             date_str = match.date.strftime('%Y.%m.%d (%A)') if match.date else 'Nincs dátum'
             time_str = match.time.strftime('%H:%M') if match.time else ''
-            teams = f"{match.home_team.name if match.home_team else 'TBD'} - {match.away_team.name if match.away_team else 'TBD'}"
+            teams = f"{str(match.home_team) if match.home_team else 'TBD'} - {str(match.away_team) if match.away_team else 'TBD'}"
             venue = match.venue.name if match.venue else 'Nincs helyszín'
 
             message = f"{date_str} {time_str}\n{teams}\n{venue}"
@@ -2563,25 +3318,264 @@ def api_create_match(request):
 
 
 @login_required
-def deleted_items(request):
-    """Show soft-deleted items for permanent deletion."""
-    if not request.user.is_jt_admin:
+def archive(request):
+    """Show archived items (is_archived=True).
+    Regular Admin: can view only (read-only)
+    Super Admin: can edit, restore, and delete
+    """
+    if not request.user.is_admin_user:
         return HttpResponseForbidden('Nincs jogosultságod.')
 
     from django.contrib.auth import get_user_model
+    from .models import Club, Team, Venue, Competition, Season, CompetitionPhase
     User = get_user_model()
 
-    # Get all soft-deleted matches
+    is_super_admin = getattr(request.user, 'is_super_admin', False)
+    active_tab = request.GET.get('tab', 'seasons')
+
+    # Get archived (is_archived=True, not deleted) items
+    archived_seasons = Season.objects.filter(is_archived=True, is_deleted=False).order_by('-archived_at')
+    archived_competitions = Competition.objects.filter(is_archived=True, is_deleted=False).select_related('season').order_by('-archived_at')
+    archived_matches = Match.objects.filter(is_archived=True, is_deleted=False).select_related(
+        'home_team', 'away_team', 'venue', 'phase', 'phase__competition'
+    ).order_by('-archived_at')
+    archived_venues = Venue.objects.filter(is_archived=True, is_deleted=False).order_by('-archived_at')
+    archived_clubs = Club.objects.filter(is_archived=True, is_deleted=False).order_by('-archived_at')
+    archived_teams = Team.objects.filter(is_archived=True, is_deleted=False).select_related('club').order_by('-archived_at')
+    archived_users = User.objects.filter(is_archived=True, is_deleted=False).order_by('-archived_at')
+
+    # Count items
+    counts = {
+        'archived_seasons': archived_seasons.count(),
+        'archived_competitions': archived_competitions.count(),
+        'archived_matches': archived_matches.count(),
+        'archived_venues': archived_venues.count(),
+        'archived_clubs': archived_clubs.count(),
+        'archived_teams': archived_teams.count(),
+        'archived_users': archived_users.count(),
+    }
+
+    context = {
+        'is_super_admin': is_super_admin,
+        'active_tab': active_tab,
+        'counts': counts,
+        # Archived items
+        'archived_seasons': archived_seasons,
+        'archived_competitions': archived_competitions,
+        'archived_matches': archived_matches,
+        'archived_venues': archived_venues,
+        'archived_clubs': archived_clubs,
+        'archived_teams': archived_teams,
+        'archived_users': archived_users,
+    }
+
+    return render(request, 'matches/archive.html', context)
+
+
+@login_required
+def trash_view(request):
+    """Show soft-deleted items (Kuka). Super Admin only.
+    Super Admin can restore or permanently delete items.
+    """
+    if not getattr(request.user, 'is_super_admin', False):
+        return HttpResponseForbidden('Nincs jogosultságod ehhez az oldalhoz.')
+
+    from django.contrib.auth import get_user_model
+    from .models import Club, Team, Venue, Competition, Season, CompetitionPhase
+    User = get_user_model()
+
+    active_tab = request.GET.get('tab', 'matches')
+
+    # Get all soft-deleted items
+    deleted_seasons = Season.objects.filter(is_deleted=True).order_by('-deleted_at')
+    deleted_competitions = Competition.objects.filter(is_deleted=True).select_related('season').order_by('-deleted_at')
+    deleted_matches = Match.objects.filter(is_deleted=True).select_related(
+        'home_team', 'away_team', 'venue', 'phase', 'phase__competition'
+    ).order_by('-deleted_at')
+    deleted_venues = Venue.objects.filter(is_deleted=True).order_by('-deleted_at')
+    deleted_clubs = Club.objects.filter(is_deleted=True).order_by('-deleted_at')
+    deleted_teams = Team.objects.filter(is_deleted=True).select_related('club').order_by('-deleted_at')
+    deleted_users = User.objects.filter(is_deleted=True).order_by('-deleted_at')
+
+    # Count items
+    counts = {
+        'deleted_seasons': deleted_seasons.count(),
+        'deleted_competitions': deleted_competitions.count(),
+        'deleted_matches': deleted_matches.count(),
+        'deleted_venues': deleted_venues.count(),
+        'deleted_clubs': deleted_clubs.count(),
+        'deleted_teams': deleted_teams.count(),
+        'deleted_users': deleted_users.count(),
+        'total': (
+            deleted_seasons.count() + deleted_competitions.count() + deleted_matches.count() +
+            deleted_venues.count() + deleted_clubs.count() + deleted_teams.count() + deleted_users.count()
+        ),
+    }
+
+    context = {
+        'active_tab': active_tab,
+        'counts': counts,
+        'deleted_seasons': deleted_seasons,
+        'deleted_competitions': deleted_competitions,
+        'deleted_matches': deleted_matches,
+        'deleted_venues': deleted_venues,
+        'deleted_clubs': deleted_clubs,
+        'deleted_teams': deleted_teams,
+        'deleted_users': deleted_users,
+    }
+
+    return render(request, 'matches/trash.html', context)
+
+
+@login_required
+def deleted_items(request):
+    """Show soft-deleted items for permanent deletion. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return HttpResponseForbidden('Nincs jogosultságod ehhez az oldalhoz.')
+
+    from django.contrib.auth import get_user_model
+    from datetime import datetime
+    from .models import Club, Team, Venue, Competition, Season
+    User = get_user_model()
+
+    # Get filter params
+    search_query = request.GET.get('q', '').strip()
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    item_type = request.GET.get('type', 'all')
+
+    # Parse dates
+    date_from_obj = None
+    date_to_obj = None
+    if date_from:
+        try:
+            date_from_obj = datetime.strptime(date_from, '%Y-%m-%d')
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+        except ValueError:
+            pass
+
+    # Get all soft-deleted items
     deleted_matches = Match.objects.filter(is_deleted=True).select_related(
         'home_team', 'away_team', 'venue', 'phase', 'phase__competition'
     ).order_by('-deleted_at')
 
-    # Get all soft-deleted users
     deleted_users = User.objects.filter(is_deleted=True).order_by('-deleted_at')
+
+    deleted_clubs = Club.objects.filter(is_deleted=True).order_by('-deleted_at')
+
+    deleted_teams = Team.objects.filter(is_deleted=True).select_related('club').order_by('-deleted_at')
+
+    deleted_venues = Venue.objects.filter(is_deleted=True).order_by('-deleted_at')
+
+    deleted_competitions = Competition.objects.filter(is_deleted=True).select_related('season').order_by('-deleted_at')
+
+    deleted_seasons = Season.objects.filter(is_deleted=True).order_by('-deleted_at')
+
+    # Apply date filters
+    if date_from_obj:
+        deleted_matches = deleted_matches.filter(deleted_at__gte=date_from_obj)
+        deleted_users = deleted_users.filter(deleted_at__gte=date_from_obj)
+        deleted_clubs = deleted_clubs.filter(deleted_at__gte=date_from_obj)
+        deleted_teams = deleted_teams.filter(deleted_at__gte=date_from_obj)
+        deleted_venues = deleted_venues.filter(deleted_at__gte=date_from_obj)
+        deleted_competitions = deleted_competitions.filter(deleted_at__gte=date_from_obj)
+        deleted_seasons = deleted_seasons.filter(deleted_at__gte=date_from_obj)
+
+    if date_to_obj:
+        deleted_matches = deleted_matches.filter(deleted_at__lte=date_to_obj)
+        deleted_users = deleted_users.filter(deleted_at__lte=date_to_obj)
+        deleted_clubs = deleted_clubs.filter(deleted_at__lte=date_to_obj)
+        deleted_teams = deleted_teams.filter(deleted_at__lte=date_to_obj)
+        deleted_venues = deleted_venues.filter(deleted_at__lte=date_to_obj)
+        deleted_competitions = deleted_competitions.filter(deleted_at__lte=date_to_obj)
+        deleted_seasons = deleted_seasons.filter(deleted_at__lte=date_to_obj)
+
+    # Apply search filter
+    if search_query:
+        from django.db.models import Q
+        deleted_matches = deleted_matches.filter(
+            Q(home_team__name__icontains=search_query) |
+            Q(away_team__name__icontains=search_query) |
+            Q(venue__name__icontains=search_query) |
+            Q(phase__competition__name__icontains=search_query)
+        )
+        deleted_users = deleted_users.filter(
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(username__icontains=search_query)
+        )
+        deleted_clubs = deleted_clubs.filter(
+            Q(name__icontains=search_query) |
+            Q(short_name__icontains=search_query) |
+            Q(city__icontains=search_query)
+        )
+        deleted_teams = deleted_teams.filter(
+            Q(custom_name__icontains=search_query) |
+            Q(short_name__icontains=search_query) |
+            Q(club__name__icontains=search_query) |
+            Q(suffix__icontains=search_query)
+        )
+        deleted_venues = deleted_venues.filter(
+            Q(name__icontains=search_query) |
+            Q(city__icontains=search_query) |
+            Q(address__icontains=search_query)
+        )
+        deleted_competitions = deleted_competitions.filter(
+            Q(name__icontains=search_query) |
+            Q(short_name__icontains=search_query) |
+            Q(season__name__icontains=search_query)
+        )
+        deleted_seasons = deleted_seasons.filter(
+            Q(name__icontains=search_query)
+        )
+
+    # Apply type filter
+    if item_type != 'all':
+        if item_type != 'match':
+            deleted_matches = Match.objects.none()
+        if item_type != 'user':
+            deleted_users = User.objects.none()
+        if item_type != 'club':
+            deleted_clubs = Club.objects.none()
+        if item_type != 'team':
+            deleted_teams = Team.objects.none()
+        if item_type != 'venue':
+            deleted_venues = Venue.objects.none()
+        if item_type != 'competition':
+            deleted_competitions = Competition.objects.none()
+        if item_type != 'season':
+            deleted_seasons = Season.objects.none()
+
+    # Counts for stats
+    counts = {
+        'matches': deleted_matches.count(),
+        'users': deleted_users.count(),
+        'clubs': deleted_clubs.count(),
+        'teams': deleted_teams.count(),
+        'venues': deleted_venues.count(),
+        'competitions': deleted_competitions.count(),
+        'seasons': deleted_seasons.count(),
+    }
+    counts['total'] = sum(counts.values())
 
     context = {
         'deleted_matches': deleted_matches,
         'deleted_users': deleted_users,
+        'deleted_clubs': deleted_clubs,
+        'deleted_teams': deleted_teams,
+        'deleted_venues': deleted_venues,
+        'deleted_competitions': deleted_competitions,
+        'deleted_seasons': deleted_seasons,
+        'item_type': item_type,
+        'counts': counts,
+        'search_query': search_query,
+        'date_from': date_from,
+        'date_to': date_to,
     }
 
     return render(request, 'matches/deleted_items.html', context)
@@ -2590,9 +3584,9 @@ def deleted_items(request):
 @login_required
 @require_POST
 def api_permanently_delete_match(request, match_id):
-    """API: Permanently delete a soft-deleted match."""
-    if not request.user.is_jt_admin:
-        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+    """API: Permanently delete a soft-deleted match. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a végleges törléshez.'}, status=403)
 
     match = get_object_or_404(Match.objects.filter(is_deleted=True), id=match_id)
 
@@ -2622,9 +3616,9 @@ def api_permanently_delete_match(request, match_id):
 @login_required
 @require_POST
 def api_restore_match(request, match_id):
-    """API: Restore a soft-deleted match."""
-    if not request.user.is_jt_admin:
-        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+    """API: Restore a soft-deleted match. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a visszaállításhoz.'}, status=403)
 
     match = get_object_or_404(Match.objects.filter(is_deleted=True), id=match_id)
 
@@ -2660,9 +3654,13 @@ def users_list(request):
     from django.contrib.auth import get_user_model
     User = get_user_model()
 
+    is_super_admin = getattr(request.user, 'is_super_admin', False)
+
     # Get query params
     search = request.GET.get('search', '').strip()
-    show_deleted = request.GET.get('show_deleted') == '1'
+    role_filter = request.GET.get('role', '').strip()
+    # Only super admin can view deleted users
+    show_deleted = is_super_admin and request.GET.get('show_deleted') == '1'
 
     # Base query
     users = User.objects.all().order_by('last_name', 'first_name')
@@ -2679,6 +3677,23 @@ def users_list(request):
     if not show_deleted:
         users = users.filter(is_deleted=False)
 
+    # Archived users only appear in Archive page, not here
+    users = users.filter(is_archived=False)
+
+    # Apply role filter (by role OR by flag - show everyone who has that permission)
+    if role_filter:
+        role_filters = {
+            'referee': Q(role=User.Role.REFEREE) | Q(is_referee_flag=True),
+            'jt_admin': Q(role=User.Role.JT_ADMIN) | Q(is_jt_admin_flag=True),
+            'vb': Q(role=User.Role.VB) | Q(is_vb_flag=True),
+            'inspector': Q(role=User.Role.INSPECTOR) | Q(is_inspector_flag=True),
+            'accountant': Q(role=User.Role.ACCOUNTANT) | Q(is_accountant_flag=True),
+            'admin': Q(role=User.Role.ADMIN) | Q(is_admin_flag=True),
+            'tournament_director': Q(role=User.Role.TOURNAMENT_DIRECTOR) | Q(is_tournament_director_flag=True),
+        }
+        if role_filter in role_filters:
+            users = users.filter(role_filters[role_filter])
+
     # Apply search filter
     if search:
         users = users.filter(
@@ -2688,24 +3703,39 @@ def users_list(request):
             Q(phone__icontains=search)
         )
 
-    # Count for the filtered view
+    # Count for the filtered view (deleted count only for super admin)
     if request.user.is_admin_user:
         total_count = User.objects.filter(is_deleted=False).count()
-        deleted_count = User.objects.filter(is_deleted=True).count()
+        deleted_count = User.objects.filter(is_deleted=True).count() if is_super_admin else 0
     else:
         # JT Admin sees referee and JT Admin counts
         user_filter = (Q(role=User.Role.REFEREE) | Q(is_referee_flag=True) |
                        Q(role=User.Role.JT_ADMIN) | Q(is_jt_admin_flag=True))
         total_count = User.objects.filter(user_filter, is_deleted=False).count()
-        deleted_count = User.objects.filter(user_filter, is_deleted=True).count()
+        deleted_count = User.objects.filter(user_filter, is_deleted=True).count() if is_super_admin else 0
+
+    # Available roles for filter dropdown
+    role_choices = [
+        ('', 'Összes szerepkör'),
+        ('referee', 'Játékvezető'),
+        ('jt_admin', 'JT Admin'),
+        ('vb', 'VB tag'),
+        ('inspector', 'Ellenőr'),
+        ('accountant', 'Könyvelő'),
+        ('admin', 'Adminisztrátor'),
+        ('tournament_director', 'Tornaigazgató'),
+    ]
 
     context = {
         'users': users,
         'search': search,
+        'role_filter': role_filter,
+        'role_choices': role_choices,
         'show_deleted': show_deleted,
         'total_count': total_count,
         'deleted_count': deleted_count,
         'is_admin_view': request.user.is_admin_user,
+        'is_super_admin': is_super_admin,
     }
     return render(request, 'matches/users_list.html', context)
 
@@ -2731,35 +3761,50 @@ def user_create(request):
             messages.error(request, 'E-mail cím megadása kötelező!')
             return render(request, 'matches/user_edit.html', {'user_obj': None})
 
-        if User.objects.filter(email=email).exists():
+        # Check for existing non-deleted users with this email
+        if User.objects.filter(email=email, is_deleted=False).exists():
             messages.error(request, 'Ez az e-mail cím már foglalt!')
             return render(request, 'matches/user_edit.html', {'user_obj': None})
 
-        # Generate password if not provided
-        generated_password = password if password else get_random_string(12)
+        # If a deleted user exists with this email, modify their email/username to allow reuse
+        deleted_user_with_email = User.objects.filter(email=email, is_deleted=True).first()
+        if deleted_user_with_email:
+            # Append timestamp to the deleted user's email and username to free up the address
+            import time
+            suffix = f"_deleted_{int(time.time())}"
+            deleted_user_with_email.email = f"{deleted_user_with_email.email}{suffix}"
+            deleted_user_with_email.username = f"{deleted_user_with_email.username}{suffix}"
+            deleted_user_with_email.save(update_fields=['email', 'username'])
+
+        # Check if we're sending welcome email with setup link
+        send_welcome = request.POST.get('send_password_email') == 'on'
 
         # Create user
         user = User.objects.create_user(
             username=email,  # Use email as username
             email=email,
-            password=generated_password,
+            password=password if password else None,  # None if sending setup link
             first_name=first_name,
             last_name=last_name,
             phone=phone,
         )
 
+        # If sending welcome email without manual password, set unusable password
+        if send_welcome and not password:
+            user.set_unusable_password()
+            user.save(update_fields=['password'])
+
         # Save additional fields
         _save_user_fields(request, user)
 
         # Send welcome email if checkbox is checked
-        send_welcome = request.POST.get('send_password_email') == 'on'
         email_sent = False
         if send_welcome and email:
             try:
                 from core.email_utils import send_welcome_email
-                if send_welcome_email(user, generated_password):
+                if send_welcome_email(user):
                     email_sent = True
-                    messages.success(request, f'Felhasználó létrehozva és üdvözlő email elküldve: {user.get_full_name() or email}')
+                    messages.success(request, f'Felhasználó létrehozva és meghívó email elküldve: {user.get_full_name() or email}')
                 else:
                     messages.warning(request, f'Felhasználó létrehozva, de az email küldés sikertelen: {user.get_full_name() or email}')
             except Exception as e:
@@ -2822,12 +3867,20 @@ def user_edit(request, user_id):
         user_obj.last_name = request.POST.get('last_name', '').strip()
         user_obj.phone = request.POST.get('phone', '').strip()
 
-        # Email update (check uniqueness)
+        # Email update (check uniqueness - exclude soft-deleted users)
         new_email = request.POST.get('email', '').strip()
         if new_email and new_email != user_obj.email:
-            if User.objects.filter(email=new_email).exclude(id=user_obj.id).exists():
+            if User.objects.filter(email=new_email, is_deleted=False).exclude(id=user_obj.id).exists():
                 messages.error(request, 'Ez az e-mail cím már foglalt!')
             else:
+                # If a deleted user exists with this email, modify their email/username to allow reuse
+                deleted_user_with_email = User.objects.filter(email=new_email, is_deleted=True).first()
+                if deleted_user_with_email:
+                    import time
+                    suffix = f"_deleted_{int(time.time())}"
+                    deleted_user_with_email.email = f"{deleted_user_with_email.email}{suffix}"
+                    deleted_user_with_email.username = f"{deleted_user_with_email.username}{suffix}"
+                    deleted_user_with_email.save(update_fields=['email', 'username'])
                 user_obj.email = new_email
                 user_obj.username = new_email
 
@@ -2975,6 +4028,20 @@ def _save_user_fields(request, user):
     if request.user.is_admin_user:
         new_role = request.POST.get('role', User.Role.REFEREE)
         new_admin_flag = request.POST.get('is_admin_flag') == 'on'
+
+        # Super Admin restriction: only super admins can grant admin rights
+        is_super = getattr(request.user, 'is_super_admin', False)
+
+        if not is_super:
+            # Non-super admins cannot set role to ADMIN or give admin flag
+            if new_role == User.Role.ADMIN:
+                new_role = user.role if user.pk else User.Role.REFEREE  # Keep existing or default
+            # Cannot grant admin flag (but can keep it if already has it)
+            if new_admin_flag and not user.is_admin_flag:
+                new_admin_flag = False
+            # Cannot revoke admin flag from existing admins (only super admin can)
+            if user.is_admin_flag:
+                new_admin_flag = True
 
         # Self-lockout protection: don't allow removing own admin access
         is_editing_self = (user.id == request.user.id)
@@ -3129,6 +4196,10 @@ def api_user_toggle_visibility(request, user_id):
     user.is_hidden_from_colleagues = not user.is_hidden_from_colleagues
     user.save()
 
+    # Audit log
+    action = 'hide_user' if user.is_hidden_from_colleagues else 'update'
+    log_action(request, 'user', action, f'Felhasználó {"elrejtve" if user.is_hidden_from_colleagues else "megjelenítve"}: {user.get_full_name()}', obj=user)
+
     return JsonResponse({
         'success': True,
         'is_hidden': user.is_hidden_from_colleagues
@@ -3137,29 +4208,55 @@ def api_user_toggle_visibility(request, user_id):
 
 @login_required
 @require_POST
-def api_user_restore(request, user_id):
-    """API: Restore a soft-deleted user (Admin only)."""
+def api_user_exclude(request, user_id):
+    """API: Exclude (archive) a user - they cannot login anymore."""
     if not request.user.is_admin_user:
-        return JsonResponse({'error': 'Csak adminisztrátor állíthat vissza törölt felhasználót.'}, status=403)
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
 
     from django.contrib.auth import get_user_model
     User = get_user_model()
 
-    user = get_object_or_404(User.objects.filter(is_deleted=True), id=user_id)
+    user = get_object_or_404(User, id=user_id, is_deleted=False)
 
-    # Restore user - also re-enable login and unhide
-    user.is_deleted = False
-    user.deleted_at = None
-    user.is_hidden_from_colleagues = False
-    user.is_login_disabled = False
-    user.save()
+    # Don't allow excluding yourself
+    if user.id == request.user.id:
+        return JsonResponse({'error': 'Nem zárhatod ki saját magadat!'}, status=400)
+
+    # Don't allow excluding super admins
+    if getattr(user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Ez a felhasználó nem zárható ki.'}, status=400)
+
+    # Use the model's exclude_user method
+    user.exclude_user()
+
+    # Audit log
+    log_action(request, 'user', 'exclude_user', f'Felhasználó kizárva: {user.get_full_name()}', obj=user)
+
+    return JsonResponse({'success': True, 'message': f'Felhasználó kizárva: {user.get_full_name()}'})
+
+
+@login_required
+@require_POST
+def api_user_restore(request, user_id):
+    """API: Restore a soft-deleted or archived user. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a visszaállításhoz.'}, status=403)
+
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+    User = get_user_model()
+
+    # Find user that is either deleted OR archived
+    user = get_object_or_404(User.objects.filter(Q(is_deleted=True) | Q(is_archived=True)), id=user_id)
+
+    # Restore user - clear all states
+    user.restore()
 
     # Audit log - user restored
-    from audit.utils import log_action
     log_action(
         request,
         'user',
-        'update',
+        'restore',
         f'Felhasználó visszaállítva: {user.get_full_name()} ({user.email})',
         obj=user,
         extra={
@@ -3173,10 +4270,49 @@ def api_user_restore(request, user_id):
 
 @login_required
 @require_POST
-def api_user_permanently_delete(request, user_id):
-    """API: Permanently delete a soft-deleted user."""
+def api_user_toggle_archive(request, user_id):
+    """API: Toggle archive status of a user."""
     if not request.user.is_admin_user:
         return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    user = get_object_or_404(User, id=user_id, is_deleted=False)
+
+    # Don't allow archiving yourself
+    if user.id == request.user.id:
+        return JsonResponse({'error': 'Nem archiválhatod saját magadat!'}, status=400)
+
+    # Don't allow archiving super admins (unless you are super admin)
+    if getattr(user, 'is_super_admin', False) and not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Ez a felhasználó nem archiválható.'}, status=400)
+
+    if user.is_archived:
+        # Unarchive - only super admin can do this
+        if not getattr(request.user, 'is_super_admin', False):
+            return JsonResponse({'error': 'Nincs jogosultságod az archiválás visszavonásához.'}, status=403)
+        user.is_archived = False
+        user.archived_at = None
+        user.save(update_fields=['is_archived', 'archived_at'])
+        log_action(request, 'user', 'restore', f'Felhasználó archiválás megszüntetve: {user.get_full_name()}', obj=user)
+        return JsonResponse({'success': True, 'archived': False})
+    else:
+        # Archive
+        from django.utils import timezone
+        user.is_archived = True
+        user.archived_at = timezone.now()
+        user.save(update_fields=['is_archived', 'archived_at'])
+        log_action(request, 'user', 'archive', f'Felhasználó archiválva: {user.get_full_name()}', obj=user)
+        return JsonResponse({'success': True, 'archived': True})
+
+
+@login_required
+@require_POST
+def api_user_permanently_delete(request, user_id):
+    """API: Permanently delete a soft-deleted user. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a végleges törléshez.'}, status=403)
 
     from django.contrib.auth import get_user_model
     User = get_user_model()
@@ -3214,3 +4350,840 @@ def api_user_permanently_delete(request, user_id):
     )
 
     return JsonResponse({'success': True})
+
+
+# =============================================================================
+# API: Restore/Delete endpoints for all entity types
+# =============================================================================
+
+@login_required
+@require_POST
+def api_restore_club(request, club_id):
+    """API: Restore a soft-deleted club. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a visszaállításhoz.'}, status=403)
+
+    club = get_object_or_404(Club.objects.filter(is_deleted=True), id=club_id)
+    club.is_deleted = False
+    club.deleted_at = None
+    club.save()
+
+    log_action(
+        request, 'match', 'update',
+        f'Klub visszaállítva: {club.name}',
+        obj=club, extra={'restored': True}
+    )
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_permanently_delete_club(request, club_id):
+    """API: Permanently delete a soft-deleted club. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a végleges törléshez.'}, status=403)
+
+    club = get_object_or_404(Club.objects.filter(is_deleted=True), id=club_id)
+    club_name = club.name
+    club_pk = club.pk
+    club.delete()
+
+    log_action(
+        request, 'match', 'delete',
+        f'Klub véglegesen törölve: {club_name}',
+        extra={'permanent_delete': True, 'club_id': club_pk, 'club_name': club_name}
+    )
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_restore_team(request, team_id):
+    """API: Restore a soft-deleted team. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a visszaállításhoz.'}, status=403)
+
+    team = get_object_or_404(Team.objects.filter(is_deleted=True), id=team_id)
+    team.is_deleted = False
+    team.deleted_at = None
+    team.save()
+
+    log_action(
+        request, 'match', 'update',
+        f'Csapat visszaállítva: {team}',
+        obj=team, extra={'restored': True}
+    )
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_permanently_delete_team(request, team_id):
+    """API: Permanently delete a soft-deleted team. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a végleges törléshez.'}, status=403)
+
+    team = get_object_or_404(Team.objects.filter(is_deleted=True), id=team_id)
+    team_name = str(team)
+    team_pk = team.pk
+    team.delete()
+
+    log_action(
+        request, 'match', 'delete',
+        f'Csapat véglegesen törölve: {team_name}',
+        extra={'permanent_delete': True, 'team_id': team_pk, 'team_name': team_name}
+    )
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_restore_venue(request, venue_id):
+    """API: Restore a soft-deleted venue. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a visszaállításhoz.'}, status=403)
+
+    venue = get_object_or_404(Venue.objects.filter(is_deleted=True), id=venue_id)
+    venue.is_deleted = False
+    venue.deleted_at = None
+    venue.save()
+
+    log_action(
+        request, 'match', 'update',
+        f'Helyszín visszaállítva: {venue.name}',
+        obj=venue, extra={'restored': True}
+    )
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_permanently_delete_venue(request, venue_id):
+    """API: Permanently delete a soft-deleted venue. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a végleges törléshez.'}, status=403)
+
+    venue = get_object_or_404(Venue.objects.filter(is_deleted=True), id=venue_id)
+    venue_name = venue.name
+    venue_pk = venue.pk
+    venue.delete()
+
+    log_action(
+        request, 'match', 'delete',
+        f'Helyszín véglegesen törölve: {venue_name}',
+        extra={'permanent_delete': True, 'venue_id': venue_pk, 'venue_name': venue_name}
+    )
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_restore_competition(request, competition_id):
+    """API: Restore a soft-deleted competition. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a visszaállításhoz.'}, status=403)
+
+    competition = get_object_or_404(Competition.objects.filter(is_deleted=True), id=competition_id)
+    competition.is_deleted = False
+    competition.deleted_at = None
+    competition.save()
+
+    log_action(
+        request, 'match', 'update',
+        f'Bajnokság visszaállítva: {competition.name}',
+        obj=competition, extra={'restored': True}
+    )
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_permanently_delete_competition(request, competition_id):
+    """API: Permanently delete a soft-deleted competition. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a végleges törléshez.'}, status=403)
+
+    competition = get_object_or_404(Competition.objects.filter(is_deleted=True), id=competition_id)
+    competition_name = competition.name
+    competition_pk = competition.pk
+    competition.delete()
+
+    log_action(
+        request, 'match', 'delete',
+        f'Bajnokság véglegesen törölve: {competition_name}',
+        extra={'permanent_delete': True, 'competition_id': competition_pk, 'competition_name': competition_name}
+    )
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_restore_season(request, season_id):
+    """API: Restore a soft-deleted season. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a visszaállításhoz.'}, status=403)
+
+    season = get_object_or_404(Season.objects.filter(is_deleted=True), id=season_id)
+    season.is_deleted = False
+    season.deleted_at = None
+    season.save()
+
+    log_action(
+        request, 'match', 'update',
+        f'Szezon visszaállítva: {season.name}',
+        obj=season, extra={'restored': True}
+    )
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_permanently_delete_season(request, season_id):
+    """API: Permanently delete a soft-deleted season. Super Admin only."""
+    if not getattr(request.user, 'is_super_admin', False):
+        return JsonResponse({'error': 'Nincs jogosultságod a végleges törléshez.'}, status=403)
+
+    season = get_object_or_404(Season.objects.filter(is_deleted=True), id=season_id)
+    season_name = season.name
+    season_pk = season.pk
+    season.delete()
+
+    log_action(
+        request, 'match', 'delete',
+        f'Szezon véglegesen törölve: {season_name}',
+        extra={'permanent_delete': True, 'season_id': season_pk, 'season_name': season_name}
+    )
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def api_activate_season(request, season_id):
+    """API: Activate an archived (inactive) season. Admin only."""
+    if not request.user.is_admin_user:
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    season = get_object_or_404(Season.objects.filter(is_deleted=False), id=season_id)
+    season.is_active = True
+    season.save()
+
+    log_action(
+        request, 'match', 'update',
+        f'Szezon aktiválva: {season.name}',
+        obj=season, extra={'activated': True}
+    )
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+def match_applications(request):
+    """Match applications page - available matches and current applications."""
+    from accounts.models import SiteSettings
+    from django.utils import timezone
+    from datetime import timedelta
+    from django.db.models import Q
+
+    site_settings = SiteSettings.get_settings()
+    user = request.user
+    today = timezone.localdate()
+
+    # Get filter parameters
+    season_id = request.GET.get('season', '')
+    competition_id = request.GET.get('competition', '')
+    team_id = request.GET.get('team', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
+    # Default date range: today to today + 14 days
+    if not date_from and not date_to:
+        date_from = str(today)
+        date_to = str(today + timedelta(days=14))
+
+    # Determine which roles the user can apply for
+    # Only users with the specific permission can apply for that role
+    can_apply_as_referee = (
+        site_settings.application_referees_enabled and
+        user.is_referee  # Játékvezető permission - can apply as referee AND reserve
+    )
+    can_apply_as_inspector = (
+        site_settings.application_inspectors_enabled and
+        user.is_inspector  # Ellenőr permission only
+    )
+    can_apply_as_tournament_director = (
+        site_settings.application_tournament_directors_enabled and
+        user.is_tournament_director  # Tornaigazgató permission only
+    )
+
+    # Get current/selected season
+    current_season = Season.get_current()
+    if season_id:
+        try:
+            selected_season = Season.objects.get(id=season_id, is_deleted=False)
+        except Season.DoesNotExist:
+            selected_season = current_season
+    else:
+        selected_season = current_season
+
+    # Get user's current applications (pending only)
+    my_applications = MatchApplication.objects.filter(
+        user=user,
+        status=MatchApplication.Status.PENDING
+    ).select_related(
+        'match', 'match__phase', 'match__phase__competition',
+        'match__venue', 'match__home_team', 'match__away_team'
+    ).order_by('match__date', 'match__time')
+
+    # Get IDs of matches user has already applied to
+    applied_match_ids = set(my_applications.values_list('match_id', flat=True))
+
+    # Get IDs of matches user is already assigned to (excluding declined assignments)
+    assigned_match_ids = set(
+        MatchAssignment.objects.filter(user=user).exclude(
+            response_status=MatchAssignment.ResponseStatus.DECLINED
+        ).values_list('match_id', flat=True)
+    )
+
+    # Build available matches query
+    available_matches = Match.objects.filter(
+        is_deleted=False,
+        status__in=[Match.Status.CREATED, Match.Status.SCHEDULED, Match.Status.CONFIRMED],
+        date__gte=today,  # Future matches only
+    ).exclude(
+        id__in=applied_match_ids  # Exclude already applied
+    ).exclude(
+        id__in=assigned_match_ids  # Exclude already assigned
+    ).select_related(
+        'phase', 'phase__competition', 'venue', 'home_team', 'away_team',
+        'home_team__club', 'away_team__club'
+    ).order_by('date', 'time')
+
+    # Apply season filter
+    if selected_season:
+        available_matches = available_matches.filter(phase__competition__season=selected_season)
+
+    # Apply other filters
+    if competition_id:
+        available_matches = available_matches.filter(phase__competition_id=competition_id)
+    if date_from:
+        available_matches = available_matches.filter(date__gte=date_from)
+    if date_to:
+        available_matches = available_matches.filter(date__lte=date_to)
+    if team_id:
+        available_matches = available_matches.filter(
+            Q(home_team_id=team_id) | Q(away_team_id=team_id)
+        )
+
+    # Filter based on matches that have open positions with application_enabled=True
+    # Get match IDs with open positions for roles user can apply for
+    open_position_filter = Q()
+
+    if can_apply_as_referee:
+        open_position_filter |= Q(
+            role=MatchAssignment.Role.REFEREE,
+            application_enabled=True,
+            placeholder_type='szukseges',
+            user__isnull=True
+        )
+    if can_apply_as_inspector:
+        open_position_filter |= Q(
+            role=MatchAssignment.Role.INSPECTOR,
+            application_enabled=True,
+            placeholder_type='szukseges',
+            user__isnull=True
+        )
+    if can_apply_as_tournament_director:
+        open_position_filter |= Q(
+            role=MatchAssignment.Role.TOURNAMENT_DIRECTOR,
+            application_enabled=True,
+            placeholder_type='szukseges',
+            user__isnull=True
+        )
+
+    if open_position_filter:
+        # Get match IDs that have at least one open position for applicable roles
+        match_ids_with_open_positions = MatchAssignment.objects.filter(
+            open_position_filter
+        ).values_list('match_id', flat=True).distinct()
+        available_matches = available_matches.filter(id__in=match_ids_with_open_positions)
+    else:
+        available_matches = Match.objects.none()
+
+    # Get seasons for filter (exclude soft-deleted)
+    seasons = Season.objects.filter(is_deleted=False).order_by('-start_date')
+
+    # Get competitions for filter (based on selected season, exclude soft-deleted)
+    competitions = Competition.objects.filter(
+        season=selected_season, is_deleted=False
+    ).order_by('order', 'name') if selected_season else Competition.objects.none()
+
+    # Get teams for filter (exclude soft-deleted)
+    teams = Team.objects.filter(is_deleted=False, is_active=True).order_by('club__name', 'suffix')
+
+    context = {
+        'available_matches': available_matches,
+        'my_applications': my_applications,
+        'can_apply_as_referee': can_apply_as_referee,
+        'can_apply_as_inspector': can_apply_as_inspector,
+        'can_apply_as_tournament_director': can_apply_as_tournament_director,
+        'site_settings': site_settings,
+        'seasons': seasons,
+        'selected_season': selected_season,
+        'competitions': competitions,
+        'selected_competition': competition_id,
+        'date_from': date_from,
+        'date_to': date_to,
+        'teams': teams,
+        'selected_team': team_id,
+    }
+
+    return render(request, 'matches/applications.html', context)
+
+
+@login_required
+def api_apply_for_match(request, match_id):
+    """API: Apply for a match."""
+    from accounts.models import SiteSettings
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        import json
+        data = json.loads(request.body)
+        role = data.get('role')
+
+        if not role or role not in ['referee', 'inspector', 'tournament_director']:
+            return JsonResponse({'error': 'Érvénytelen szerepkör.'}, status=400)
+
+        match = Match.objects.select_related('phase').get(pk=match_id, is_deleted=False)
+        site_settings = SiteSettings.get_settings()
+        user = request.user
+
+        # Check user permission for the specific role
+        if role == 'referee' and not user.is_referee:
+            return JsonResponse({'error': 'Nincs játékvezető jogosultságod.'}, status=403)
+        if role == 'inspector' and not user.is_inspector:
+            return JsonResponse({'error': 'Nincs ellenőr jogosultságod.'}, status=403)
+        if role == 'tournament_director' and not user.is_tournament_director:
+            return JsonResponse({'error': 'Nincs tornaigazgató jogosultságod.'}, status=403)
+
+        # Check global settings
+        if role == 'referee' and not site_settings.application_referees_enabled:
+            return JsonResponse({'error': 'Játékvezető jelentkezés nincs engedélyezve.'}, status=400)
+        if role == 'inspector' and not site_settings.application_inspectors_enabled:
+            return JsonResponse({'error': 'Ellenőr jelentkezés nincs engedélyezve.'}, status=400)
+        if role == 'tournament_director' and not site_settings.application_tournament_directors_enabled:
+            return JsonResponse({'error': 'Tornaigazgató jelentkezés nincs engedélyezve.'}, status=400)
+
+        # Check if there's an open position with application_enabled for this role
+        role_to_assignment_role = {
+            'referee': MatchAssignment.Role.REFEREE,
+            'inspector': MatchAssignment.Role.INSPECTOR,
+            'tournament_director': MatchAssignment.Role.TOURNAMENT_DIRECTOR
+        }
+        open_position = MatchAssignment.objects.filter(
+            match=match,
+            role=role_to_assignment_role[role],
+            application_enabled=True,
+            placeholder_type='szukseges',
+            user__isnull=True
+        ).exists()
+        if not open_position:
+            return JsonResponse({'error': 'Nincs nyitott pozíció erre a szerepre ezen a meccsen.'}, status=400)
+
+        # Check if already applied
+        existing = MatchApplication.objects.filter(
+            user=user, match=match, role=role
+        ).first()
+
+        if existing:
+            if existing.status == MatchApplication.Status.PENDING:
+                return JsonResponse({'error': 'Már jelentkeztél erre a meccsre.'}, status=400)
+            elif existing.status == MatchApplication.Status.WITHDRAWN:
+                # Reactivate withdrawn application
+                existing.status = MatchApplication.Status.PENDING
+                existing.save()
+                return JsonResponse({'success': True, 'application_id': existing.id})
+
+        # Check if already assigned to this match (excluding declined assignments)
+        existing_assignment = MatchAssignment.objects.filter(
+            user=user, match=match
+        ).exclude(
+            response_status=MatchAssignment.ResponseStatus.DECLINED
+        ).exists()
+        if existing_assignment:
+            return JsonResponse({'error': 'Már ki vagy írva erre a meccsre.'}, status=400)
+
+        # Create application
+        application = MatchApplication.objects.create(
+            user=user,
+            match=match,
+            role=role,
+            status=MatchApplication.Status.PENDING
+        )
+
+        # Audit log
+        from audit.utils import log_action
+        role_display = dict(MatchApplication.Role.choices).get(role, role)
+        log_action(
+            request, 'match', 'create',
+            f'Jelentkezés mérkőzésre: {match} ({role_display})',
+            obj=application
+        )
+
+        return JsonResponse({'success': True, 'application_id': application.id})
+
+    except Match.DoesNotExist:
+        return JsonResponse({'error': 'Mérkőzés nem található.'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+
+@login_required
+def api_withdraw_application(request, application_id):
+    """API: Withdraw a match application."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        application = MatchApplication.objects.select_related('match').get(
+            pk=application_id,
+            user=request.user,
+            status=MatchApplication.Status.PENDING
+        )
+
+        application.status = MatchApplication.Status.WITHDRAWN
+        application.save()
+
+        # Audit log
+        from audit.utils import log_action
+        role_display = dict(MatchApplication.Role.choices).get(application.role, application.role)
+        log_action(
+            request, 'match', 'cancel',
+            f'Jelentkezés visszavonva: {application.match} ({role_display})',
+            obj=application
+        )
+
+        return JsonResponse({'success': True})
+
+    except MatchApplication.DoesNotExist:
+        return JsonResponse({'error': 'Jelentkezés nem található.'}, status=404)
+
+
+# =============================================================================
+# MATCH FEEDBACK VIEWS
+# =============================================================================
+
+@login_required
+def match_feedback_list(request):
+    """User-facing: List of matches that need feedback."""
+    from django.db.models import Q
+    from datetime import timedelta
+
+    user = request.user
+    today = timezone.localdate()
+
+    # Get user's past accepted assignments that haven't submitted feedback yet
+    # Only include matches from the past (match date < today)
+    assignments_needing_feedback = MatchAssignment.objects.filter(
+        user=user,
+        response_status=MatchAssignment.ResponseStatus.ACCEPTED,
+        match__is_deleted=False,
+        match__date__lt=today
+    ).exclude(
+        match__status=Match.Status.CANCELLED
+    ).exclude(
+        feedback__isnull=False  # Exclude assignments that already have feedback
+    ).select_related(
+        'match', 'match__home_team', 'match__away_team',
+        'match__venue', 'match__phase', 'match__phase__competition'
+    ).order_by('-match__date', '-match__time')[:50]
+
+    # Get assignments with feedback (for history view)
+    assignments_with_feedback = MatchAssignment.objects.filter(
+        user=user,
+        response_status=MatchAssignment.ResponseStatus.ACCEPTED,
+        feedback__isnull=False
+    ).select_related(
+        'match', 'match__home_team', 'match__away_team',
+        'match__venue', 'match__phase', 'match__phase__competition',
+        'feedback'
+    ).order_by('-match__date', '-match__time')[:20]
+
+    context = {
+        'assignments_needing_feedback': assignments_needing_feedback,
+        'assignments_with_feedback': assignments_with_feedback,
+    }
+    return render(request, 'matches/match_feedback_list.html', context)
+
+
+@login_required
+def match_feedback_submit(request, assignment_id):
+    """User-facing: Submit feedback for a specific match assignment."""
+    from .models import MatchFeedback, RedCardReport, RedCardWitness
+
+    assignment = get_object_or_404(
+        MatchAssignment.objects.select_related(
+            'match', 'match__home_team', 'match__away_team',
+            'match__venue', 'match__phase', 'match__phase__competition'
+        ),
+        id=assignment_id,
+        user=request.user,
+        response_status=MatchAssignment.ResponseStatus.ACCEPTED
+    )
+
+    # Check if feedback already exists
+    existing_feedback = getattr(assignment, 'feedback', None)
+    if existing_feedback:
+        return redirect('matches:match_feedback_list')
+
+    context = {
+        'assignment': assignment,
+        'violation_codes': RedCardReport.ViolationCode.choices,
+        'offender_functions': RedCardReport.OffenderFunction.choices,
+    }
+    return render(request, 'matches/match_feedback_submit.html', context)
+
+
+@login_required
+def api_submit_feedback(request, assignment_id):
+    """API: Submit match feedback."""
+    from .models import MatchFeedback, RedCardReport, RedCardWitness
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Csak POST kérés engedélyezett.'}, status=405)
+
+    assignment = get_object_or_404(
+        MatchAssignment,
+        id=assignment_id,
+        user=request.user,
+        response_status=MatchAssignment.ResponseStatus.ACCEPTED
+    )
+
+    # Check if feedback already exists
+    if hasattr(assignment, 'feedback'):
+        return JsonResponse({'error': 'Már beküldted a visszajelzést ehhez a mérkőzéshez.'}, status=400)
+
+    try:
+        data = json.loads(request.body)
+        feedback_type = data.get('feedback_type')
+        notes = data.get('notes', '')
+        red_cards = data.get('red_cards', [])
+
+        if feedback_type not in ['ok', 'red_card', 'issue']:
+            return JsonResponse({'error': 'Érvénytelen visszajelzés típus.'}, status=400)
+
+        # Create feedback
+        feedback = MatchFeedback.objects.create(
+            assignment=assignment,
+            feedback_type=feedback_type,
+            notes=notes
+        )
+
+        # Create red card reports if any
+        if feedback_type == 'red_card' and red_cards:
+            for rc_data in red_cards:
+                red_card = RedCardReport.objects.create(
+                    feedback=feedback,
+                    incident_time=rc_data.get('incident_time', '00:00'),
+                    violation_code=rc_data.get('violation_code', '10'),
+                    offender_name=rc_data.get('offender_name', ''),
+                    offender_jersey_number=rc_data.get('offender_jersey_number', ''),
+                    offender_function=rc_data.get('offender_function', 'player'),
+                    offender_function_other=rc_data.get('offender_function_other', ''),
+                    incident_description=rc_data.get('incident_description', '')
+                )
+
+                # Create witnesses
+                witnesses = rc_data.get('witnesses', [])
+                for witness_data in witnesses:
+                    if witness_data.get('name') and witness_data.get('phone'):
+                        RedCardWitness.objects.create(
+                            red_card_report=red_card,
+                            name=witness_data['name'],
+                            phone=witness_data['phone']
+                        )
+
+        # Send notification to JT Admins if red card or issue
+        if feedback_type in ['red_card', 'issue']:
+            _notify_admins_about_feedback(feedback)
+
+        # Log the action
+        from audit.utils import log_action
+        log_action(
+            request, 'match', 'feedback',
+            f'Mérkőzés visszajelzés: {assignment.match} ({feedback.get_feedback_type_display()})',
+            obj=feedback
+        )
+
+        return JsonResponse({'success': True, 'feedback_id': feedback.id})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Érvénytelen JSON adat.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def _notify_admins_about_feedback(feedback):
+    """Send notification to JT Admins about a match feedback with red card or issue."""
+    from django.contrib.auth import get_user_model
+    from documents.models import Notification
+    from core.email_utils import send_templated_email
+
+    User = get_user_model()
+    jt_admins = User.objects.filter(
+        role__in=['jt_admin', 'admin'],
+        is_deleted=False,
+        is_active=True
+    )
+
+    match = feedback.assignment.match
+    feedback_type_display = feedback.get_feedback_type_display()
+    red_cards = feedback.red_cards.all() if feedback.feedback_type == 'red_card' else None
+
+    # Determine email subject based on feedback type
+    if feedback.feedback_type == 'red_card':
+        subject = f'Végleges kiállítás: {match}'
+    elif feedback.feedback_type == 'issue':
+        subject = f'Probléma jelentés: {match}'
+    else:
+        subject = f'Mérkőzés visszajelzés: {match}'
+
+    for admin in jt_admins:
+        # Create in-app notification
+        Notification.objects.create(
+            recipient=admin,
+            notification_type='feedback',
+            title=f'Új mérkőzés visszajelzés: {feedback_type_display}',
+            message=f'{feedback.assignment.user.get_full_name()} visszajelzést küldött a(z) {match} mérkőzésről.',
+            link=f'/matches/admin/feedbacks/?match={match.id}'
+        )
+
+        # Send email if enabled
+        if getattr(admin, 'email_feedback_alerts', True):
+            try:
+                send_templated_email(
+                    to_email=admin.email,
+                    subject=subject,
+                    template_name='match_feedback_notification',
+                    context={
+                        'admin': admin,
+                        'feedback': feedback,
+                        'match': match,
+                        'red_cards': red_cards,
+                    }
+                )
+            except Exception:
+                pass  # Don't fail if email fails
+
+
+@login_required
+def admin_feedback_list(request):
+    """Admin-facing: List all match feedbacks."""
+    if not request.user.is_jt_admin:
+        return HttpResponseForbidden('Nincs jogosultságod.')
+
+    from .models import MatchFeedback
+
+    # Get filter values
+    feedback_type = request.GET.get('type', '')
+    match_id = request.GET.get('match', '')
+    user_id = request.GET.get('user', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+
+    # Base query
+    feedbacks = MatchFeedback.objects.select_related(
+        'assignment', 'assignment__user',
+        'assignment__match', 'assignment__match__home_team',
+        'assignment__match__away_team', 'assignment__match__venue',
+        'assignment__match__phase', 'assignment__match__phase__competition'
+    ).prefetch_related('red_cards').order_by('-submitted_at')
+
+    # Apply filters
+    if feedback_type:
+        feedbacks = feedbacks.filter(feedback_type=feedback_type)
+    if match_id:
+        feedbacks = feedbacks.filter(assignment__match_id=match_id)
+    if user_id:
+        feedbacks = feedbacks.filter(assignment__user_id=user_id)
+    if date_from:
+        feedbacks = feedbacks.filter(assignment__match__date__gte=date_from)
+    if date_to:
+        feedbacks = feedbacks.filter(assignment__match__date__lte=date_to)
+
+    # Get all users for filter dropdown
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    all_users = User.objects.filter(is_deleted=False).order_by('last_name', 'first_name')
+
+    context = {
+        'feedbacks': feedbacks[:100],
+        'all_users': all_users,
+        'selected_type': feedback_type,
+        'selected_match': match_id,
+        'selected_user': user_id,
+        'date_from': date_from,
+        'date_to': date_to,
+        'feedback_types': MatchFeedback.FeedbackType.choices,
+    }
+    return render(request, 'matches/admin_feedback_list.html', context)
+
+
+@login_required
+def api_feedback_details(request, feedback_id):
+    """API: Get feedback details including red card reports."""
+    if not request.user.is_jt_admin:
+        return JsonResponse({'error': 'Nincs jogosultságod.'}, status=403)
+
+    from .models import MatchFeedback
+
+    feedback = get_object_or_404(
+        MatchFeedback.objects.select_related(
+            'assignment', 'assignment__user',
+            'assignment__match', 'assignment__match__home_team',
+            'assignment__match__away_team'
+        ).prefetch_related('red_cards__witnesses'),
+        id=feedback_id
+    )
+
+    red_cards_data = []
+    for rc in feedback.red_cards.all():
+        witnesses = [{'name': w.name, 'phone': w.phone} for w in rc.witnesses.all()]
+        red_cards_data.append({
+            'incident_time': rc.incident_time,
+            'violation_code': rc.violation_code,
+            'violation_code_display': rc.get_violation_code_display(),
+            'offender_name': rc.offender_name,
+            'offender_jersey_number': rc.offender_jersey_number,
+            'offender_function': rc.offender_function,
+            'offender_function_display': rc.get_offender_function_display(),
+            'offender_function_other': rc.offender_function_other,
+            'incident_description': rc.incident_description,
+            'witnesses': witnesses,
+        })
+
+    data = {
+        'id': feedback.id,
+        'feedback_type': feedback.feedback_type,
+        'feedback_type_display': feedback.get_feedback_type_display(),
+        'notes': feedback.notes,
+        'submitted_at': feedback.submitted_at.strftime('%Y.%m.%d %H:%M'),
+        'user_name': feedback.assignment.user.get_full_name(),
+        'match': str(feedback.assignment.match),
+        'match_date': feedback.assignment.match.date.strftime('%Y.%m.%d'),
+        'red_cards': red_cards_data,
+    }
+    return JsonResponse(data)

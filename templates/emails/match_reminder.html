@@ -21,33 +21,43 @@
         <th>Mérkőzés időpontja</th>
         <td><strong>{{ match.date|date:"Y.m.d" }} ({{ match.date|date:"l" }}) {{ match.time|time:"H:i" }}</strong></td>
     </tr>
+    {% if match.venue %}
     <tr>
         <th>Helyszín</th>
-        <td><strong>{{ match.venue.name }}</strong>{% if match.venue.city %}, {{ match.venue.city }}{% endif %}</td>
+        <td>{% if match.venue.google_maps_url %}<a href="{{ match.venue.google_maps_url }}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 700;">{{ match.venue.name }}</a>{% else %}<strong>{{ match.venue.name }}</strong>{% endif %}{% if match.venue.city %}, {{ match.venue.city }}{% endif %}</td>
     </tr>
-    {% if match.venue.address %}
+    {% if match.venue.address or match.venue.postal_code %}
     <tr>
         <th>Cím</th>
-        <td>{{ match.venue.address }}</td>
+        <td>{% if match.venue.postal_code %}{{ match.venue.postal_code }} {% endif %}{{ match.venue.address }}</td>
     </tr>
     {% endif %}
+    {% if match.venue.google_maps_url %}
+    <tr>
+        <th>Térkép</th>
+        <td><a href="{{ match.venue.google_maps_url }}" target="_blank" style="color: #2563eb; text-decoration: underline;">Megnyitás Google Maps-ben</a></td>
+    </tr>
+    {% endif %}
+    {% endif %}
+    {% if match.phase and match.phase.competition %}
     <tr>
         <th>Bajnokság</th>
-        <td>{{ match.phase.competition.name|default:match.competition.name }}</td>
+        <td>{{ match.phase.competition.name }}</td>
     </tr>
+    {% endif %}
     {% if not match.is_tournament %}
     <tr>
         <th>Hazai csapat</th>
-        <td>{{ match.home_team.name|default:"TBD" }}</td>
+        <td>{{ match.home_team|default:"TBD" }}</td>
     </tr>
     <tr>
         <th>Vendég csapat</th>
-        <td>{{ match.away_team.name|default:"TBD" }}</td>
+        <td>{{ match.away_team|default:"TBD" }}</td>
     </tr>
     {% else %}
     <tr>
         <th>Esemény típus</th>
-        <td style="color: #7c3aed; font-weight: 600;">Torna</td>
+        <td>Torna</td>
     </tr>
     {% endif %}
     <tr class="section-divider highlight">
@@ -68,7 +78,7 @@
 </div>
 {% endif %}
 
-{% if match.venue.google_maps_url %}
+{% if match.venue and match.venue.google_maps_url %}
 <p style="text-align: center; margin-top: 20px;">
     <a href="{{ match.venue.google_maps_url }}" class="btn btn-success" target="_blank">Helyszín a térképen</a>
 </p>

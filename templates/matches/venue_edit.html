@@ -77,8 +77,19 @@
     </div>
 
     <div class="form-group">
+        <label for="postal_code">Irányítószám</label>
+        <input type="text" id="postal_code" name="postal_code" value="{{ venue.postal_code|default:'' }}" placeholder="pl. 1011" maxlength="10">
+    </div>
+
+    <div class="form-group">
         <label for="address">Cím</label>
         <input type="text" id="address" name="address" value="{{ venue.address|default:'' }}" placeholder="pl. Batthyány tér 5.">
+    </div>
+
+    <div class="form-group">
+        <label for="google_maps_url">Google Maps link</label>
+        <input type="url" id="google_maps_url" name="google_maps_url" value="{{ venue.google_maps_url|default:'' }}" placeholder="https://maps.google.com/...">
+        <small style="color: var(--text-secondary); font-size: 0.85rem;">Nyisd meg a Google Maps-et, keresd meg a helyszínt, és másold be a linket</small>
     </div>
 
     <div class="form-group">

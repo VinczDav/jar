@@ -246,7 +246,7 @@ class Command(BaseCommand):
 
                     date_str = match.date.strftime('%Y.%m.%d (%A)')
                     time_str = match.time.strftime('%H:%M') if match.time else ''
-                    teams = f"{match.home_team.name if match.home_team else 'TBD'} - {match.away_team.name if match.away_team else 'TBD'}"
+                    teams = f"{str(match.home_team) if match.home_team else 'TBD'} - {str(match.away_team) if match.away_team else 'TBD'}"
                     venue = match.venue.name if match.venue else 'Nincs helyszín'
 
                     pending_roles = ', '.join([a.role.name for a in pending_assignments if a.role])

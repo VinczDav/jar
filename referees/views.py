@@ -181,8 +181,8 @@ def delete_unavailability(request, unavailability_id):
 @login_required
 def colleagues(request):
     """Show colleague list with contact info."""
-    # Base filter: active, not hidden, not deleted
-    base_filter = Q(is_active=True, is_hidden_from_colleagues=False, is_deleted=False)
+    # Base filter: active, not hidden, not deleted, login not disabled
+    base_filter = Q(is_active=True, is_hidden_from_colleagues=False, is_deleted=False, is_login_disabled=False)
 
     # Get JT Admins (primary role OR jt_admin flag)
     jt_admins = User.objects.filter(
@@ -219,10 +219,13 @@ def profiles(request):
     # Show users who are:
     # - Referees (by role OR by flag)
     # - JT Admins (by role OR by flag)
+    # - Not deleted, not login disabled, not hidden
     users = User.objects.filter(
         Q(role=User.Role.REFEREE) | Q(is_referee_flag=True) |
         Q(role=User.Role.JT_ADMIN) | Q(is_jt_admin_flag=True),
-        is_deleted=False
+        is_deleted=False,
+        is_login_disabled=False,
+        is_hidden_from_colleagues=False
     ).order_by('last_name', 'first_name')
 
     context = {
@@ -382,7 +385,7 @@ def create_report(request):
         from documents.models import Notification
 
         date_str = match.date.strftime('%Y.%m.%d') if match.date else ''
-        teams = f"{match.home_team.name if match.home_team else 'TBD'} - {match.away_team.name if match.away_team else 'TBD'}"
+        teams = f"{str(match.home_team) if match.home_team else 'TBD'} - {str(match.away_team) if match.away_team else 'TBD'}"
         inspector_name = request.user.get_full_name()
 
         for referee in referees:

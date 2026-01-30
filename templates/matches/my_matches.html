@@ -171,7 +171,7 @@
         border-radius: 6px;
         font-size: 0.8rem;
         font-weight: 600;
-        color: white;
+        color: white !important;
         white-space: nowrap;
     }
     .match-venue {
@@ -786,12 +786,12 @@
         <div class="match-card-teams">
             <div class="team-info">
                 {% if assignment.match.home_team %}
-                    {% if assignment.match.home_team.logo %}
-                    <img src="{{ assignment.match.home_team.logo.url }}" alt="" class="team-logo">
+                    {% if assignment.match.home_team.effective_logo %}
+                    <img src="{{ assignment.match.home_team.effective_logo.url }}" alt="" class="team-logo">
                     {% else %}
-                    <div class="team-logo-placeholder">{{ assignment.match.home_team.short_name|default:assignment.match.home_team.name|slice:":2"|upper }}</div>
+                    <div class="team-logo-placeholder">{{ assignment.match.home_team.short_name|default:assignment.match.home_team|slice:":2"|upper }}</div>
                     {% endif %}
-                    <span class="team-name">{{ assignment.match.home_team.name }}</span>
+                    <span class="team-name">{{ assignment.match.home_team.display_name }}</span>
                 {% else %}
                     <div class="team-logo-placeholder">TB</div>
                     <span class="team-name">TBD</span>
@@ -806,12 +806,12 @@
             <span class="vs-separator">-</span>
             <div class="team-info">
                 {% if assignment.match.away_team %}
-                    {% if assignment.match.away_team.logo %}
-                    <img src="{{ assignment.match.away_team.logo.url }}" alt="" class="team-logo">
+                    {% if assignment.match.away_team.effective_logo %}
+                    <img src="{{ assignment.match.away_team.effective_logo.url }}" alt="" class="team-logo">
                     {% else %}
-                    <div class="team-logo-placeholder">{{ assignment.match.away_team.short_name|default:assignment.match.away_team.name|slice:":2"|upper }}</div>
+                    <div class="team-logo-placeholder">{{ assignment.match.away_team.short_name|default:assignment.match.away_team|slice:":2"|upper }}</div>
                     {% endif %}
-                    <span class="team-name">{{ assignment.match.away_team.name }}</span>
+                    <span class="team-name">{{ assignment.match.away_team.display_name }}</span>
                 {% else %}
                     <div class="team-logo-placeholder">TB</div>
                     <span class="team-name">TBD</span>
@@ -835,7 +835,11 @@
             {% if assignment.match.venue %}
             <div class="match-venue">
                 <span class="material-icons">location_on</span>
+                {% if assignment.match.venue.google_maps_url %}
+                <a href="{{ assignment.match.venue.google_maps_url }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline; text-decoration-style: dotted;" title="Megnyitás Google Maps-ben">{{ assignment.match.venue.name }}</a>{% if assignment.match.court %} ({{ assignment.match.court }}){% endif %}
+                {% else %}
                 {{ assignment.match.venue.name }}{% if assignment.match.court %} ({{ assignment.match.court }}){% endif %}
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -849,12 +853,24 @@
                 <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
                 <span class="referee-role">Játékvezető</span>
                 <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
-                {% else %}
+                {% elif ref.placeholder_type == 'szukseges' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--warning-color);">schedule</span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name" style="color: var(--warning-color); font-weight: 600;">Szükséges</span>
+                {% elif ref.placeholder_type == 'hianyzik' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
+                {% elif ref.user %}
                 <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
                     {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
                 </span>
                 <span class="referee-role">Játékvezető</span>
                 <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% else %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
                 {% endif %}
             </div>
             {% endfor %}
@@ -864,12 +880,24 @@
                 <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
                 <span class="referee-role">Tartalék</span>
                 <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
-                {% else %}
+                {% elif ref.placeholder_type == 'szukseges' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--warning-color);">schedule</span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name" style="color: var(--warning-color); font-weight: 600;">Szükséges</span>
+                {% elif ref.placeholder_type == 'hianyzik' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
+                {% elif ref.user %}
                 <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
                     {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
                 </span>
                 <span class="referee-role">Tartalék</span>
                 <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% else %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
                 {% endif %}
             </div>
             {% endfor %}
@@ -879,12 +907,24 @@
                 <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
                 <span class="referee-role">Ellenőr</span>
                 <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
-                {% else %}
+                {% elif ref.placeholder_type == 'szukseges' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--warning-color);">schedule</span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name" style="color: var(--warning-color); font-weight: 600;">Szükséges</span>
+                {% elif ref.placeholder_type == 'hianyzik' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
+                {% elif ref.user %}
                 <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
                     {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
                 </span>
                 <span class="referee-role">Ellenőr</span>
                 <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% else %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
                 {% endif %}
             </div>
             {% endfor %}
@@ -894,12 +934,24 @@
                 <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
                 <span class="referee-role">Tornaig.</span>
                 <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
-                {% else %}
+                {% elif ref.placeholder_type == 'szukseges' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--warning-color);">schedule</span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name" style="color: var(--warning-color); font-weight: 600;">Szükséges</span>
+                {% elif ref.placeholder_type == 'hianyzik' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
+                {% elif ref.user %}
                 <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
                     {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
                 </span>
                 <span class="referee-role">Tornaig.</span>
                 <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% else %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
                 {% endif %}
             </div>
             {% endfor %}
@@ -918,20 +970,29 @@
                         <span class="material-icons">check</span>
                         Elfogadom
                     </button>
+                    {% if require_cancellation_reason %}
                     <button type="button" class="btn" style="background: var(--danger-color); color: white; padding: 0.5rem 1rem;" onclick="showDeclineForm({{ assignment.id }})">
                         <span class="material-icons">close</span>
                         Elutasítom
                     </button>
+                    {% else %}
+                    <button type="button" class="btn" style="background: var(--danger-color); color: white; padding: 0.5rem 1rem;" onclick="directDecline({{ assignment.id }})">
+                        <span class="material-icons">close</span>
+                        Elutasítom
+                    </button>
+                    {% endif %}
                 </div>
+                {% if require_cancellation_reason %}
                 <div class="decline-wrapper" id="decline-{{ assignment.id }}">
                     <button type="button" class="btn" style="background: var(--text-secondary); color: white; padding: 0.5rem;" onclick="hideDeclineForm({{ assignment.id }})" title="Mégsem">
                         <span class="material-icons">arrow_back</span>
                     </button>
-                    <textarea name="decline_reason" placeholder="Indoklás..."></textarea>
+                    <textarea name="decline_reason" placeholder="Indoklás (kötelező)..." required></textarea>
                     <button type="submit" class="btn" style="background: var(--danger-color); color: white; padding: 0.5rem;" onclick="document.getElementById('response-{{ assignment.id }}').value='declined'" title="Elutasítom">
                         <span class="material-icons">send</span>
                     </button>
                 </div>
+                {% endif %}
             </form>
         </div>
     </div>
@@ -955,12 +1016,12 @@
         <div class="match-card-teams">
             <div class="team-info">
                 {% if assignment.match.home_team %}
-                    {% if assignment.match.home_team.logo %}
-                    <img src="{{ assignment.match.home_team.logo.url }}" alt="" class="team-logo">
+                    {% if assignment.match.home_team.effective_logo %}
+                    <img src="{{ assignment.match.home_team.effective_logo.url }}" alt="" class="team-logo">
                     {% else %}
-                    <div class="team-logo-placeholder">{{ assignment.match.home_team.short_name|default:assignment.match.home_team.name|slice:":2"|upper }}</div>
+                    <div class="team-logo-placeholder">{{ assignment.match.home_team.short_name|default:assignment.match.home_team|slice:":2"|upper }}</div>
                     {% endif %}
-                    <span class="team-name">{{ assignment.match.home_team.name }}</span>
+                    <span class="team-name">{{ assignment.match.home_team.display_name }}</span>
                 {% else %}
                     <div class="team-logo-placeholder">TB</div>
                     <span class="team-name">TBD</span>
@@ -975,12 +1036,12 @@
             <span class="vs-separator">-</span>
             <div class="team-info">
                 {% if assignment.match.away_team %}
-                    {% if assignment.match.away_team.logo %}
-                    <img src="{{ assignment.match.away_team.logo.url }}" alt="" class="team-logo">
+                    {% if assignment.match.away_team.effective_logo %}
+                    <img src="{{ assignment.match.away_team.effective_logo.url }}" alt="" class="team-logo">
                     {% else %}
-                    <div class="team-logo-placeholder">{{ assignment.match.away_team.short_name|default:assignment.match.away_team.name|slice:":2"|upper }}</div>
+                    <div class="team-logo-placeholder">{{ assignment.match.away_team.short_name|default:assignment.match.away_team|slice:":2"|upper }}</div>
                     {% endif %}
-                    <span class="team-name">{{ assignment.match.away_team.name }}</span>
+                    <span class="team-name">{{ assignment.match.away_team.display_name }}</span>
                 {% else %}
                     <div class="team-logo-placeholder">TB</div>
                     <span class="team-name">TBD</span>
@@ -1004,7 +1065,11 @@
             {% if assignment.match.venue %}
             <div class="match-venue">
                 <span class="material-icons">location_on</span>
+                {% if assignment.match.venue.google_maps_url %}
+                <a href="{{ assignment.match.venue.google_maps_url }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline; text-decoration-style: dotted;" title="Megnyitás Google Maps-ben">{{ assignment.match.venue.name }}</a>{% if assignment.match.court %} ({{ assignment.match.court }}){% endif %}
+                {% else %}
                 {{ assignment.match.venue.name }}{% if assignment.match.court %} ({{ assignment.match.court }}){% endif %}
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -1018,12 +1083,24 @@
                 <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
                 <span class="referee-role">Játékvezető</span>
                 <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
-                {% else %}
+                {% elif ref.placeholder_type == 'szukseges' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--warning-color);">schedule</span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name" style="color: var(--warning-color); font-weight: 600;">Szükséges</span>
+                {% elif ref.placeholder_type == 'hianyzik' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
+                {% elif ref.user %}
                 <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
                     {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
                 </span>
                 <span class="referee-role">Játékvezető</span>
                 <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% else %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Játékvezető</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
                 {% endif %}
             </div>
             {% endfor %}
@@ -1033,12 +1110,24 @@
                 <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
                 <span class="referee-role">Tartalék</span>
                 <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
-                {% else %}
+                {% elif ref.placeholder_type == 'szukseges' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--warning-color);">schedule</span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name" style="color: var(--warning-color); font-weight: 600;">Szükséges</span>
+                {% elif ref.placeholder_type == 'hianyzik' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
+                {% elif ref.user %}
                 <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
                     {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
                 </span>
                 <span class="referee-role">Tartalék</span>
                 <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% else %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Tartalék</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
                 {% endif %}
             </div>
             {% endfor %}
@@ -1048,12 +1137,24 @@
                 <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
                 <span class="referee-role">Ellenőr</span>
                 <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
-                {% else %}
+                {% elif ref.placeholder_type == 'szukseges' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--warning-color);">schedule</span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name" style="color: var(--warning-color); font-weight: 600;">Szükséges</span>
+                {% elif ref.placeholder_type == 'hianyzik' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
+                {% elif ref.user %}
                 <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
                     {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
                 </span>
                 <span class="referee-role">Ellenőr</span>
                 <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% else %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Ellenőr</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
                 {% endif %}
             </div>
             {% endfor %}
@@ -1063,12 +1164,24 @@
                 <span class="material-icons response-status-icon" style="color: var(--text-secondary);">block</span>
                 <span class="referee-role">Tornaig.</span>
                 <span class="referee-name" style="color: var(--text-secondary); font-style: italic;">Nincs</span>
-                {% else %}
+                {% elif ref.placeholder_type == 'szukseges' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--warning-color);">schedule</span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name" style="color: var(--warning-color); font-weight: 600;">Szükséges</span>
+                {% elif ref.placeholder_type == 'hianyzik' and not ref.user %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
+                {% elif ref.user %}
                 <span class="material-icons response-status-icon response-{{ ref.response_status }}"{% if ref.response_status == 'declined' and ref.decline_reason %} title="Indok: {{ ref.decline_reason }}" style="cursor: help;"{% endif %}>
                     {% if ref.response_status == 'accepted' %}check_circle{% elif ref.response_status == 'declined' %}cancel{% else %}schedule{% endif %}
                 </span>
                 <span class="referee-role">Tornaig.</span>
                 <span class="referee-name {% if ref.user == request.user %}current-user{% endif %}">{{ ref.user.get_full_name }}</span>
+                {% else %}
+                <span class="material-icons response-status-icon" style="color: var(--danger-color);">error</span>
+                <span class="referee-role">Tornaig.</span>
+                <span class="referee-name" style="color: var(--danger-color); font-weight: 600;">Hiányzik!</span>
                 {% endif %}
             </div>
             {% endfor %}
@@ -1082,11 +1195,19 @@
             <form method="post" action="{% url 'matches:decline_accepted_assignment' assignment.id %}" class="response-form" id="form-accepted-{{ assignment.id }}">
                 {% csrf_token %}
                 <div class="action-buttons" id="action-buttons-accepted-{{ assignment.id }}">
+                    {% if require_cancellation_reason %}
                     <button type="button" class="btn" style="background: transparent; color: var(--danger-color); padding: 0.5rem 1rem; border: 1px solid var(--danger-color);" onclick="showDeclineFormAccepted({{ assignment.id }})" title="Mégsem tudok menni">
                         <span class="material-icons">cancel</span>
                         Lemondás
                     </button>
+                    {% else %}
+                    <button type="button" class="btn" style="background: transparent; color: var(--danger-color); padding: 0.5rem 1rem; border: 1px solid var(--danger-color);" onclick="directDeclineAccepted({{ assignment.id }})" title="Mégsem tudok menni">
+                        <span class="material-icons">cancel</span>
+                        Lemondás
+                    </button>
+                    {% endif %}
                 </div>
+                {% if require_cancellation_reason %}
                 <div class="decline-wrapper" id="decline-accepted-{{ assignment.id }}">
                     <button type="button" class="btn" style="background: var(--text-secondary); color: white; padding: 0.5rem;" onclick="hideDeclineFormAccepted({{ assignment.id }})" title="Mégsem">
                         <span class="material-icons">arrow_back</span>
@@ -1096,6 +1217,7 @@
                         <span class="material-icons">send</span>
                     </button>
                 </div>
+                {% endif %}
             </form>
         </div>
     </div>
@@ -1159,12 +1281,12 @@
         <div class="match-card-teams">
             <div class="team-info">
                 {% if assignment.match.home_team %}
-                    {% if assignment.match.home_team.logo %}
-                    <img src="{{ assignment.match.home_team.logo.url }}" alt="" class="team-logo">
+                    {% if assignment.match.home_team.effective_logo %}
+                    <img src="{{ assignment.match.home_team.effective_logo.url }}" alt="" class="team-logo">
                     {% else %}
-                    <div class="team-logo-placeholder">{{ assignment.match.home_team.short_name|default:assignment.match.home_team.name|slice:":2"|upper }}</div>
+                    <div class="team-logo-placeholder">{{ assignment.match.home_team.short_name|default:assignment.match.home_team|slice:":2"|upper }}</div>
                     {% endif %}
-                    <span class="team-name">{{ assignment.match.home_team.name }}</span>
+                    <span class="team-name">{{ assignment.match.home_team.display_name }}</span>
                 {% else %}
                     <div class="team-logo-placeholder">TB</div>
                     <span class="team-name">TBD</span>
@@ -1179,12 +1301,12 @@
             <span class="vs-separator">-</span>
             <div class="team-info">
                 {% if assignment.match.away_team %}
-                    {% if assignment.match.away_team.logo %}
-                    <img src="{{ assignment.match.away_team.logo.url }}" alt="" class="team-logo">
+                    {% if assignment.match.away_team.effective_logo %}
+                    <img src="{{ assignment.match.away_team.effective_logo.url }}" alt="" class="team-logo">
                     {% else %}
-                    <div class="team-logo-placeholder">{{ assignment.match.away_team.short_name|default:assignment.match.away_team.name|slice:":2"|upper }}</div>
+                    <div class="team-logo-placeholder">{{ assignment.match.away_team.short_name|default:assignment.match.away_team|slice:":2"|upper }}</div>
                     {% endif %}
-                    <span class="team-name">{{ assignment.match.away_team.name }}</span>
+                    <span class="team-name">{{ assignment.match.away_team.display_name }}</span>
                 {% else %}
                     <div class="team-logo-placeholder">TB</div>
                     <span class="team-name">TBD</span>
@@ -1207,7 +1329,11 @@
             {% if assignment.match.venue %}
             <div class="match-venue">
                 <span class="material-icons">location_on</span>
+                {% if assignment.match.venue.google_maps_url %}
+                <a href="{{ assignment.match.venue.google_maps_url }}" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline; text-decoration-style: dotted;" title="Megnyitás Google Maps-ben">{{ assignment.match.venue.name }}</a>
+                {% else %}
                 {{ assignment.match.venue.name }}
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -1441,6 +1567,33 @@ function hideDeclineFormAccepted(id) {
     const wrapper = document.getElementById('decline-accepted-' + id);
     wrapper.classList.remove('show');
     buttons.style.display = 'flex';
+}
+
+// Direct decline without reason (for pending assignments)
+function directDecline(id) {
+    // Check if within cancellation window
+    if (isWithinCancellationWindow(id)) {
+        showCoordinatorModal();
+        return;
+    }
+
+    if (confirm('Biztosan elutasítod a kijelölést?')) {
+        document.getElementById('response-' + id).value = 'declined';
+        document.getElementById('form-' + id).submit();
+    }
+}
+
+// Direct decline without reason (for accepted assignments)
+function directDeclineAccepted(id) {
+    // Check if within cancellation window
+    if (isWithinCancellationWindow(id)) {
+        showCoordinatorModal();
+        return;
+    }
+
+    if (confirm('Biztosan lemondod a mérkőzést?')) {
+        document.getElementById('form-accepted-' + id).submit();
+    }
 }
 
 // Close modal on ESC key

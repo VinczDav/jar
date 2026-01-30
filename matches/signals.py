@@ -42,7 +42,7 @@ def notify_match_deleted(sender, instance, **kwargs):
     # Format match details
     date_str = instance.date.strftime('%Y.%m.%d (%A)') if instance.date else 'Nincs dátum'
     time_str = instance.time.strftime('%H:%M') if instance.time else ''
-    teams = f"{instance.home_team.name if instance.home_team else 'TBD'} - {instance.away_team.name if instance.away_team else 'TBD'}"
+    teams = f"{str(instance.home_team) if instance.home_team else 'TBD'} - {str(instance.away_team) if instance.away_team else 'TBD'}"
     venue = instance.venue.name if instance.venue else 'Nincs helyszín'
 
     message = f"{date_str} {time_str}\n{teams}\n{venue}"
@@ -120,7 +120,7 @@ def notify_match_changed(sender, instance, created, **kwargs):
             # Format match details
             date_str = instance.date.strftime('%Y.%m.%d (%A)') if instance.date else 'Nincs dátum'
             time_str = instance.time.strftime('%H:%M') if instance.time else ''
-            teams = f"{instance.home_team.name if instance.home_team else 'TBD'} - {instance.away_team.name if instance.away_team else 'TBD'}"
+            teams = f"{str(instance.home_team) if instance.home_team else 'TBD'} - {str(instance.away_team) if instance.away_team else 'TBD'}"
             venue = instance.venue.name if instance.venue else 'Nincs helyszín'
 
             message = f"{date_str} {time_str}\n{teams}\n{venue}"
@@ -176,7 +176,7 @@ def notify_match_changed(sender, instance, created, **kwargs):
     # Format match details
     date_str = instance.date.strftime('%Y.%m.%d (%A)') if instance.date else 'Nincs dátum'
     time_str = instance.time.strftime('%H:%M') if instance.time else ''
-    teams = f"{instance.home_team.name if instance.home_team else 'TBD'} - {instance.away_team.name if instance.away_team else 'TBD'}"
+    teams = f"{str(instance.home_team) if instance.home_team else 'TBD'} - {str(instance.away_team) if instance.away_team else 'TBD'}"
     venue = instance.venue.name if instance.venue else 'Nincs helyszín'
 
     message = f"{date_str} {time_str}\n{teams}\n{venue}"

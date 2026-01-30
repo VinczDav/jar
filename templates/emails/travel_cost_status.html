@@ -18,7 +18,7 @@
     </tr>
     <tr>
         <th>Helyszín</th>
-        <td>{{ match.venue.name }}{% if match.venue.city %}, {{ match.venue.city }}{% endif %}</td>
+        <td>{% if match.venue.google_maps_url %}<a href="{{ match.venue.google_maps_url }}" target="_blank" style="color: #2563eb; text-decoration: underline;">{{ match.venue.name }}</a>{% else %}{{ match.venue.name }}{% endif %}{% if match.venue.city %}, {{ match.venue.city }}{% endif %}</td>
     </tr>
     <tr>
         <th>Bajnokság</th>
@@ -37,6 +37,4 @@
 {% if travel_cost.comment %}
 <p style="margin-top: 16px;"><strong>Megjegyzés:</strong> {{ travel_cost.comment }}</p>
 {% endif %}
-
-<p style="margin-top: 24px;">Üdvözlettel,<br>JAR rendszer</p>
 {% endblock %}

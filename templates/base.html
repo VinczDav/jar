@@ -370,7 +370,8 @@
         .sidebar-collapsed .sidebar .nav-item span:not(.material-icons),
         .sidebar-collapsed .sidebar .nav-dropdown-toggle span:not(.material-icons):not(.arrow),
         .sidebar-collapsed .sidebar .sidebar-logo-text,
-        .sidebar-collapsed .sidebar .nav-dropdown-menu {
+        .sidebar-collapsed .sidebar .nav-dropdown-menu,
+        .sidebar-collapsed .sidebar .recent-logins-section {
             display: none;
         }
 
@@ -461,21 +462,6 @@
         }
 
         /* Test server badge */
-        .test-badge {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: #1a1a1a;
-            font-size: 0.65rem;
-            font-weight: 700;
-            padding: 0.2rem 0.5rem;
-            border-radius: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-left: 0.5rem;
-            animation: testPulse 2s ease-in-out infinite;
-            box-shadow: 0 2px 4px rgba(245, 158, 11, 0.4);
-            vertical-align: middle;
-        }
-
         .header-test-badge {
             display: inline-flex;
             align-items: center;
@@ -496,10 +482,6 @@
         @keyframes testPulse {
             0%, 100% { opacity: 1; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5); }
             50% { opacity: 0.85; box-shadow: 0 2px 12px rgba(239, 68, 68, 0.7); }
-        }
-
-        .sidebar-collapsed .test-badge {
-            display: none;
         }
 
         /* Sidebar footer - hidden on desktop, only visible on mobile */
@@ -561,6 +543,61 @@
             color: rgba(255,255,255,0.5);
         }
 
+        /* Recent logins section in sidebar */
+        .recent-logins-section {
+            padding: 0.5rem 1rem;
+            margin-top: 0.25rem;
+        }
+        .recent-logins-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 0.5rem;
+            padding-left: 0.25rem;
+        }
+        .recent-login-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.25rem;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.7);
+            border-radius: 4px;
+            transition: background 0.15s;
+        }
+        .recent-login-item:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .recent-login-avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.55rem;
+            font-weight: 600;
+            color: white;
+            flex-shrink: 0;
+        }
+        .recent-login-info {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .recent-login-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .recent-login-time {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.4);
+        }
+
         .nav-item {
             display: block;
             padding: 0.75rem 1.25rem;
@@ -587,6 +624,45 @@
         .nav-item .material-icons {
             font-size: 1.25rem;
             opacity: 0.9;
+        }
+
+        /* Danger nav item (Kuka) */
+        .nav-item.nav-item-danger {
+            color: #fca5a5;
+        }
+
+        .nav-item.nav-item-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fecaca;
+        }
+
+        .nav-item.nav-item-danger.active {
+            background: rgba(239, 68, 68, 0.3);
+            color: #fecaca;
+            border-left-color: #ef4444;
+        }
+
+        .nav-item.nav-item-danger .material-icons {
+            color: inherit;
+        }
+
+        .nav-item.nav-item-info {
+            color: #93c5fd;
+        }
+
+        .nav-item.nav-item-info:hover {
+            background: rgba(59, 130, 246, 0.2);
+            color: #bfdbfe;
+        }
+
+        .nav-item.nav-item-info.active {
+            background: rgba(59, 130, 246, 0.3);
+            color: #bfdbfe;
+            border-left-color: #3b82f6;
+        }
+
+        .nav-item.nav-item-info .material-icons {
+            color: inherit;
         }
 
         /* Dropdown menu */
@@ -727,10 +803,16 @@
             border-radius: 8px;
             transition: background 0.2s;
             cursor: pointer;
+            color: inherit;
         }
 
         .user-menu:hover {
             background: var(--bg-color);
+        }
+
+        .user-menu:visited,
+        .user-menu:active {
+            color: inherit;
         }
 
         .user-avatar {
@@ -776,6 +858,11 @@
             background: #dc2626;
         }
 
+        /* Dark mode logout button fix */
+        [data-theme="dark"] .btn-logout {
+            color: white !important;
+        }
+
         /* Notification icon */
         .notification-btn {
             position: relative;
@@ -809,6 +896,48 @@
             align-items: center;
             justify-content: center;
             padding: 0 4px;
+        }
+        /* Navigation badges for matches */
+        .nav-badge {
+            min-width: 18px;
+            height: 18px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            border-radius: 9px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
+            margin-left: 6px;
+        }
+        .nav-badge.red {
+            background: var(--danger-color);
+            color: white;
+        }
+        .nav-badge.yellow {
+            background: var(--warning-color);
+            color: #1e293b;
+        }
+        .nav-badge.green {
+            background: var(--success-color);
+            color: white;
+        }
+        /* Badge group for multiple badges */
+        .nav-badges-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: auto;
+            margin-right: 4px;
+        }
+        .nav-badges-group .nav-badge {
+            margin-left: 0;
+            margin-right: 0;
+        }
+        /* Badge in dropdown toggle (when not in group) */
+        .nav-dropdown-toggle > .nav-badge {
+            margin-left: auto;
+            margin-right: 4px;
         }
         .notification-dropdown {
             position: absolute;
@@ -1380,7 +1509,7 @@
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <a href="{% url 'accounts:dashboard' %}" class="sidebar-logo">JAR{% if IS_TEST_SERVER %}<span class="test-badge">TESZT</span>{% endif %}</a>
+            <a href="{% url 'accounts:dashboard' %}" class="sidebar-logo">JAR</a>
             <button class="sidebar-collapse-btn-header" onclick="toggleSidebarCollapse()" title="Oldalsáv összecsukása">
                 <span class="material-icons">chevron_left</span>
             </button>
@@ -1401,13 +1530,29 @@
                             <span class="material-icons">sports</span>
                             <span>Mérkőzések</span>
                         </div>
+                        <div class="nav-badges-group">
+                            {% if accepted_matches_count %}<span class="nav-badge green">{{ accepted_matches_count }}</span>{% endif %}
+                            {% if available_applications_count %}<span class="nav-badge yellow">{{ available_applications_count }}</span>{% endif %}
+                            {% if pending_matches_count %}<span class="nav-badge red">{{ pending_matches_count }}</span>{% endif %}
+                        </div>
                         <span class="material-icons arrow">expand_more</span>
                     </div>
                     <div class="nav-dropdown-menu">
                         <a href="{% url 'matches:my_matches' %}" class="nav-item {% if request.resolver_match.url_name == 'my_matches' %}active{% endif %}" data-tooltip="Mérkőzéseim">
                             <span class="material-icons">sports</span>
                             <span>Mérkőzéseim</span>
+                            <div class="nav-badges-group">
+                                {% if accepted_matches_count %}<span class="nav-badge green">{{ accepted_matches_count }}</span>{% endif %}
+                                {% if pending_matches_count %}<span class="nav-badge red">{{ pending_matches_count }}</span>{% endif %}
+                            </div>
                         </a>
+                        {% if can_apply_for_matches %}
+                        <a href="{% url 'matches:match_applications' %}" class="nav-item {% if request.resolver_match.url_name == 'match_applications' %}active{% endif %}" data-tooltip="Jelentkezések">
+                            <span class="material-icons">how_to_reg</span>
+                            <span>Jelentkezések</span>
+                            {% if available_applications_count %}<span class="nav-badge yellow">{{ available_applications_count }}</span>{% endif %}
+                        </a>
+                        {% endif %}
                         <a href="{% url 'matches:all_matches' %}" class="nav-item {% if request.resolver_match.url_name == 'all_matches' %}active{% endif %}" data-tooltip="Összes mérkőzés">
                             <span class="material-icons">list_alt</span>
                             <span>Összes mérkőzés</span>
@@ -1439,9 +1584,14 @@
                     </div>
                 </div>
 
-                <a href="{% url 'referees:feedbacks' %}" class="nav-item {% if request.resolver_match.url_name == 'feedbacks' %}active{% endif %}" data-tooltip="Visszajelzéseim">
+                <a href="{% url 'referees:feedbacks' %}" class="nav-item {% if request.resolver_match.url_name == 'feedbacks' %}active{% endif %}" data-tooltip="Ellenőri jelentések">
                     <span class="material-icons">rate_review</span>
-                    <span>Visszajelzéseim</span>
+                    <span>Ellenőri jelentések</span>
+                </a>
+
+                <a href="{% url 'matches:match_feedback_list' %}" class="nav-item {% if request.resolver_match.url_name == 'match_feedback_list' or request.resolver_match.url_name == 'match_feedback_submit' %}active{% endif %}" data-tooltip="Mérkőzés visszajelzés">
+                    <span class="material-icons">feedback</span>
+                    <span>Mérkőzés visszajelzés</span>
                 </a>
 
                 <a href="{% url 'referees:unavailability' %}" class="nav-item {% if request.resolver_match.url_name == 'unavailability' %}active{% endif %}" data-tooltip="Szabadságaim">
@@ -1550,6 +1700,10 @@
                     <span class="material-icons">manage_accounts</span>
                     <span>Profilok szerkesztése</span>
                 </a>
+                <a href="{% url 'matches:admin_feedback_list' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_feedback_list' %}active{% endif %}" data-tooltip="Mérkőzés visszajelzések">
+                    <span class="material-icons">feedback</span>
+                    <span>Mérkőzés visszajelzések</span>
+                </a>
             </div>
             {% endif %}
 
@@ -1589,9 +1743,9 @@
                         <span class="material-icons arrow">expand_more</span>
                     </div>
                     <div class="nav-dropdown-menu">
-                        <a href="{% url 'matches:teams_list' %}" class="nav-item {% if request.resolver_match.url_name == 'teams_list' or request.resolver_match.url_name == 'team_edit' or request.resolver_match.url_name == 'team_new' %}active{% endif %}" data-tooltip="Csapatok">
-                            <span class="material-icons">groups</span>
-                            <span>Csapatok</span>
+                        <a href="{% url 'matches:clubs_list' %}" class="nav-item {% if request.resolver_match.url_name == 'clubs_list' or request.resolver_match.url_name == 'club_edit' or request.resolver_match.url_name == 'club_new' or request.resolver_match.url_name == 'team_edit' or request.resolver_match.url_name == 'team_new' %}active{% endif %}" data-tooltip="Klubbok">
+                            <span class="material-icons">domain</span>
+                            <span>Klubbok</span>
                         </a>
                         <a href="{% url 'matches:venues_list' %}" class="nav-item {% if request.resolver_match.url_name == 'venues_list' or request.resolver_match.url_name == 'venue_edit' or request.resolver_match.url_name == 'venue_new' %}active{% endif %}" data-tooltip="Helyszínek">
                             <span class="material-icons">location_on</span>
@@ -1603,10 +1757,6 @@
                         </a>
                     </div>
                 </div>
-                <a href="{% url 'accounts:database' %}" class="nav-item {% if request.resolver_match.url_name == 'database' %}active{% endif %}" data-tooltip="Adatbázis">
-                    <span class="material-icons">storage</span>
-                    <span>Adatbázis</span>
-                </a>
                 <a href="{% url 'accounts:admin_settings' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_settings' %}active{% endif %}" data-tooltip="Beállítások">
                     <span class="material-icons">settings</span>
                     <span>Beállítások</span>
@@ -1615,14 +1765,40 @@
                     <span class="material-icons">admin_panel_settings</span>
                     <span>Felhasználók</span>
                 </a>
-                <a href="{% url 'matches:deleted_items' %}" class="nav-item {% if request.resolver_match.url_name == 'deleted_items' %}active{% endif %}" data-tooltip="Törlések">
-                    <span class="material-icons">delete_sweep</span>
-                    <span>Törlések</span>
+                <a href="{% url 'matches:archive' %}" class="nav-item {% if request.resolver_match.url_name == 'archive' %}active{% endif %}" data-tooltip="Archívum">
+                    <span class="material-icons">inventory_2</span>
+                    <span>Archívum</span>
                 </a>
                 <a href="{% url 'audit:log_list' %}" class="nav-item {% if request.resolver_match.namespace == 'audit' %}active{% endif %}" data-tooltip="Napló">
                     <span class="material-icons">history</span>
                     <span>Napló</span>
                 </a>
+                {% if request.user.is_super_admin %}
+                <a href="{% url 'accounts:database' %}" class="nav-item nav-item-info {% if request.resolver_match.url_name == 'database' %}active{% endif %}" data-tooltip="Adatbázis">
+                    <span class="material-icons">storage</span>
+                    <span>Adatbázis</span>
+                </a>
+                <a href="{% url 'matches:trash' %}" class="nav-item nav-item-danger {% if request.resolver_match.url_name == 'trash' %}active{% endif %}" data-tooltip="Kuka">
+                    <span class="material-icons">delete_forever</span>
+                    <span>Kuka</span>
+                </a>
+                {% endif %}
+                {% if recent_logins %}
+                <div class="recent-logins-section">
+                    <div class="recent-logins-title">Utolsó belépések</div>
+                    {% for login in recent_logins %}
+                    <div class="recent-login-item">
+                        <div class="recent-login-avatar">
+                            {% if login.user %}{{ login.user.first_name|slice:":1" }}{{ login.user.last_name|slice:":1" }}{% else %}?{% endif %}
+                        </div>
+                        <div class="recent-login-info">
+                            <div class="recent-login-name">{% if login.user %}{{ login.user.get_full_name }}{% else %}Ismeretlen{% endif %}</div>
+                            <div class="recent-login-time">{{ login.timestamp|time:"H:i" }} | {{ login.timestamp|timesince }} ezelőtt</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
             {% endif %}
         </nav>
@@ -1943,7 +2119,7 @@
         });
     </script>
     <script src="{% static 'js/datetime-input.js' %}"></script>
-    <script src="{% static 'js/color-picker.js' %}"></script>
+    <script src="{% static 'js/color-picker.js' %}?v=2"></script>
     {% else %}
     {% block anonymous_content %}{% endblock %}
     {% endif %}

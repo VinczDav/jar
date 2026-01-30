@@ -623,9 +623,13 @@
                     <option value="vb" {% if user_obj.role == 'vb' %}selected{% endif %}>VB tag</option>
                     <option value="inspector" {% if user_obj.role == 'inspector' %}selected{% endif %}>Ellenőr</option>
                     <option value="accountant" {% if user_obj.role == 'accountant' %}selected{% endif %}>Könyvelő</option>
+                    {% if request.user.is_super_admin %}
                     <option value="admin" {% if user_obj.role == 'admin' %}selected{% endif %}>Adminisztrátor</option>
+                    {% elif user_obj.role == 'admin' %}
+                    <option value="admin" selected disabled>Adminisztrátor</option>
+                    {% endif %}
                 </select>
-                <span class="help-text">A megjelenítéshez és listázáshoz használt fő szerepkör</span>
+                <span class="help-text">A megjelenítéshez és listázáshoz használt fő szerepkör{% if user_obj.role == 'admin' and request.user.is_super_admin %} - Ha átváltod, nem lehetsz admin többet!{% endif %}</span>
             </div>
         </div>
 
@@ -734,13 +738,21 @@
 <script>
 // Dual list selector for roles
 (function() {
+    const isSuperAdmin = {{ request.user.is_super_admin|yesno:"true,false" }};
+    const editingSelf = {{ user_obj.id|default:0 }} === {{ request.user.id }};
+    const userHasAdminFlag = {{ user_obj.is_admin_flag|yesno:"true,false" }};
+
     const allRoles = [
         { id: 'referee', name: 'Játékvezető', desc: 'Megjelenik a kollégák között', icon: 'sports' },
         { id: 'jt_admin', name: 'JT Admin', desc: 'Kiírás kezelése, mérkőzés admin', icon: 'edit_calendar' },
         { id: 'vb', name: 'VB tag', desc: 'Elszámolások kezelése', icon: 'groups' },
         { id: 'inspector', name: 'Ellenőr', desc: 'Jelentések készítése', icon: 'assignment' },
         { id: 'accountant', name: 'Könyvelő', desc: 'EFO/EKHO bejelentések', icon: 'calculate' },
-        { id: 'admin', name: 'Adminisztrátor', desc: 'Teljes hozzáférés', icon: 'admin_panel_settings', protected: {{ user_obj.id|default:0 }} === {{ request.user.id }} }
+        // Admin role - protected for self-editing
+        { id: 'admin', name: 'Adminisztrátor', desc: 'Teljes hozzáférés', icon: 'admin_panel_settings',
+          hidden: !isSuperAdmin && !userHasAdminFlag,
+          protected: editingSelf || (!isSuperAdmin && userHasAdminFlag)
+        }
     ];
 
     const availableList = document.getElementById('availableRoles');
@@ -771,7 +783,9 @@
         div.dataset.roleId = role.id;
         if (role.protected && isAssignedRole) {
             div.dataset.protected = 'true';
-            div.title = 'Nem veheted el saját admin jogodat';
+            if (editingSelf && role.id === 'admin') {
+                div.title = 'Nem veheted el saját admin jogodat';
+            }
             div.style.opacity = '0.6';
         }
         div.innerHTML = `
@@ -842,6 +856,9 @@
         selectedAssigned = null;
 
         allRoles.forEach(role => {
+            // Skip hidden roles (e.g., admin for non-super admins)
+            if (role.hidden) return;
+
             if (isAssigned(role.id)) {
                 assignedList.appendChild(createRoleItem(role, true));
             } else {

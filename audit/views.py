@@ -68,12 +68,26 @@ def log_list(request):
     from accounts.models import User
     users = User.objects.filter(is_deleted=False).order_by('last_name', 'first_name')
 
+    # Super admin can see full details
+    is_super_admin = getattr(request.user, 'is_super_admin', False)
+
+    # For regular admin, filter out the soft_delete/hard_delete distinction in the filter dropdown
+    # They see both as "Törlés" anyway
+    if is_super_admin:
+        action_choices = AuditLog.Action.choices
+    else:
+        # Regular admin sees simplified actions (soft_delete shows as "Törlés", hard_delete hidden)
+        action_choices = [
+            (value, label) for value, label in AuditLog.Action.choices
+            if value != 'hard_delete'  # Hide hard_delete option from regular admin
+        ]
+
     context = {
         'page_obj': page_obj,
         'logs': page_obj,
         'stats': stats,
         'categories': AuditLog.Category.choices,
-        'actions': AuditLog.Action.choices,
+        'actions': action_choices,
         'users': users,
         'filters': {
             'category': category,
@@ -82,7 +96,8 @@ def log_list(request):
             'search': search,
             'date_from': date_from,
             'date_to': date_to,
-        }
+        },
+        'is_super_admin': is_super_admin,
     }
 
     return render(request, 'audit/log_list.html', context)
@@ -99,19 +114,37 @@ def log_detail_api(request, log_id):
     except AuditLog.DoesNotExist:
         return JsonResponse({'error': 'Nem található.'}, status=404)
 
-    return JsonResponse({
+    # Check if user is super admin for full details
+    is_super_admin = getattr(request.user, 'is_super_admin', False)
+
+    # Determine action display - super admin sees "Soft törlés" for soft_delete
+    if is_super_admin and log.action == 'soft_delete':
+        action_display = 'Soft törlés'
+    else:
+        action_display = log.get_action_display()
+
+    # Basic data for all admins
+    data = {
         'id': log.id,
         'timestamp': log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
         'user': log.user.get_full_name() if log.user else 'Rendszer',
-        'user_email': log.user.email if log.user else None,
-        'ip_address': log.ip_address,
-        'user_agent': log.user_agent,
         'category': log.get_category_display(),
-        'action': log.get_action_display(),
+        'action': action_display,
+        'description': log.description,
         'object_type': log.object_type,
         'object_id': log.object_id,
         'object_repr': log.object_repr,
-        'description': log.description,
-        'changes': log.changes,
-        'extra_data': log.extra_data,
-    })
+        'is_super_admin': is_super_admin,
+    }
+
+    # Super admin gets full details
+    if is_super_admin:
+        data.update({
+            'user_email': log.user.email if log.user else None,
+            'ip_address': log.ip_address,
+            'user_agent': log.user_agent,
+            'changes': log.changes,
+            'extra_data': log.extra_data,
+        })
+
+    return JsonResponse(data)

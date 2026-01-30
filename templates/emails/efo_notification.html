@@ -38,7 +38,7 @@
     {% if not item.match.is_tournament %}
     <tr{% if notification_type == 'modified' and 'home_team' in item.changes or 'away_team' in item.changes %} class="highlight"{% endif %}>
         <th>Mérkőzés</th>
-        <td>{{ item.match.home_team.name|default:"TBD" }} - {{ item.match.away_team.name|default:"TBD" }}</td>
+        <td>{{ item.match.home_team|default:"TBD" }} - {{ item.match.away_team|default:"TBD" }}</td>
     </tr>
     {% else %}
     <tr>
@@ -52,6 +52,4 @@
     </tr>
 </table>
 {% endfor %}
-
-<p style="margin-top: 24px;">Üdvözlettel,<br>JAR rendszer</p>
 {% endblock %}

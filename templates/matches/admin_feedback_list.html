@@ -1,0 +1,474 @@
+{% extends 'base.html' %}
+{% load format_filters %}
+
+{% block title %}Mérkőzés visszajelzések{% endblock %}
+{% block page_title %}Mérkőzés visszajelzések{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        background: var(--card-bg);
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        align-items: flex-end;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .filter-group label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    .filter-group input,
+    .filter-group select {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        background: var(--bg-color);
+        color: var(--text-primary);
+        min-width: 140px;
+    }
+    .filter-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .table-wrapper {
+        background: var(--card-bg);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+    th {
+        background: var(--bg-color);
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+    }
+    tbody tr:hover {
+        background: var(--bg-color);
+    }
+
+    .feedback-type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    .feedback-type-badge.ok {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+    .feedback-type-badge.red_card {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .feedback-type-badge.issue {
+        background: #ffedd5;
+        color: #ea580c;
+    }
+    .feedback-type-badge .material-icons {
+        font-size: 1rem;
+    }
+
+    .red-card-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        background: #fee2e2;
+        color: #dc2626;
+        border-radius: 50%;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .btn-view {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: var(--bg-color);
+        color: var(--text-secondary);
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-view:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+    .btn-view .material-icons {
+        font-size: 1.1rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--text-secondary);
+    }
+    .empty-state .material-icons {
+        font-size: 3rem;
+        opacity: 0.5;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Detail Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal.active {
+        display: flex;
+    }
+    .modal-content {
+        background: var(--card-bg);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 700px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .modal-title {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text-secondary);
+    }
+    .modal-body {
+        padding: 1.5rem;
+    }
+    .detail-section {
+        margin-bottom: 1.5rem;
+    }
+    .detail-section h4 {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+    }
+    .detail-row {
+        display: flex;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+    .detail-label {
+        width: 140px;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+    }
+    .detail-value {
+        flex: 1;
+        font-weight: 500;
+    }
+    .red-card-detail {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .red-card-detail h5 {
+        color: #dc2626;
+        margin: 0 0 0.75rem 0;
+        font-size: 0.9rem;
+    }
+    .witness-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        background: var(--bg-color);
+        border-radius: 4px;
+        font-size: 0.8rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<form class="filter-bar" method="get">
+    <div class="filter-group">
+        <label for="type">Típus</label>
+        <select id="type" name="type">
+            <option value="">Mind</option>
+            {% for code, display in feedback_types %}
+            <option value="{{ code }}" {% if selected_type == code %}selected{% endif %}>{{ display }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="user">Játékvezető</label>
+        <select id="user" name="user">
+            <option value="">Mind</option>
+            {% for u in all_users %}
+            <option value="{{ u.id }}" {% if selected_user == u.id|stringformat:"s" %}selected{% endif %}>{{ u.last_name }} {{ u.first_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="filter-group">
+        <label for="date_from">Dátum (tól)</label>
+        <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+    </div>
+    <div class="filter-group">
+        <label for="date_to">Dátum (ig)</label>
+        <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+    </div>
+    <div class="filter-actions">
+        <button type="submit" class="btn btn-primary btn-sm">
+            <span class="material-icons">filter_list</span>
+            Szűrés
+        </button>
+        <a href="{% url 'matches:admin_feedback_list' %}" class="btn btn-secondary btn-sm">
+            <span class="material-icons">clear</span>
+            Törlés
+        </a>
+    </div>
+</form>
+
+<!-- Table -->
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>Dátum</th>
+                <th>Mérkőzés</th>
+                <th>Játékvezető</th>
+                <th>Típus</th>
+                <th>Piros lap</th>
+                <th>Beküldve</th>
+                <th style="text-align: center;">Művelet</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if feedbacks %}
+            {% for feedback in feedbacks %}
+            <tr>
+                <td>{{ feedback.assignment.match.date|date:"Y.m.d" }}</td>
+                <td>
+                    <div style="font-weight: 500;">{{ feedback.assignment.match.home_team|default:"TBD" }} - {{ feedback.assignment.match.away_team|default:"TBD" }}</div>
+                    {% if feedback.assignment.match.phase %}
+                    <span class="badge" style="background-color: {{ feedback.assignment.match.phase.competition.color }}; color: white; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem;">
+                        {{ feedback.assignment.match.phase.competition.short_name }}
+                    </span>
+                    {% endif %}
+                </td>
+                <td>{{ feedback.assignment.user.last_name }} {{ feedback.assignment.user.first_name }}</td>
+                <td>
+                    <span class="feedback-type-badge {{ feedback.feedback_type }}">
+                        {% if feedback.feedback_type == 'ok' %}
+                        <span class="material-icons">thumb_up</span>
+                        {% elif feedback.feedback_type == 'red_card' %}
+                        <span class="material-icons">sports</span>
+                        {% else %}
+                        <span class="material-icons">thumb_down</span>
+                        {% endif %}
+                        {{ feedback.get_feedback_type_display }}
+                    </span>
+                </td>
+                <td>
+                    {% if feedback.red_cards.count > 0 %}
+                    <span class="red-card-count">{{ feedback.red_cards.count }}</span>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>{{ feedback.submitted_at|date:"Y.m.d H:i" }}</td>
+                <td style="text-align: center;">
+                    <button type="button" class="btn-view" title="Részletek" onclick="showFeedbackDetails({{ feedback.id }})">
+                        <span class="material-icons">visibility</span>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">
+                        <span class="material-icons">rate_review</span>
+                        <p>Nincs visszajelzés a szűrési feltételeknek megfelelően</p>
+                    </div>
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal" id="detailModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="modal-title">Visszajelzés részletei</span>
+            <button class="modal-close" onclick="closeModal()">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <div style="text-align: center; padding: 2rem;">
+                <span class="material-icons" style="font-size: 2rem; color: var(--text-secondary);">hourglass_empty</span>
+                <p>Betöltés...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function showFeedbackDetails(feedbackId) {
+    document.getElementById('detailModal').classList.add('active');
+    const modalBody = document.getElementById('modalBody');
+
+    try {
+        const response = await fetch(`/matches/api/feedback/${feedbackId}/details/`);
+        const data = await response.json();
+
+        let html = `
+            <div class="detail-section">
+                <h4>Alapadatok</h4>
+                <div class="detail-row">
+                    <span class="detail-label">Mérkőzés:</span>
+                    <span class="detail-value">${data.match}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Dátum:</span>
+                    <span class="detail-value">${data.match_date}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Játékvezető:</span>
+                    <span class="detail-value">${data.user_name}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Típus:</span>
+                    <span class="detail-value">${data.feedback_type_display}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Beküldve:</span>
+                    <span class="detail-value">${data.submitted_at}</span>
+                </div>
+                ${data.notes ? `
+                <div class="detail-row">
+                    <span class="detail-label">Megjegyzés:</span>
+                    <span class="detail-value">${data.notes}</span>
+                </div>
+                ` : ''}
+            </div>
+        `;
+
+        if (data.red_cards && data.red_cards.length > 0) {
+            html += `<div class="detail-section"><h4>Piros lapok (${data.red_cards.length} db)</h4>`;
+
+            data.red_cards.forEach((rc, index) => {
+                let witnessesHtml = '';
+                if (rc.witnesses && rc.witnesses.length > 0) {
+                    witnessesHtml = '<div style="margin-top: 0.5rem;"><strong>Tanúk:</strong> ';
+                    rc.witnesses.forEach(w => {
+                        witnessesHtml += `<span class="witness-tag">${w.name} (${w.phone})</span>`;
+                    });
+                    witnessesHtml += '</div>';
+                }
+
+                html += `
+                    <div class="red-card-detail">
+                        <h5>Piros lap #${index + 1}</h5>
+                        <div class="detail-row">
+                            <span class="detail-label">Idő:</span>
+                            <span class="detail-value">${rc.incident_time}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Kód (614/):</span>
+                            <span class="detail-value">${rc.violation_code_display}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Elkövető:</span>
+                            <span class="detail-value">${rc.offender_name}${rc.offender_jersey_number ? ' (#' + rc.offender_jersey_number + ')' : ''}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Funkció:</span>
+                            <span class="detail-value">${rc.offender_function_display}${rc.offender_function_other ? ' - ' + rc.offender_function_other : ''}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Leírás:</span>
+                            <span class="detail-value">${rc.incident_description}</span>
+                        </div>
+                        ${witnessesHtml}
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+        }
+
+        modalBody.innerHTML = html;
+    } catch (error) {
+        modalBody.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ef4444;">Hiba történt a betöltés során.</div>';
+    }
+}
+
+function closeModal() {
+    document.getElementById('detailModal').classList.remove('active');
+}
+
+// Close on escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
+
+// Close on backdrop click
+document.getElementById('detailModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+</script>
+{% endblock %}

@@ -514,7 +514,7 @@ function moveCategory(id, direction) {
 }
 
 function deleteCategory(id) {
-    if (!confirm('Biztosan törölni szeretnéd ezt a kategóriát és az összes benne lévő dokumentumot?')) return;
+    if (!confirm('Biztosan törölni szeretnéd ezt a kategóriát és az összes benne lévő dokumentumot?\n\nA törlés nem visszavonható!')) return;
     fetch(`/education/api/document-category/${id}/delete/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': '{{ csrf_token }}' }
@@ -540,7 +540,7 @@ function moveDocument(id, direction) {
 }
 
 function deleteDocument(id) {
-    if (!confirm('Biztosan törölni szeretnéd ezt a dokumentumot?')) return;
+    if (!confirm('Biztosan törölni szeretnéd ezt a dokumentumot?\n\nA törlés nem visszavonható!')) return;
     fetch(`/education/api/document/${id}/delete/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': '{{ csrf_token }}' }
